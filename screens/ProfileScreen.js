@@ -1,212 +1,477 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  SafeAreaView,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function ProfileScreen() {
   return (
-    <ScrollView style={styles.container}>
+    <SafeAreaView style={styles.safe}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* HEADER */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.logo}>Perfil</Text>
+            <Text style={styles.subtitle}>Configuración y seguridad</Text>
+          </View>
 
-      <View style={styles.profileHeader}>
+          <TouchableOpacity style={styles.notificationButton}>
+            <Ionicons name="settings-outline" size={22} color="#062B5F" />
+          </TouchableOpacity>
+        </View>
 
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            H
+        {/* TARJETA USUARIO */}
+        <View style={styles.profileCard}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>VD</Text>
+          </View>
+
+          <View style={{ flex: 1 }}>
+            <Text style={styles.userName}>Vicente David</Text>
+            <Text style={styles.userEmail}>vicente@heda.app</Text>
+
+            <View style={styles.badge}>
+              <Ionicons name="shield-checkmark-outline" size={14} color="#0A84FF" />
+              <Text style={styles.badgeText}>Cuenta verificada</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* NIVEL FINANCIERO */}
+        <View style={styles.levelCard}>
+          <View style={styles.levelHeader}>
+            <View style={styles.levelIcon}>
+              <Ionicons name="school-outline" size={24} color="#0A84FF" />
+            </View>
+
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>Perfil financiero</Text>
+              <Text style={styles.cardText}>Nivel de conocimiento: Intermedio</Text>
+            </View>
+          </View>
+
+          <View style={styles.progressBackground}>
+            <View style={styles.progressFill} />
+          </View>
+
+          <Text style={styles.progressText}>
+            Tu perfil ayuda a personalizar recomendaciones, alertas y contenido educativo.
           </Text>
         </View>
 
-        <Text style={styles.userName}>
-          Héctor Delgado
-        </Text>
+        {/* RESUMEN */}
+        <View style={styles.statsRow}>
+          <StatCard title="Movimientos" value="48" icon="wallet-outline" />
+          <StatCard title="Metas" value="3" icon="flag-outline" />
+          <StatCard title="Alertas" value="7" icon="notifications-outline" />
+        </View>
 
-        <Text style={styles.userEmail}>
-          hector@email.com
-        </Text>
+        {/* CUENTA */}
+        <Text style={styles.sectionTitle}>Cuenta</Text>
 
+        <OptionItem
+          icon="person-outline"
+          title="Editar perfil"
+          subtitle="Nombre, correo, ocupación y datos generales"
+        />
+
+        <OptionItem
+          icon="lock-closed-outline"
+          title="Seguridad"
+          subtitle="Contraseña, sesión y autenticación"
+        />
+
+        <OptionItem
+          icon="notifications-outline"
+          title="Notificaciones"
+          subtitle="Alertas, metas, presupuestos y recomendaciones"
+        />
+
+        {/* FINANZAS */}
+        <Text style={styles.sectionTitle}>Preferencias financieras</Text>
+
+        <OptionItem
+          icon="cash-outline"
+          title="Ingresos y hábitos"
+          subtitle="Nivel de ingresos, frecuencia de ahorro y gastos"
+        />
+
+        <OptionItem
+          icon="sparkles-outline"
+          title="Personalización IA"
+          subtitle="Ajustar recomendaciones y contenido educativo"
+        />
+
+        <OptionItem
+          icon="trending-up-outline"
+          title="Ethereum informativo"
+          subtitle="Preferencias del módulo predictivo y advertencias"
+        />
+
+        {/* PRIVACIDAD */}
+        <Text style={styles.sectionTitle}>Privacidad y soporte</Text>
+
+        <OptionItem
+          icon="shield-outline"
+          title="Privacidad de datos"
+          subtitle="Información financiera y protección de cuenta"
+        />
+
+        <OptionItem
+          icon="help-circle-outline"
+          title="Ayuda"
+          subtitle="Preguntas frecuentes y soporte del sistema"
+        />
+
+        <OptionItem
+          icon="document-text-outline"
+          title="Términos y aviso de privacidad"
+          subtitle="Uso responsable de la plataforma"
+        />
+
+        {/* ADVERTENCIA */}
+        <View style={styles.infoCard}>
+          <Ionicons name="information-circle-outline" size={22} color="#0A84FF" />
+          <Text style={styles.infoText}>
+            HEDA protege tu información financiera y utiliza tus datos únicamente para mostrar reportes,
+            recomendaciones y alertas dentro del prototipo académico.
+          </Text>
+        </View>
+
+        {/* CERRAR SESIÓN */}
+        <TouchableOpacity style={styles.logoutButton}>
+          <Ionicons name="log-out-outline" size={21} color="#D71920" />
+          <Text style={styles.logoutText}>Cerrar sesión</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function StatCard({ title, value, icon }) {
+  return (
+    <View style={styles.statCard}>
+      <View style={styles.statIcon}>
+        <Ionicons name={icon} size={21} color="#0A84FF" />
       </View>
 
-      <View style={styles.sectionCard}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statTitle}>{title}</Text>
+    </View>
+  );
+}
 
-        <Text style={styles.sectionTitle}>
-          Información financiera
-        </Text>
+function OptionItem({ icon, title, subtitle }) {
+  return (
+    <TouchableOpacity style={styles.optionCard} activeOpacity={0.8}>
+      <View style={styles.optionLeft}>
+        <View style={styles.optionIcon}>
+          <Ionicons name={icon} size={22} color="#0A84FF" />
+        </View>
 
-        <Text style={styles.option}>
-          • Nivel financiero: Intermedio
-        </Text>
-
-        <Text style={styles.option}>
-          • Metas activas: 3
-        </Text>
-
-        <Text style={styles.option}>
-          • Presupuesto mensual: $15,000 MXN
-        </Text>
-
+        <View style={{ flex: 1 }}>
+          <Text style={styles.optionTitle}>{title}</Text>
+          <Text style={styles.optionSubtitle}>{subtitle}</Text>
+        </View>
       </View>
 
-      <View style={styles.sectionCard}>
-
-        <Text style={styles.sectionTitle}>
-          Configuración
-        </Text>
-
-        <Text style={styles.option}>
-          • Notificaciones
-        </Text>
-
-        <Text style={styles.option}>
-          • Seguridad
-        </Text>
-
-        <Text style={styles.option}>
-          • Métodos de pago
-        </Text>
-
-        <Text style={styles.option}>
-          • Preferencias de IA
-        </Text>
-
-      </View>
-
-      <View style={styles.aiCard}>
-
-        <Text style={styles.aiTitle}>
-          Asistente Inteligente
-        </Text>
-
-        <Text style={styles.aiText}>
-          La IA de HEDA personaliza recomendaciones financieras según tus hábitos y objetivos.
-        </Text>
-
-      </View>
-
-      <TouchableOpacity style={styles.button}>
-        <Text style={styles.buttonText}>
-          Editar perfil
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.logoutButton}>
-        <Text style={styles.logoutText}>
-          Cerrar sesión
-        </Text>
-      </TouchableOpacity>
-
-    </ScrollView>
+      <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: '#F4F7FB',
+  },
 
   container: {
     flex: 1,
-    backgroundColor: '#F4F6FA',
-    padding: 20,
-    paddingTop: 70,
+    backgroundColor: '#F4F7FB',
   },
 
-  profileHeader: {
+  content: {
+    padding: 22,
+    paddingBottom: 115,
+  },
+
+  header: {
+    marginTop: 10,
+    marginBottom: 22,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 30,
+  },
+
+  logo: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#062B5F',
+  },
+
+  subtitle: {
+    marginTop: 4,
+    fontSize: 14,
+    color: '#6B7280',
+  },
+
+  notificationButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+  },
+
+  profileCard: {
+    backgroundColor: '#0A84FF',
+    borderRadius: 26,
+    padding: 22,
+    marginBottom: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 60,
-    backgroundColor: '#0A84FF',
-    justifyContent: 'center',
+    width: 76,
+    height: 76,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
-    marginBottom: 15,
+    justifyContent: 'center',
+    marginRight: 16,
   },
 
   avatarText: {
-    color: 'white',
-    fontSize: 42,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#0A84FF',
   },
 
   userName: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#001F54',
+    fontSize: 23,
+    fontWeight: '900',
+    color: '#FFFFFF',
   },
 
   userEmail: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 5,
+    marginTop: 4,
+    fontSize: 14,
+    color: '#DCEEFF',
   },
 
-  sectionCard: {
-    backgroundColor: 'white',
+  badge: {
+    marginTop: 10,
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 22,
-    marginBottom: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 3,
+  badgeText: {
+    marginLeft: 5,
+    color: '#0A84FF',
+    fontWeight: '900',
+    fontSize: 12,
+  },
+
+  levelCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 18,
+    elevation: 2,
+  },
+
+  levelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+
+  levelIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#EAF4FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#062B5F',
+    marginBottom: 4,
+  },
+
+  cardText: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+  },
+
+  progressBackground: {
+    height: 9,
+    backgroundColor: '#DDEBFA',
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+
+  progressFill: {
+    width: '65%',
+    height: '100%',
+    backgroundColor: '#062B5F',
+    borderRadius: 20,
+  },
+
+  progressText: {
+    fontSize: 13,
+    color: '#6B7280',
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 22,
+  },
+
+  statCard: {
+    width: '31%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 14,
+    alignItems: 'center',
+    elevation: 2,
+  },
+
+  statIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    backgroundColor: '#EAF4FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+
+  statValue: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#062B5F',
+  },
+
+  statTitle: {
+    marginTop: 3,
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '800',
+    textAlign: 'center',
   },
 
   sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#001F54',
-    marginBottom: 15,
+    fontWeight: '900',
+    color: '#062B5F',
+    marginBottom: 14,
+    marginTop: 6,
   },
 
-  option: {
-    fontSize: 16,
-    color: '#444',
-    marginBottom: 12,
-  },
-
-  aiCard: {
-    backgroundColor: '#001F54',
+  optionCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 22,
-    marginBottom: 25,
+    padding: 17,
+    marginBottom: 13,
+    elevation: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
 
-  aiTitle: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
+  optionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
 
-  aiText: {
-    color: 'white',
-    fontSize: 15,
-    lineHeight: 22,
-  },
-
-  button: {
-    backgroundColor: '#0A84FF',
-    padding: 18,
+  optionIcon: {
+    width: 44,
+    height: 44,
     borderRadius: 15,
-    marginBottom: 15,
+    backgroundColor: '#EAF4FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
   },
 
-  buttonText: {
-    color: 'white',
-    textAlign: 'center',
-    fontWeight: 'bold',
+  optionTitle: {
     fontSize: 16,
+    fontWeight: '900',
+    color: '#062B5F',
+  },
+
+  optionSubtitle: {
+    marginTop: 4,
+    fontSize: 13,
+    color: '#6B7280',
+    lineHeight: 18,
+  },
+
+  infoCard: {
+    marginTop: 8,
+    backgroundColor: '#EAF4FF',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: '#D7EAFE',
+    marginBottom: 18,
+  },
+
+  infoText: {
+    flex: 1,
+    marginLeft: 10,
+    color: '#24527A',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
   },
 
   logoutButton: {
-    backgroundColor: '#D9534F',
-    padding: 18,
-    borderRadius: 15,
-    marginBottom: 40,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: '#F2B8B5',
+    marginTop: 2,
   },
 
   logoutText: {
-    color: 'white',
-    textAlign: 'center',
-    fontWeight: 'bold',
+    marginLeft: 8,
+    color: '#D71920',
     fontSize: 16,
+    fontWeight: '900',
   },
-
 });
