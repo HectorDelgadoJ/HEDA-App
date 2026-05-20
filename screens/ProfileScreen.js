@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
@@ -21,15 +21,15 @@ export default function ProfileScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.logo}>Perfil</Text>
-            <Text style={styles.subtitle}>Configuración y seguridad</Text>
+            <Text style={styles.subtitle}>Cuenta, seguridad y preferencias</Text>
           </View>
 
-          <TouchableOpacity style={styles.notificationButton}>
+          <TouchableOpacity style={styles.headerIcon}>
             <Ionicons name="settings-outline" size={22} color="#062B5F" />
           </TouchableOpacity>
         </View>
 
-        {/* TARJETA USUARIO */}
+        {/* PERFIL PRINCIPAL */}
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>VD</Text>
@@ -41,22 +41,26 @@ export default function ProfileScreen() {
 
             <View style={styles.badge}>
               <Ionicons name="shield-checkmark-outline" size={14} color="#0A84FF" />
-              <Text style={styles.badgeText}>Cuenta verificada</Text>
+              <Text style={styles.badgeText}>Cuenta protegida</Text>
             </View>
           </View>
         </View>
 
-        {/* NIVEL FINANCIERO */}
-        <View style={styles.levelCard}>
-          <View style={styles.levelHeader}>
-            <View style={styles.levelIcon}>
+        {/* PERFIL FINANCIERO */}
+        <View style={styles.financialProfileCard}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardIcon}>
               <Ionicons name="school-outline" size={24} color="#0A84FF" />
             </View>
 
             <View style={{ flex: 1 }}>
               <Text style={styles.cardTitle}>Perfil financiero</Text>
-              <Text style={styles.cardText}>Nivel de conocimiento: Intermedio</Text>
+              <Text style={styles.cardText}>
+                Nivel de conocimiento: Intermedio
+              </Text>
             </View>
+
+            <Text style={styles.percent}>65%</Text>
           </View>
 
           <View style={styles.progressBackground}>
@@ -64,15 +68,15 @@ export default function ProfileScreen() {
           </View>
 
           <Text style={styles.progressText}>
-            Tu perfil ayuda a personalizar recomendaciones, alertas y contenido educativo.
+            Este perfil se usa para personalizar recomendaciones, alertas y contenido educativo.
           </Text>
         </View>
 
-        {/* RESUMEN */}
+        {/* RESUMEN DE USO */}
         <View style={styles.statsRow}>
           <StatCard title="Movimientos" value="48" icon="wallet-outline" />
-          <StatCard title="Metas" value="3" icon="flag-outline" />
-          <StatCard title="Alertas" value="7" icon="notifications-outline" />
+          <StatCard title="Alertas" value="5" icon="notifications-outline" />
+          <StatCard title="Lecciones" value="6" icon="book-outline" />
         </View>
 
         {/* CUENTA */}
@@ -86,45 +90,57 @@ export default function ProfileScreen() {
 
         <OptionItem
           icon="lock-closed-outline"
-          title="Seguridad"
-          subtitle="Contraseña, sesión y autenticación"
+          title="Seguridad de cuenta"
+          subtitle="Contraseña, sesión activa y autenticación"
         />
 
         <OptionItem
           icon="notifications-outline"
-          title="Notificaciones"
-          subtitle="Alertas, metas, presupuestos y recomendaciones"
+          title="Preferencias de notificaciones"
+          subtitle="Presupuestos, metas, alertas y recomendaciones"
+          onPress={() => navigation.navigate('Alertas')}
         />
 
-        {/* FINANZAS */}
-        <Text style={styles.sectionTitle}>Preferencias financieras</Text>
-
-        <OptionItem
-          icon="cash-outline"
-          title="Ingresos y hábitos"
-          subtitle="Nivel de ingresos, frecuencia de ahorro y gastos"
-        />
+        {/* PERSONALIZACIÓN */}
+        <Text style={styles.sectionTitle}>Personalización HEDA</Text>
 
         <OptionItem
           icon="sparkles-outline"
-          title="Personalización IA"
-          subtitle="Ajustar recomendaciones y contenido educativo"
+          title="Personalización con IA"
+          subtitle="Ajustar recomendaciones según hábitos financieros"
         />
 
         <OptionItem
-          icon="trending-up-outline"
-          title="Ethereum informativo"
-          subtitle="Preferencias del módulo predictivo y advertencias"
+          icon="cash-outline"
+          title="Datos financieros"
+          subtitle="Ingresos, gastos frecuentes, presupuestos y metas"
         />
-
-        {/* PRIVACIDAD */}
-        <Text style={styles.sectionTitle}>Privacidad y soporte</Text>
 
         <OptionItem
           icon="shield-outline"
           title="Privacidad de datos"
-          subtitle="Información financiera y protección de cuenta"
+          subtitle="Protección de información financiera personal"
         />
+
+        {/* SEGURIDAD */}
+        <View style={styles.securityCard}>
+          <View style={styles.securityHeader}>
+            <View style={styles.securityIcon}>
+              <Ionicons name="shield-checkmark-outline" size={24} color="#0A84FF" />
+            </View>
+
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>Seguridad</Text>
+              <Text style={styles.cardText}>
+                Tu información financiera se protege mediante autenticación, control de acceso
+                y almacenamiento seguro dentro del prototipo.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* PRIVACIDAD Y SOPORTE */}
+        <Text style={styles.sectionTitle}>Privacidad y soporte</Text>
 
         <OptionItem
           icon="help-circle-outline"
@@ -138,12 +154,12 @@ export default function ProfileScreen() {
           subtitle="Uso responsable de la plataforma"
         />
 
-        {/* ADVERTENCIA */}
         <View style={styles.infoCard}>
           <Ionicons name="information-circle-outline" size={22} color="#0A84FF" />
           <Text style={styles.infoText}>
-            HEDA protege tu información financiera y utiliza tus datos únicamente para mostrar reportes,
-            recomendaciones y alertas dentro del prototipo académico.
+            HEDA utiliza tus datos dentro del prototipo para generar reportes,
+            recomendaciones, alertas y contenido educativo. Las predicciones y sugerencias
+            son informativas y no sustituyen asesoría profesional.
           </Text>
         </View>
 
@@ -170,9 +186,10 @@ function StatCard({ title, value, icon }) {
   );
 }
 
-function OptionItem({ icon, title, subtitle }) {
+
+function OptionItem({ icon, title, subtitle, onPress }) {
   return (
-    <TouchableOpacity style={styles.optionCard} activeOpacity={0.8}>
+    <TouchableOpacity style={styles.optionCard} activeOpacity={0.85} onPress={onPress}>
       <View style={styles.optionLeft}>
         <View style={styles.optionIcon}>
           <Ionicons name={icon} size={22} color="#0A84FF" />
@@ -225,7 +242,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
 
-  notificationButton: {
+  headerIcon: {
     width: 42,
     height: 42,
     borderRadius: 14,
@@ -290,7 +307,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
-  levelCard: {
+  financialProfileCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 20,
@@ -298,13 +315,13 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 
-  levelHeader: {
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 18,
+    marginBottom: 16,
   },
 
-  levelIcon: {
+  cardIcon: {
     width: 48,
     height: 48,
     borderRadius: 16,
@@ -325,6 +342,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     lineHeight: 20,
+  },
+
+  percent: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#0A84FF',
   },
 
   progressBackground: {
@@ -434,6 +457,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6B7280',
     lineHeight: 18,
+  },
+
+  securityCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 18,
+    elevation: 2,
+  },
+
+  securityHeader: {
+    flexDirection: 'row',
+  },
+
+  securityIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#EAF4FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
   },
 
   infoCard: {

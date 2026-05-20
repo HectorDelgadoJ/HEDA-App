@@ -11,7 +11,9 @@ import EducationScreen from '../screens/EducationScreen';
 import EthereumScreen from '../screens/EthereumScreen';
 import QRScreen from '../screens/QRScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-
+import FinancialEducationScreen from '../screens/FinancialEducationScreen';
+import HabitsScreen from '../screens/HabitsScreen';
+import AlertsScreen from '../screens/AlertsScreen';
 const Tab = createBottomTabNavigator();
 
 function TabsNavigator() {
@@ -47,7 +49,7 @@ function TabsNavigator() {
 
         tabBarHideOnKeyboard: true,
 
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           let iconName = 'ellipse-outline';
 
           if (route.name === 'Inicio') {
@@ -74,12 +76,14 @@ function TabsNavigator() {
         },
       })}
     >
+      {/* Pantallas principales del menú inferior */}
       <Tab.Screen name="Inicio" component={DashboardScreen} />
       <Tab.Screen name="Movimientos" component={ExpensesScreen} />
       <Tab.Screen name="IA" component={EducationScreen} />
       <Tab.Screen name="Reportes" component={GoalsScreen} />
       <Tab.Screen name="Perfil" component={ProfileScreen} />
 
+      {/* Pantallas ocultas, navegables desde botones internos */}
       <Tab.Screen
         name="Ethereum"
         component={EthereumScreen}
@@ -97,6 +101,33 @@ function TabsNavigator() {
           tabBarItemStyle: { display: 'none' },
         }}
       />
+
+      <Tab.Screen
+        name="EducacionFinanciera"
+        component={FinancialEducationScreen}
+        options={{
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
+        }}
+      />
+
+      <Tab.Screen
+        name="Habitos"
+        component={HabitsScreen}
+        options={{
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
+        }}
+      />
+      <Tab.Screen
+        name="Alertas"
+        component={AlertsScreen}
+        options={{
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
+        }}
+      />
+      
     </Tab.Navigator>
   );
 }
