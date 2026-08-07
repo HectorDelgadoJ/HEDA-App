@@ -12,16 +12,37 @@ import {
 
 import { supabase } from '../services/supabase';
 
-export default function LoginScreen({ navigation }) {
+export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handleLogin() {
-    if (!email.trim() || !password.trim()) {
+  async function handleRegister() {
+    if (
+      !email.trim() ||
+      !password.trim() ||
+      !confirmPassword.trim()
+    ) {
       Alert.alert(
         'Campos incompletos',
-        'Ingresa tu correo electrónico y contraseña.'
+        'Completa todos los campos.'
+      );
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert(
+        'Contraseñas diferentes',
+        'Las contraseñas no coinciden.'
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert(
+        'Contraseña muy corta',
+        'La contraseña debe tener al menos 6 caracteres.'
       );
       return;
     }
@@ -29,25 +50,36 @@ export default function LoginScreen({ navigation }) {
     try {
       setLoading(true);
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
       });
 
       if (error) {
         Alert.alert(
-          'No se pudo iniciar sesión',
+          'No se pudo crear la cuenta',
           error.message
         );
         return;
       }
 
-      // No necesitamos navigation.navigate().
-      // AppNavigator detectará automáticamente la sesión.
+      if (!data.session) {
+        Alert.alert(
+          'Cuenta creada',
+          'Revisa tu correo electrónico para confirmar tu cuenta.',
+          [
+            {
+              text: 'Aceptar',
+              onPress: () => navigation.goBack(),
+            },
+          ]
+        );
+      }
+
     } catch (error) {
       Alert.alert(
         'Error',
-        'Ocurrió un problema al iniciar sesión.'
+        'Ocurrió un problema al crear la cuenta.'
       );
     } finally {
       setLoading(false);
@@ -60,7 +92,7 @@ export default function LoginScreen({ navigation }) {
       <Text style={styles.logo}>HEDA</Text>
 
       <Text style={styles.subtitle}>
-        Gestión financiera inteligente
+        Crea tu cuenta
       </Text>
 
       <TextInput
@@ -81,25 +113,33 @@ export default function LoginScreen({ navigation }) {
         onChangeText={setPassword}
       />
 
+      <TextInput
+        placeholder="Confirmar contraseña"
+        secureTextEntry
+        style={styles.input}
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+      />
+
       <TouchableOpacity
         style={styles.button}
-        onPress={handleLogin}
+        onPress={handleRegister}
         disabled={loading}
       >
         {loading ? (
           <ActivityIndicator color="#FFFFFF" />
         ) : (
           <Text style={styles.buttonText}>
-            Iniciar Sesión
+            Crear cuenta
           </Text>
         )}
       </TouchableOpacity>
 
       <TouchableOpacity
-        onPress={() => navigation.navigate('Register')}
+        onPress={() => navigation.goBack()}
       >
-        <Text style={styles.registerText}>
-          ¿No tienes cuenta? Crear cuenta
+        <Text style={styles.loginText}>
+          Ya tengo una cuenta
         </Text>
       </TouchableOpacity>
 
@@ -153,7 +193,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  registerText: {
+  loginText: {
     color: 'white',
     textAlign: 'center',
     marginTop: 20,
