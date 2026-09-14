@@ -29,18 +29,23 @@ export default function LoginScreen({ navigation }) {
     try {
       setLoading(true);
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+      const { data, error } = await supabase.auth.signInWithPassword({
+  email: email.trim(),
+  password,
+});
 
-      if (error) {
-        Alert.alert(
-          'No se pudo iniciar sesión',
-          error.message
-        );
-        return;
-      }
+if (error) {
+  console.log('ERROR LOGIN:', error);
+  Alert.alert(
+    'No se pudo iniciar sesión',
+    error.message
+  );
+  return;
+}
+
+console.log('LOGIN EXITOSO');
+console.log('USUARIO:', data.user);
+console.log('SESION:', data.session);
 
       // No necesitamos navigation.navigate().
       // AppNavigator detectará automáticamente la sesión.
