@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+
 import {
   View,
   Text,
@@ -6,10 +7,68 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  Alert,
 } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
 
+import { supabase } from '../services/supabase';
+
 export default function ProfileScreen() {
+  const [user, setUser] = useState(null);
+  const [loadingLogout, setLoadingLogout] = useState(false);
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser();
+
+        if (error) {
+          console.log('Error obteniendo usuario:', error.message);
+          return;
+        }
+
+        setUser(user);
+      } catch (error) {
+        console.log('Error inesperado obteniendo usuario:', error);
+      }
+    }
+
+    loadUser();
+  }, []);
+
+  
+  async function handleLogout() {
+    try {
+      setLoadingLogout(true);
+
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        Alert.alert(
+          'Error',
+          'No se pudo cerrar la sesión. Inténtalo nuevamente.'
+        );
+
+        console.log('Error cerrando sesión:', error.message);
+        return;
+      }
+
+    } catch (error) {
+      console.log('Error inesperado cerrando sesión:', error);
+
+      Alert.alert(
+        'Error',
+        'Ocurrió un problema al cerrar la sesión.'
+      );
+    } finally {
+      setLoadingLogout(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
@@ -21,27 +80,52 @@ export default function ProfileScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.logo}>Perfil</Text>
-            <Text style={styles.subtitle}>Configuración y seguridad</Text>
+            <Text style={styles.subtitle}>
+              Configuración y seguridad
+            </Text>
           </View>
 
           <TouchableOpacity style={styles.notificationButton}>
-            <Ionicons name="settings-outline" size={22} color="#062B5F" />
+            <Ionicons
+              name="settings-outline"
+              size={22}
+              color="#062B5F"
+            />
           </TouchableOpacity>
         </View>
 
         {/* TARJETA USUARIO */}
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>VD</Text>
+            <Text style={styles.avatarText}>HD</Text>
           </View>
 
           <View style={{ flex: 1 }}>
-            <Text style={styles.userName}>Vicente David</Text>
-            <Text style={styles.userEmail}>vicente@heda.app</Text>
+            {/*
+              El nombre todavía es temporal.
+
+              Después lo obtendremos desde nuestra
+              tabla "profiles" en Supabase.
+            */}
+            <Text style={styles.userName}>
+              Usuario HEDA
+            </Text>
+
+            {/* CORREO REAL DE SUPABASE */}
+            <Text style={styles.userEmail}>
+              {user?.email || 'Cargando...'}
+            </Text>
 
             <View style={styles.badge}>
-              <Ionicons name="shield-checkmark-outline" size={14} color="#0A84FF" />
-              <Text style={styles.badgeText}>Cuenta verificada</Text>
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={14}
+                color="#0A84FF"
+              />
+
+              <Text style={styles.badgeText}>
+                Cuenta activa
+              </Text>
             </View>
           </View>
         </View>
@@ -50,12 +134,21 @@ export default function ProfileScreen() {
         <View style={styles.levelCard}>
           <View style={styles.levelHeader}>
             <View style={styles.levelIcon}>
-              <Ionicons name="school-outline" size={24} color="#0A84FF" />
+              <Ionicons
+                name="school-outline"
+                size={24}
+                color="#0A84FF"
+              />
             </View>
 
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>Perfil financiero</Text>
-              <Text style={styles.cardText}>Nivel de conocimiento: Intermedio</Text>
+              <Text style={styles.cardTitle}>
+                Perfil financiero
+              </Text>
+
+              <Text style={styles.cardText}>
+                Nivel de conocimiento: Intermedio
+              </Text>
             </View>
           </View>
 
@@ -64,19 +157,36 @@ export default function ProfileScreen() {
           </View>
 
           <Text style={styles.progressText}>
-            Tu perfil ayuda a personalizar recomendaciones, alertas y contenido educativo.
+            Tu perfil ayuda a personalizar recomendaciones,
+            alertas y contenido educativo.
           </Text>
         </View>
 
         {/* RESUMEN */}
         <View style={styles.statsRow}>
-          <StatCard title="Movimientos" value="48" icon="wallet-outline" />
-          <StatCard title="Metas" value="3" icon="flag-outline" />
-          <StatCard title="Alertas" value="7" icon="notifications-outline" />
+          <StatCard
+            title="Movimientos"
+            value="48"
+            icon="wallet-outline"
+          />
+
+          <StatCard
+            title="Metas"
+            value="3"
+            icon="flag-outline"
+          />
+
+          <StatCard
+            title="Alertas"
+            value="7"
+            icon="notifications-outline"
+          />
         </View>
 
         {/* CUENTA */}
-        <Text style={styles.sectionTitle}>Cuenta</Text>
+        <Text style={styles.sectionTitle}>
+          Cuenta
+        </Text>
 
         <OptionItem
           icon="person-outline"
@@ -97,7 +207,9 @@ export default function ProfileScreen() {
         />
 
         {/* FINANZAS */}
-        <Text style={styles.sectionTitle}>Preferencias financieras</Text>
+        <Text style={styles.sectionTitle}>
+          Preferencias financieras
+        </Text>
 
         <OptionItem
           icon="cash-outline"
@@ -118,7 +230,9 @@ export default function ProfileScreen() {
         />
 
         {/* PRIVACIDAD */}
-        <Text style={styles.sectionTitle}>Privacidad y soporte</Text>
+        <Text style={styles.sectionTitle}>
+          Privacidad y soporte
+        </Text>
 
         <OptionItem
           icon="shield-outline"
@@ -140,17 +254,38 @@ export default function ProfileScreen() {
 
         {/* ADVERTENCIA */}
         <View style={styles.infoCard}>
-          <Ionicons name="information-circle-outline" size={22} color="#0A84FF" />
+          <Ionicons
+            name="information-circle-outline"
+            size={22}
+            color="#0A84FF"
+          />
+
           <Text style={styles.infoText}>
-            HEDA protege tu información financiera y utiliza tus datos únicamente para mostrar reportes,
-            recomendaciones y alertas dentro del prototipo académico.
+            HEDA protege tu información financiera y utiliza
+            tus datos únicamente para mostrar reportes,
+            recomendaciones y alertas dentro del prototipo
+            académico.
           </Text>
         </View>
 
         {/* CERRAR SESIÓN */}
-        <TouchableOpacity style={styles.logoutButton}>
-          <Ionicons name="log-out-outline" size={21} color="#D71920" />
-          <Text style={styles.logoutText}>Cerrar sesión</Text>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          disabled={loadingLogout}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name="log-out-outline"
+            size={21}
+            color="#D71920"
+          />
+
+          <Text style={styles.logoutText}>
+            {loadingLogout
+              ? 'Cerrando sesión...'
+              : 'Cerrar sesión'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -161,30 +296,56 @@ function StatCard({ title, value, icon }) {
   return (
     <View style={styles.statCard}>
       <View style={styles.statIcon}>
-        <Ionicons name={icon} size={21} color="#0A84FF" />
+        <Ionicons
+          name={icon}
+          size={21}
+          color="#0A84FF"
+        />
       </View>
 
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statTitle}>{title}</Text>
+      <Text style={styles.statValue}>
+        {value}
+      </Text>
+
+      <Text style={styles.statTitle}>
+        {title}
+      </Text>
     </View>
   );
 }
 
+
 function OptionItem({ icon, title, subtitle }) {
   return (
-    <TouchableOpacity style={styles.optionCard} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={styles.optionCard}
+      activeOpacity={0.8}
+    >
       <View style={styles.optionLeft}>
         <View style={styles.optionIcon}>
-          <Ionicons name={icon} size={22} color="#0A84FF" />
+          <Ionicons
+            name={icon}
+            size={22}
+            color="#0A84FF"
+          />
         </View>
 
         <View style={{ flex: 1 }}>
-          <Text style={styles.optionTitle}>{title}</Text>
-          <Text style={styles.optionSubtitle}>{subtitle}</Text>
+          <Text style={styles.optionTitle}>
+            {title}
+          </Text>
+
+          <Text style={styles.optionSubtitle}>
+            {subtitle}
+          </Text>
         </View>
       </View>
 
-      <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+      <Ionicons
+        name="chevron-forward"
+        size={20}
+        color="#9CA3AF"
+      />
     </TouchableOpacity>
   );
 }
