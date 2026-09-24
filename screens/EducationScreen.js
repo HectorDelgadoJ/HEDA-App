@@ -7,11 +7,67 @@ import {
   TouchableOpacity,
   SafeAreaView,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
 
+import { sendMessageToHedaAI } from '../services/hedaAI';
+
 export default function EducationScreen({ navigation }) {
+  // =====================================================
+  // ESTADOS
+  // =====================================================
+
   const [question, setQuestion] = useState('');
+  const [aiResponse, setAiResponse] = useState('');
+  const [loadingAI, setLoadingAI] = useState(false);
+  const [aiError, setAiError] = useState('');
+
+  // =====================================================
+  // ENVIAR PREGUNTA A HEDA AI
+  // =====================================================
+
+  const handleSendQuestion = async () => {
+    const cleanQuestion = question.trim();
+
+    if (!cleanQuestion || loadingAI) {
+      return;
+    }
+
+    try {
+      setLoadingAI(true);
+      setAiError('');
+      setAiResponse('');
+
+      const result = await sendMessageToHedaAI(cleanQuestion);
+
+      if (!result?.ok) {
+        throw new Error(
+          result?.message ||
+            'HEDA AI no pudo procesar la solicitud.'
+        );
+      }
+
+      setAiResponse(result.message);
+
+      // Limpiamos el input después de una respuesta exitosa
+      setQuestion('');
+    } catch (error) {
+      console.error('Error en HEDA AI:', error);
+
+      setAiError(
+        error?.message ||
+          'No fue posible comunicarse con HEDA AI.'
+      );
+    } finally {
+      setLoadingAI(false);
+    }
+  };
+
+  // =====================================================
+  // INTERFAZ
+  // =====================================================
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -19,73 +75,162 @@ export default function EducationScreen({ navigation }) {
         style={styles.container}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* HEADER */}
         <View style={styles.header}>
           <View>
             <Text style={styles.logo}>HEDA IA</Text>
-            <Text style={styles.subtitle}>Educación financiera inteligente</Text>
+
+            <Text style={styles.subtitle}>
+              Educación financiera inteligente
+            </Text>
           </View>
 
           <TouchableOpacity style={styles.notificationButton}>
-            <Ionicons name="sparkles-outline" size={22} color="#062B5F" />
+            <Ionicons
+              name="sparkles-outline"
+              size={22}
+              color="#062B5F"
+            />
           </TouchableOpacity>
         </View>
 
         {/* TARJETA PRINCIPAL */}
         <View style={styles.heroCard}>
           <View style={styles.heroIcon}>
-            <Ionicons name="sparkles" size={28} color="#FFFFFF" />
+            <Ionicons
+              name="sparkles"
+              size={28}
+              color="#FFFFFF"
+            />
           </View>
 
-          <Text style={styles.heroTitle}>Asistente financiero inteligente</Text>
+          <Text style={styles.heroTitle}>
+            Asistente financiero inteligente
+          </Text>
+
           <Text style={styles.heroText}>
-            Recibe explicaciones, recomendaciones y alertas basadas en tus hábitos financieros.
+            Recibe explicaciones, recomendaciones y alertas
+            basadas en tus hábitos financieros.
           </Text>
         </View>
 
         {/* PREGUNTA AL ASISTENTE */}
         <View style={styles.assistantCard}>
-          <Text style={styles.sectionTitle}>Pregunta al asistente</Text>
+          <Text style={styles.sectionTitle}>
+            Pregunta al asistente
+          </Text>
+
           <Text style={styles.cardText}>
-            Puedes consultar dudas sobre ahorro, gastos, presupuestos, metas o conceptos financieros.
+            Puedes consultar dudas sobre ahorro, gastos,
+            presupuestos, metas o conceptos financieros.
           </Text>
 
           <View style={styles.inputBox}>
-            <Ionicons name="chatbubble-ellipses-outline" size={22} color="#0A84FF" />
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={22}
+              color="#0A84FF"
+            />
+
             <TextInput
               value={question}
               onChangeText={setQuestion}
               placeholder="Ej. ¿Cómo puedo ahorrar mejor?"
               placeholderTextColor="#A0A7B4"
               style={styles.input}
+              editable={!loadingAI}
+              maxLength={2000}
+              returnKeyType="send"
+              onSubmitEditing={handleSendQuestion}
             />
           </View>
 
-          <TouchableOpacity style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Enviar pregunta</Text>
+          <TouchableOpacity
+            style={[
+              styles.primaryButton,
+              loadingAI && styles.primaryButtonDisabled,
+            ]}
+            onPress={handleSendQuestion}
+            disabled={loadingAI}
+            activeOpacity={0.8}
+          >
+            {loadingAI ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.primaryButtonText}>
+                Enviar pregunta
+              </Text>
+            )}
           </TouchableOpacity>
+
+          {/* RESPUESTA DE HEDA AI */}
+          {aiResponse ? (
+            <View style={styles.responseBox}>
+              <View style={styles.responseHeader}>
+                <Ionicons
+                  name="sparkles"
+                  size={18}
+                  color="#0A84FF"
+                />
+
+                <Text style={styles.responseTitle}>
+                  HEDA AI
+                </Text>
+              </View>
+
+              <Text style={styles.responseText}>
+                {aiResponse}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* ERROR */}
+          {aiError ? (
+            <View style={styles.errorBox}>
+              <Ionicons
+                name="alert-circle-outline"
+                size={19}
+                color="#B42318"
+              />
+
+              <Text style={styles.errorText}>
+                {aiError}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {/* RECOMENDACIÓN IA */}
         <View style={styles.aiAdviceCard}>
           <View style={styles.aiHeader}>
             <View style={styles.aiIcon}>
-              <Ionicons name="bulb-outline" size={22} color="#0A84FF" />
+              <Ionicons
+                name="bulb-outline"
+                size={22}
+                color="#0A84FF"
+              />
             </View>
 
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>Recomendación inteligente</Text>
+              <Text style={styles.cardTitle}>
+                Recomendación inteligente
+              </Text>
+
               <Text style={styles.cardText}>
-                Tus gastos en entretenimiento aumentaron esta semana. Considera ajustar tu presupuesto
-                para mantener tu meta de ahorro.
+                Tus gastos en entretenimiento aumentaron esta
+                semana. Considera ajustar tu presupuesto para
+                mantener tu meta de ahorro.
               </Text>
             </View>
           </View>
         </View>
 
         {/* MÓDULOS */}
-        <Text style={styles.sectionTitle}>Herramientas de IA</Text>
+        <Text style={styles.sectionTitle}>
+          Herramientas de IA
+        </Text>
 
         <View style={styles.grid}>
           <ToolCard
@@ -116,8 +261,13 @@ export default function EducationScreen({ navigation }) {
 
         {/* CONTENIDO EDUCATIVO */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Contenido recomendado</Text>
-          <Text style={styles.sectionLink}>Ver todo</Text>
+          <Text style={styles.sectionTitle}>
+            Contenido recomendado
+          </Text>
+
+          <Text style={styles.sectionLink}>
+            Ver todo
+          </Text>
         </View>
 
         <LessonCard
@@ -143,10 +293,16 @@ export default function EducationScreen({ navigation }) {
 
         {/* ADVERTENCIA */}
         <View style={styles.warningCard}>
-          <Ionicons name="information-circle-outline" size={22} color="#B7791F" />
+          <Ionicons
+            name="information-circle-outline"
+            size={22}
+            color="#B7791F"
+          />
+
           <Text style={styles.warningText}>
-            Las recomendaciones de HEDA son informativas y educativas. La decisión final siempre
-            corresponde al usuario.
+            Las recomendaciones de HEDA son informativas y
+            educativas. La decisión final siempre corresponde
+            al usuario.
           </Text>
         </View>
       </ScrollView>
@@ -154,37 +310,78 @@ export default function EducationScreen({ navigation }) {
   );
 }
 
+// =====================================================
+// TOOL CARD
+// =====================================================
+
 function ToolCard({ icon, title, text, onPress }) {
   return (
-    <TouchableOpacity style={styles.toolCard} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={styles.toolCard}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
       <View style={styles.toolIcon}>
-        <Ionicons name={icon} size={23} color="#0A84FF" />
+        <Ionicons
+          name={icon}
+          size={23}
+          color="#0A84FF"
+        />
       </View>
 
-      <Text style={styles.toolTitle}>{title}</Text>
-      <Text style={styles.toolText}>{text}</Text>
+      <Text style={styles.toolTitle}>
+        {title}
+      </Text>
+
+      <Text style={styles.toolText}>
+        {text}
+      </Text>
     </TouchableOpacity>
   );
 }
 
-function LessonCard({ icon, title, description, level }) {
+// =====================================================
+// LESSON CARD
+// =====================================================
+
+function LessonCard({
+  icon,
+  title,
+  description,
+  level,
+}) {
   return (
     <View style={styles.lessonCard}>
       <View style={styles.lessonIcon}>
-        <Ionicons name={icon} size={24} color="#0A84FF" />
+        <Ionicons
+          name={icon}
+          size={24}
+          color="#0A84FF"
+        />
       </View>
 
       <View style={{ flex: 1 }}>
         <View style={styles.lessonHeader}>
-          <Text style={styles.lessonTitle}>{title}</Text>
-          <Text style={styles.level}>{level}</Text>
+          <Text style={styles.lessonTitle}>
+            {title}
+          </Text>
+
+          <Text style={styles.level}>
+            {level}
+          </Text>
         </View>
 
-        <Text style={styles.lessonDescription}>{description}</Text>
+        <Text style={styles.lessonDescription}>
+          {description}
+        </Text>
       </View>
     </View>
   );
 }
+
+// =====================================================
+// ESTILOS
+// =====================================================
 
 const styles = StyleSheet.create({
   safe: {
@@ -314,12 +511,74 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     paddingVertical: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 52,
+  },
+
+  primaryButtonDisabled: {
+    opacity: 0.6,
   },
 
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '900',
+  },
+
+  // ===================================================
+  // RESPUESTA HEDA AI
+  // ===================================================
+
+  responseBox: {
+    marginTop: 16,
+    backgroundColor: '#F4F9FF',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#D7EAFE',
+  },
+
+  responseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+
+  responseTitle: {
+    marginLeft: 7,
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#062B5F',
+  },
+
+  responseText: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 20,
+  },
+
+  // ===================================================
+  // ERROR HEDA AI
+  // ===================================================
+
+  errorBox: {
+    marginTop: 16,
+    backgroundColor: '#FFF1F0',
+    borderRadius: 18,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FECDCA',
+  },
+
+  errorText: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#B42318',
+    fontWeight: '600',
   },
 
   aiAdviceCard: {

@@ -11,59 +11,136 @@ import {
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
-
 import { supabase } from '../services/supabase';
 
 export default function ProfileScreen() {
   const [user, setUser] = useState(null);
+
+  const [profile, setProfile] = useState({
+    full_name: '',
+    username: '',
+    occupation: '',
+    financial_level: 'Principiante',
+  });
+
   const [loadingLogout, setLoadingLogout] = useState(false);
 
+  // =====================================================
+  // CARGAR USUARIO + PERFIL
+  // =====================================================
   useEffect(() => {
-    async function loadUser() {
-      try {
-        const {
-          data: { user },
-          error,
-        } = await supabase.auth.getUser();
-
-        if (error) {
-          console.log('Error obteniendo usuario:', error.message);
-          return;
-        }
-
-        setUser(user);
-      } catch (error) {
-        console.log('Error inesperado obteniendo usuario:', error);
-      }
-    }
-
-    loadUser();
+    loadProfile();
   }, []);
 
-  
+  async function loadProfile() {
+    try {
+      // Obtener usuario autenticado
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.log(
+          'Error obteniendo usuario:',
+          userError.message
+        );
+        return;
+      }
+
+      if (!user) {
+        return;
+      }
+
+      setUser(user);
+
+      // Obtener perfil correspondiente al usuario
+      const { data, error } = await supabase
+        .from('profiles')
+        .select(
+          'full_name, username, occupation, financial_level'
+        )
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.log(
+          'Error obteniendo perfil:',
+          error.message
+        );
+        return;
+      }
+
+      if (data) {
+        setProfile(data);
+      }
+
+    } catch (error) {
+      console.log(
+        'Error inesperado cargando perfil:',
+        error
+      );
+    }
+  }
+
+  // =====================================================
+  // OBTENER INICIALES
+  // =====================================================
+  function getInitials(name) {
+    if (!name) {
+      return 'HU';
+    }
+
+    const words = name
+      .trim()
+      .split(' ')
+      .filter(Boolean);
+
+    if (words.length === 1) {
+      return words[0]
+        .substring(0, 2)
+        .toUpperCase();
+    }
+
+    return (
+      words[0][0] +
+      words[1][0]
+    ).toUpperCase();
+  }
+
+  // =====================================================
+  // CERRAR SESIÓN
+  // =====================================================
   async function handleLogout() {
     try {
       setLoadingLogout(true);
 
-      const { error } = await supabase.auth.signOut();
+      const { error } =
+        await supabase.auth.signOut();
 
       if (error) {
         Alert.alert(
           'Error',
-          'No se pudo cerrar la sesión. Inténtalo nuevamente.'
+          'No se pudo cerrar la sesión.'
         );
 
-        console.log('Error cerrando sesión:', error.message);
-        return;
+        console.log(
+          'Error cerrando sesión:',
+          error.message
+        );
       }
 
     } catch (error) {
-      console.log('Error inesperado cerrando sesión:', error);
+      console.log(
+        'Error inesperado cerrando sesión:',
+        error
+      );
 
       Alert.alert(
         'Error',
         'Ocurrió un problema al cerrar la sesión.'
       );
+
     } finally {
       setLoadingLogout(false);
     }
@@ -76,16 +153,23 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+
         {/* HEADER */}
+
         <View style={styles.header}>
           <View>
-            <Text style={styles.logo}>Perfil</Text>
+            <Text style={styles.logo}>
+              Perfil
+            </Text>
+
             <Text style={styles.subtitle}>
               Configuración y seguridad
             </Text>
           </View>
 
-          <TouchableOpacity style={styles.notificationButton}>
+          <TouchableOpacity
+            style={styles.notificationButton}
+          >
             <Ionicons
               name="settings-outline"
               size={22}
@@ -94,27 +178,33 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+
         {/* TARJETA USUARIO */}
+
         <View style={styles.profileCard}>
+
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>HD</Text>
+            <Text style={styles.avatarText}>
+              {getInitials(profile.full_name)}
+            </Text>
           </View>
 
           <View style={{ flex: 1 }}>
-            {/*
-              El nombre todavía es temporal.
 
-              Después lo obtendremos desde nuestra
-              tabla "profiles" en Supabase.
-            */}
             <Text style={styles.userName}>
-              Usuario HEDA
+              {profile.full_name ||
+                'Usuario HEDA'}
             </Text>
 
-            {/* CORREO REAL DE SUPABASE */}
             <Text style={styles.userEmail}>
               {user?.email || 'Cargando...'}
             </Text>
+
+            {profile.username ? (
+              <Text style={styles.username}>
+                @{profile.username}
+              </Text>
+            ) : null}
 
             <View style={styles.badge}>
               <Ionicons
@@ -127,12 +217,17 @@ export default function ProfileScreen() {
                 Cuenta activa
               </Text>
             </View>
+
           </View>
         </View>
 
+
         {/* NIVEL FINANCIERO */}
+
         <View style={styles.levelCard}>
+
           <View style={styles.levelHeader}>
+
             <View style={styles.levelIcon}>
               <Ionicons
                 name="school-outline"
@@ -142,13 +237,17 @@ export default function ProfileScreen() {
             </View>
 
             <View style={{ flex: 1 }}>
+
               <Text style={styles.cardTitle}>
                 Perfil financiero
               </Text>
 
               <Text style={styles.cardText}>
-                Nivel de conocimiento: Intermedio
+                Nivel de conocimiento:{' '}
+                {profile.financial_level ||
+                  'Principiante'}
               </Text>
+
             </View>
           </View>
 
@@ -157,33 +256,41 @@ export default function ProfileScreen() {
           </View>
 
           <Text style={styles.progressText}>
-            Tu perfil ayuda a personalizar recomendaciones,
-            alertas y contenido educativo.
+            Tu perfil ayuda a personalizar
+            recomendaciones, alertas y contenido
+            educativo.
           </Text>
+
         </View>
 
+
         {/* RESUMEN */}
+
         <View style={styles.statsRow}>
+
           <StatCard
             title="Movimientos"
-            value="48"
+            value="0"
             icon="wallet-outline"
           />
 
           <StatCard
             title="Metas"
-            value="3"
+            value="0"
             icon="flag-outline"
           />
 
           <StatCard
             title="Alertas"
-            value="7"
+            value="0"
             icon="notifications-outline"
           />
+
         </View>
 
+
         {/* CUENTA */}
+
         <Text style={styles.sectionTitle}>
           Cuenta
         </Text>
@@ -206,7 +313,9 @@ export default function ProfileScreen() {
           subtitle="Alertas, metas, presupuestos y recomendaciones"
         />
 
+
         {/* FINANZAS */}
+
         <Text style={styles.sectionTitle}>
           Preferencias financieras
         </Text>
@@ -229,7 +338,9 @@ export default function ProfileScreen() {
           subtitle="Preferencias del módulo predictivo y advertencias"
         />
 
+
         {/* PRIVACIDAD */}
+
         <Text style={styles.sectionTitle}>
           Privacidad y soporte
         </Text>
@@ -252,8 +363,11 @@ export default function ProfileScreen() {
           subtitle="Uso responsable de la plataforma"
         />
 
-        {/* ADVERTENCIA */}
+
+        {/* INFORMACIÓN */}
+
         <View style={styles.infoCard}>
+
           <Ionicons
             name="information-circle-outline"
             size={22}
@@ -261,20 +375,24 @@ export default function ProfileScreen() {
           />
 
           <Text style={styles.infoText}>
-            HEDA protege tu información financiera y utiliza
-            tus datos únicamente para mostrar reportes,
-            recomendaciones y alertas dentro del prototipo
-            académico.
+            HEDA protege tu información financiera y
+            utiliza tus datos únicamente para mostrar
+            reportes, recomendaciones y alertas dentro
+            del prototipo académico.
           </Text>
+
         </View>
 
+
         {/* CERRAR SESIÓN */}
+
         <TouchableOpacity
           style={styles.logoutButton}
           onPress={handleLogout}
           disabled={loadingLogout}
           activeOpacity={0.8}
         >
+
           <Ionicons
             name="log-out-outline"
             size={21}
@@ -286,15 +404,27 @@ export default function ProfileScreen() {
               ? 'Cerrando sesión...'
               : 'Cerrar sesión'}
           </Text>
+
         </TouchableOpacity>
+
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function StatCard({ title, value, icon }) {
+
+// =====================================================
+// STAT CARD
+// =====================================================
+
+function StatCard({
+  title,
+  value,
+  icon,
+}) {
   return (
     <View style={styles.statCard}>
+
       <View style={styles.statIcon}>
         <Ionicons
           name={icon}
@@ -310,18 +440,29 @@ function StatCard({ title, value, icon }) {
       <Text style={styles.statTitle}>
         {title}
       </Text>
+
     </View>
   );
 }
 
 
-function OptionItem({ icon, title, subtitle }) {
+// =====================================================
+// OPTION ITEM
+// =====================================================
+
+function OptionItem({
+  icon,
+  title,
+  subtitle,
+}) {
   return (
     <TouchableOpacity
       style={styles.optionCard}
       activeOpacity={0.8}
     >
+
       <View style={styles.optionLeft}>
+
         <View style={styles.optionIcon}>
           <Ionicons
             name={icon}
@@ -331,6 +472,7 @@ function OptionItem({ icon, title, subtitle }) {
         </View>
 
         <View style={{ flex: 1 }}>
+
           <Text style={styles.optionTitle}>
             {title}
           </Text>
@@ -338,6 +480,7 @@ function OptionItem({ icon, title, subtitle }) {
           <Text style={styles.optionSubtitle}>
             {subtitle}
           </Text>
+
         </View>
       </View>
 
@@ -346,11 +489,18 @@ function OptionItem({ icon, title, subtitle }) {
         size={20}
         color="#9CA3AF"
       />
+
     </TouchableOpacity>
   );
 }
 
+
+// =====================================================
+// ESTILOS
+// =====================================================
+
 const styles = StyleSheet.create({
+
   safe: {
     flex: 1,
     backgroundColor: '#F4F7FB',
@@ -433,6 +583,13 @@ const styles = StyleSheet.create({
     color: '#DCEEFF',
   },
 
+  username: {
+    marginTop: 3,
+    fontSize: 13,
+    color: '#DCEEFF',
+    fontWeight: '700',
+  },
+
   badge: {
     marginTop: 10,
     alignSelf: 'flex-start',
@@ -497,7 +654,7 @@ const styles = StyleSheet.create({
   },
 
   progressFill: {
-    width: '65%',
+    width: '35%',
     height: '100%',
     backgroundColor: '#062B5F',
     borderRadius: 20,
@@ -635,4 +792,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
   },
+
 });
