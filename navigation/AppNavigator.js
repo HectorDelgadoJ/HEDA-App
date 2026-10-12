@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 
@@ -24,6 +25,9 @@ import EducationScreen from '../screens/EducationScreen';
 import EthereumScreen from '../screens/EthereumScreen';
 import QRScreen from '../screens/QRScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import FinancialEducationScreen from '../screens/FinancialEducationScreen';
+import HabitsScreen from '../screens/HabitsScreen';
+import AlertsScreen from '../screens/AlertsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -36,13 +40,13 @@ function TabsNavigator() {
       screenOptions={({ route }) => ({
         headerShown: false,
 
-        tabBarActiveTintColor: '#0A84FF',
-        tabBarInactiveTintColor: '#8A8A8A',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.muted,
 
         tabBarStyle: {
-          height: 65 + insets.bottom,
+          height: 56 + insets.bottom,
           paddingTop: 8,
-          paddingBottom: Math.max(insets.bottom, 10),
+          paddingBottom: Math.max(insets.bottom, 6),
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: '#E5E7EB',
@@ -111,6 +115,33 @@ function TabsNavigator() {
           tabBarItemStyle: { display: 'none' },
         }}
       />
+      <Tab.Screen
+        name="EducacionFinanciera"
+        component={FinancialEducationScreen}
+        options={{
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
+        }}
+      />
+
+      <Tab.Screen
+        name="Habitos"
+        component={HabitsScreen}
+        options={{
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
+        }}
+      />
+
+      <Tab.Screen
+        name="Alertas"
+        component={AlertsScreen}
+        options={{
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
+        }}
+      />
+
     </Tab.Navigator>
   );
 }
@@ -144,7 +175,7 @@ export default function AppNavigator() {
             flex: 1,
             justifyContent: 'center',
             alignItems: 'center',
-            backgroundColor: '#0A84FF',
+            backgroundColor: colors.primary,
           }}
         >
           <ActivityIndicator size="large" color="#FFFFFF" />

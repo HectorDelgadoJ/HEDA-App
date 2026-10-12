@@ -1,3 +1,7 @@
+import { cashBalance, isSpending, cardDebt } from '../utils/finance';
+import { transactionRows, accountRows } from '../services/finance';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from '../theme/colors';
 import React, {
   useCallback,
   useMemo,
@@ -10,7 +14,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
 
@@ -21,6 +24,8 @@ import { supabase } from '../services/supabase';
 
 export default function DashboardScreen({ navigation }) {
   const [transactions, setTransactions] = useState([]);
+  const [cards, setCards] = useState([]);
+  const [cardError, setCardError] = useState(false);
   const [mainGoal, setMainGoal] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -52,20 +57,9 @@ export default function DashboardScreen({ navigation }) {
       }
 
       // Cargamos movimientos y meta al mismo tiempo
-      const [transactionsResult, goalResult] =
+      const [transactionsResult, goalResult, cardResult] =
         await Promise.all([
-          supabase
-            .from('transactions')
-            .select(
-              'id, type, amount, category, description, transaction_date, created_at'
-            )
-            .eq('user_id', user.id)
-            .order('transaction_date', {
-              ascending: false,
-            })
-            .order('created_at', {
-              ascending: false,
-            }),
+          transactionRows(user.id),
 
           supabase
             .from('goals')
@@ -79,8 +73,11 @@ export default function DashboardScreen({ navigation }) {
             })
             .limit(1)
             .maybeSingle(),
+          accountRows('card_payments', '*', user.id),
         ]);
 
+      setCards(cardResult.data || []);
+      setCardError(!!cardResult.error && !['PGRST205', '42P01'].includes(cardResult.error.code));
       // MOVIMIENTOS
       if (transactionsResult.error) {
         console.log(
@@ -146,7 +143,7 @@ export default function DashboardScreen({ navigation }) {
     return transactions
       .filter(
         (transaction) =>
-          transaction.type === 'expense'
+          isSpending(transaction)
       )
       .reduce(
         (total, transaction) =>
@@ -155,7 +152,7 @@ export default function DashboardScreen({ navigation }) {
       );
   }, [transactions]);
 
-  const balance = totalIncome - totalExpenses;
+  const balance = cashBalance(transactions);
 
   // =====================================================
   // GASTOS POR CATEGORÍA
@@ -167,7 +164,7 @@ export default function DashboardScreen({ navigation }) {
     transactions
       .filter(
         (transaction) =>
-          transaction.type === 'expense'
+          isSpending(transaction)
       )
       .forEach((transaction) => {
         const category =
@@ -228,7 +225,7 @@ export default function DashboardScreen({ navigation }) {
             income += Number(transaction.amount);
           }
 
-          if (transaction.type === 'expense') {
+          if (isSpending(transaction)) {
             expenses += Number(transaction.amount);
           }
         }
@@ -355,7 +352,7 @@ export default function DashboardScreen({ navigation }) {
   // =====================================================
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -380,7 +377,7 @@ export default function DashboardScreen({ navigation }) {
             <Ionicons
               name="notifications-outline"
               size={22}
-              color="#062B5F"
+              color={colors.ink}
             />
           </TouchableOpacity>
         </View>
@@ -389,7 +386,7 @@ export default function DashboardScreen({ navigation }) {
 
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>
-            Saldo total
+            Saldo disponible
           </Text>
 
           {loading ? (
@@ -429,6 +426,14 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
 
+        {!loading && (cards.some(card => card.ledger_enabled) || cardError) && <View style={{ padding: 16, borderRadius: 18, borderWidth: 1, borderColor: colors.border, backgroundColor: '#FFFFFF', marginBottom: 18 }}>
+          <Text style={{ color: colors.ink, fontSize: 17, fontWeight: '600', marginBottom: 10 }}>Mis tarjetas</Text>
+          {cardError ? <Text style={{ color: colors.muted }}>No pudimos cargar tus tarjetas. Abre Movimientos para actualizar.</Text> : cards.filter(card => card.ledger_enabled).sort((a, b) => a.due_date.localeCompare(b.due_date)).map(card => <View key={card.id} style={{ marginBottom: 10, padding: 12, borderWidth: 1, borderColor: '#EFAEB5', borderRadius: 12 }}>
+            <Text style={{ color: colors.ink, fontWeight: '600' }}>{card.name} · {cardDebt(card, transactions) < 0 ? 'A favor' : 'Debes'} ${formatCurrency(Math.abs(cardDebt(card, transactions)))}</Text>
+            <Text style={{ color: colors.muted, fontSize: 12, marginTop: 5 }}>Fecha límite: {new Date(`${card.due_date}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })}</Text>
+          </View>)}
+          <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('Movimientos', { openSection: 'Recurrentes' })} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: colors.primary, fontWeight: '600' }}>Ver tarjetas y pagos</Text></TouchableOpacity>
+        </View>}
         {/* ACCESOS RÁPIDOS */}
 
         <View style={styles.quickRow}>
@@ -472,7 +477,7 @@ export default function DashboardScreen({ navigation }) {
             <Ionicons
               name="sparkles"
               size={20}
-              color="#0A84FF"
+              color={colors.primary}
             />
           </View>
 
@@ -501,7 +506,7 @@ export default function DashboardScreen({ navigation }) {
             <Ionicons
               name="logo-bitcoin"
               size={22}
-              color="#0A84FF"
+              color={colors.primary}
             />
 
             <Text style={styles.smallCardTitle}>
@@ -528,7 +533,7 @@ export default function DashboardScreen({ navigation }) {
             <Ionicons
               name="flag-outline"
               size={22}
-              color="#0A84FF"
+              color={colors.primary}
             />
 
             <Text style={styles.smallCardTitle}>
@@ -768,7 +773,7 @@ function QuickAction({
       <Ionicons
         name={icon}
         size={24}
-        color="#0A84FF"
+        color={colors.primary}
       />
 
       <Text style={styles.quickLabel}>
@@ -835,7 +840,7 @@ function Category({
         <Ionicons
           name={icon}
           size={22}
-          color="#0A84FF"
+          color={colors.primary}
         />
       </View>
 
@@ -864,37 +869,37 @@ function Category({
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
   },
 
   container: {
     flex: 1,
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
   },
 
   content: {
-    padding: 22,
-    paddingBottom: 110,
+    padding: 18,
+    paddingBottom: 28,
   },
 
   header: {
-    marginTop: 10,
-    marginBottom: 24,
+    marginTop: 2,
+    marginBottom: 18,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
 
   logo: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontSize: 26,
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   subtitle: {
     marginTop: 4,
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.muted,
   },
 
   notificationButton: {
@@ -908,10 +913,10 @@ const styles = StyleSheet.create({
   },
 
   balanceCard: {
-    backgroundColor: '#0A84FF',
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 22,
+    backgroundColor: colors.primary,
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 18,
   },
 
   balanceLabel: {
@@ -921,16 +926,16 @@ const styles = StyleSheet.create({
   },
 
   balanceAmount: {
-    fontSize: 34,
-    fontWeight: '900',
+    fontSize: 30,
+    fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 22,
+    marginBottom: 18,
   },
 
   loadingBalance: {
     alignSelf: 'flex-start',
     marginVertical: 12,
-    marginBottom: 22,
+    marginBottom: 18,
   },
 
   balanceRow: {
@@ -955,13 +960,13 @@ const styles = StyleSheet.create({
   income: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '600',
   },
 
   expense: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '600',
     textAlign: 'right',
   },
 
@@ -975,7 +980,7 @@ const styles = StyleSheet.create({
   quickRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 22,
+    marginBottom: 18,
   },
 
   quickAction: {
@@ -991,13 +996,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 12,
     fontWeight: '700',
-    color: '#062B5F',
+    color: colors.ink,
   },
 
   aiCard: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    borderRadius: 18,
     padding: 18,
     marginBottom: 18,
     elevation: 2,
@@ -1007,7 +1012,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: '#EAF4FF',
+    backgroundColor: colors.softBlue,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -1015,8 +1020,8 @@ const styles = StyleSheet.create({
 
   cardTitle: {
     fontSize: 18,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontWeight: '700',
+    color: colors.ink,
     marginBottom: 6,
   },
 
@@ -1029,13 +1034,13 @@ const styles = StyleSheet.create({
   twoCards: {
     flexDirection: 'row',
     gap: 14,
-    marginBottom: 22,
+    marginBottom: 18,
   },
 
   smallCard: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    borderRadius: 18,
     padding: 18,
     elevation: 2,
     minHeight: 175,
@@ -1043,57 +1048,57 @@ const styles = StyleSheet.create({
 
   smallCardTitle: {
     marginTop: 10,
-    color: '#6B7280',
+    color: colors.muted,
     fontSize: 13,
   },
 
   smallCardAmount: {
     marginTop: 4,
-    color: '#062B5F',
+    color: colors.ink,
     fontSize: 17,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 
   cryptoText: {
     marginTop: 6,
-    color: '#0A84FF',
-    fontWeight: '800',
+    color: colors.primary,
+    fontWeight: '600',
     fontSize: 12,
   },
 
   goalDashboardAmount: {
     marginTop: 5,
-    color: '#6B7280',
+    color: colors.muted,
     fontSize: 11,
     fontWeight: '700',
   },
 
   goalDashboardPercent: {
     marginTop: 6,
-    color: '#0A84FF',
+    color: colors.primary,
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '600',
   },
 
   progressBackground: {
     height: 7,
     backgroundColor: '#DDEBFA',
-    borderRadius: 20,
+    borderRadius: 18,
     marginTop: 14,
     overflow: 'hidden',
   },
 
   progressFill: {
     height: '100%',
-    backgroundColor: '#062B5F',
-    borderRadius: 20,
+    backgroundColor: colors.ink,
+    borderRadius: 18,
   },
 
   chartCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: 18,
     padding: 20,
-    marginBottom: 22,
+    marginBottom: 18,
     elevation: 2,
   },
 
@@ -1105,15 +1110,15 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   sectionLink: {
     fontSize: 12,
-    fontWeight: '800',
-    color: '#0A84FF',
+    fontWeight: '600',
+    color: colors.primary,
   },
 
   chartLegend: {
@@ -1135,7 +1140,7 @@ const styles = StyleSheet.create({
   },
 
   incomeLegend: {
-    backgroundColor: '#062B5F',
+    backgroundColor: colors.ink,
   },
 
   expenseLegend: {
@@ -1144,7 +1149,7 @@ const styles = StyleSheet.create({
 
   legendText: {
     fontSize: 11,
-    color: '#6B7280',
+    color: colors.muted,
     fontWeight: '700',
   },
 
@@ -1174,7 +1179,7 @@ const styles = StyleSheet.create({
   },
 
   incomeBar: {
-    backgroundColor: '#062B5F',
+    backgroundColor: colors.ink,
   },
 
   expenseBar: {
@@ -1184,7 +1189,7 @@ const styles = StyleSheet.create({
   barLabel: {
     marginTop: 8,
     fontSize: 11,
-    color: '#6B7280',
+    color: colors.muted,
     fontWeight: '700',
     textTransform: 'capitalize',
   },
@@ -1207,7 +1212,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: '#EAF4FF',
+    backgroundColor: colors.softBlue,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
@@ -1215,20 +1220,20 @@ const styles = StyleSheet.create({
 
   categoryTitle: {
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.muted,
     marginBottom: 4,
   },
 
   categoryAmount: {
     fontSize: 14,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   emptyCategoryCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 25,
+    borderRadius: 18,
+    padding: 18,
     alignItems: 'center',
     elevation: 2,
   },
@@ -1236,14 +1241,14 @@ const styles = StyleSheet.create({
   emptyTitle: {
     marginTop: 8,
     fontSize: 16,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   emptyText: {
     marginTop: 5,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.muted,
     textAlign: 'center',
   },
 });

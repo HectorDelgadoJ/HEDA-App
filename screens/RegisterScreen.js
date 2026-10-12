@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import { useState } from 'react';
 
 import {
@@ -280,27 +281,27 @@ export default function RegisterScreen({ navigation }) {
 const styles = StyleSheet.create({
   keyboardContainer: {
     flex: 1,
-    backgroundColor: '#0A84FF',
+    backgroundColor: colors.background,
   },
 
   container: {
     flexGrow: 1,
-    backgroundColor: '#0A84FF',
+    backgroundColor: colors.background,
     justifyContent: 'center',
-    padding: 25,
+    padding: 18,
     paddingVertical: 45,
   },
 
   logo: {
-    fontSize: 48,
+    fontSize: 40,
     fontWeight: 'bold',
-    color: 'white',
+    color: colors.ink,
     textAlign: 'center',
     marginBottom: 10,
   },
 
   subtitle: {
-    color: 'white',
+    color: colors.ink,
     textAlign: 'center',
     marginBottom: 35,
     fontSize: 16,
@@ -308,6 +309,10 @@ const styles = StyleSheet.create({
 
   input: {
     backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: colors.border,
+    color: colors.ink,
+    minHeight: 52,
     padding: 15,
     borderRadius: 12,
     marginBottom: 15,
@@ -315,7 +320,7 @@ const styles = StyleSheet.create({
   },
 
   button: {
-    backgroundColor: '#001F54',
+    backgroundColor: colors.ink,
     padding: 15,
     borderRadius: 12,
     marginTop: 10,
@@ -335,7 +340,7 @@ const styles = StyleSheet.create({
   },
 
   loginText: {
-    color: 'white',
+    color: colors.ink,
     textAlign: 'center',
     marginTop: 20,
     fontSize: 14,

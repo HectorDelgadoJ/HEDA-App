@@ -1,7 +1,12 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from '../theme/colors';
 import { useState } from 'react';
 
 import {
   View,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
   Text,
   TextInput,
   TouchableOpacity,
@@ -60,7 +65,9 @@ console.log('SESION:', data.session);
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
 
       <Text style={styles.logo}>HEDA</Text>
 
@@ -108,28 +115,30 @@ console.log('SESION:', data.session);
         </Text>
       </TouchableOpacity>
 
-    </View>
+    </ScrollView>
+    </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#0A84FF',
+    flexGrow: 1,
+    backgroundColor: colors.background,
     justifyContent: 'center',
-    padding: 25,
+    padding: 18,
   },
 
   logo: {
-    fontSize: 48,
+    fontSize: 40,
     fontWeight: 'bold',
-    color: 'white',
+    color: colors.ink,
     textAlign: 'center',
     marginBottom: 10,
   },
 
   subtitle: {
-    color: 'white',
+    color: colors.ink,
     textAlign: 'center',
     marginBottom: 40,
     fontSize: 16,
@@ -137,13 +146,17 @@ const styles = StyleSheet.create({
 
   input: {
     backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: colors.border,
+    color: colors.ink,
+    minHeight: 52,
     padding: 15,
     borderRadius: 12,
     marginBottom: 15,
   },
 
   button: {
-    backgroundColor: '#001F54',
+    backgroundColor: colors.ink,
     padding: 15,
     borderRadius: 12,
     marginTop: 10,
@@ -159,7 +172,7 @@ const styles = StyleSheet.create({
   },
 
   registerText: {
-    color: 'white',
+    color: colors.ink,
     textAlign: 'center',
     marginTop: 20,
     fontSize: 14,

@@ -1,4 +1,13 @@
-import React, { useCallback, useState } from 'react';
+import PaymentSource from '../components/PaymentSource';
+import { transactionRows, accountRows } from '../services/finance';
+import { cashBalance, isSpending } from '../utils/finance';
+import RecurringMovements from '../components/RecurringMovements';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { MovementType, CategoryPicker, MovementDate, movementColors } from '../components/MovementFields';
+import { localDate, categoryOptions, rankedCategories, validateMovement, restoreCategoryPreferences } from '../utils/movementForm';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from '../theme/colors';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   View,
@@ -6,7 +15,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   TextInput,
   Alert,
   ActivityIndicator,
@@ -25,17 +33,25 @@ import { supabase } from '../services/supabase';
 
 const AMOUNT_ACCESSORY_ID = 'expensesAmountKeyboardAccessory';
 
-export default function ExpensesScreen() {
+export default function ExpensesScreen({ route, navigation }) {
   // =====================================================
   // FORMULARIO NUEVO MOVIMIENTO
   // =====================================================
 
+  const [mode, setMode] = useState('simple');
+  const [modeReady, setModeReady] = useState(false);
+  const [modeBusy, setModeBusy] = useState(false);
+  const [cards, setCards] = useState([]);
+  const [cardId, setCardId] = useState(null);
+  const [editCardId, setEditCardId] = useState(null);
   const [type, setType] = useState('Gasto');
   const [selectedCategory, setSelectedCategory] =
     useState('Comida');
 
   const [amount, setAmount] = useState('');
   const [notes, setNotes] = useState('');
+  const [transactionDate, setTransactionDate] = useState(localDate);
+  const activeColor = movementColors[type].foreground;
 
   // =====================================================
   // MOVIMIENTOS
@@ -45,6 +61,57 @@ export default function ExpensesScreen() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveNotice, setSaveNotice] = useState('');
+  const [section, setSection] = useState('Nuevo');
+  useEffect(() => { if (route?.params?.openSection === 'Recurrentes') { setSection('Recurrentes'); navigation.setParams({ openSection: undefined }); } }, [route?.params?.openSection, navigation]);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [editErrors, setEditErrors] = useState({});
+  const scrollRef = useRef(null);
+  const amountRef = useRef(null);
+  const editScrollRef = useRef(null);
+  const categoryY = useRef(0);
+  const preferredCategories = useRef({ Gasto: 'Comida', Ingreso: 'Salario' });
+  const preferenceKey = useRef(null);
+  const preferenceWrites = useRef(Promise.resolve());
+  const touchedTypes = useRef(new Set());
+  const draftDirty = useRef(false);
+  const [categoryOrder, setCategoryOrder] = useState({ Gasto: categoryOptions('Gasto'), Ingreso: categoryOptions('Ingreso') });
+
+  function refreshCategoryOrder(rows) {
+    setCategoryOrder({ Gasto: rankedCategories('Gasto', rows), Ingreso: rankedCategories('Ingreso', rows) });
+  }
+
+  function selectCategory(value) {
+    draftDirty.current = true;
+    touchedTypes.current.add(type);
+    setSelectedCategory(value);
+    setErrors((previous) => ({ ...previous, category: undefined }));
+    setSaveNotice('');
+    if (!value.trim()) return;
+    preferredCategories.current = { ...preferredCategories.current, [type]: value.trim() };
+    persistCategories();
+  }
+
+  function persistCategories() {
+    if (!preferenceKey.current) return;
+    const key = preferenceKey.current;
+    const value = JSON.stringify(preferredCategories.current);
+    preferenceWrites.current = preferenceWrites.current.catch(() => {}).then(() => AsyncStorage.setItem(key, value)).catch(() => {});
+  }
+
+  async function hydrateCategories(userId) {
+    const key = `heda:movement-categories:${userId}`;
+    if (preferenceKey.current === key) return;
+    preferenceKey.current = key;
+    try {
+      const stored = JSON.parse(await AsyncStorage.getItem(key) || '{}');
+      preferredCategories.current = restoreCategoryPreferences(stored, preferredCategories.current, touchedTypes.current);
+      // Never replace a category while the user is already filling the form.
+      if (!draftDirty.current) setSelectedCategory(preferredCategories.current.Gasto);
+      if (touchedTypes.current.size) persistCategories();
+    } catch { /* Device storage is optional; registration still works. */ }
+  }
 
   // =====================================================
   // EDICIÓN
@@ -62,6 +129,7 @@ export default function ExpensesScreen() {
 
   const [editAmount, setEditAmount] = useState('');
   const [editNotes, setEditNotes] = useState('');
+  const [editDate, setEditDate] = useState(localDate);
 
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -98,18 +166,20 @@ export default function ExpensesScreen() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('transactions')
-        .select(
-          'id, type, amount, category, description, transaction_date, created_at'
-        )
-        .eq('user_id', user.id)
-        .order('transaction_date', {
-          ascending: false,
-        })
-        .order('created_at', {
-          ascending: false,
-        });
+      await hydrateCategories(user.id);
+
+      const [transactionResult, profileResult, cardResult] = await Promise.all([
+        transactionRows(user.id),
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        accountRows('card_payments', '*', user.id),
+      ]);
+      if (profileResult.error || (cardResult.error && !['PGRST205', '42P01'].includes(cardResult.error.code))) {
+        throw new Error('No pudimos cargar la configuración de tarjetas.');
+      }
+      setMode(profileResult.data?.movement_mode || 'simple');
+      setModeReady(!!profileResult.data?.movement_mode);
+      setCards(cardResult.data || []);
+      const { data, error } = transactionResult;
 
       if (error) {
         console.log(
@@ -126,6 +196,7 @@ export default function ExpensesScreen() {
       }
 
       setTransactions(data || []);
+      if (!draftDirty.current) refreshCategoryOrder(data || []);
     } catch (error) {
       console.log(
         'Error inesperado cargando movimientos:',
@@ -143,31 +214,13 @@ export default function ExpensesScreen() {
   async function handleRegisterMovement() {
     Keyboard.dismiss();
 
-    const cleanAmount = amount
-      .trim()
-      .replace(',', '.');
+    setSaveNotice('');
 
-    const numericAmount = Number(cleanAmount);
-
-    if (
-      !cleanAmount ||
-      Number.isNaN(numericAmount) ||
-      numericAmount <= 0
-    ) {
-      Alert.alert(
-        'Monto inválido',
-        'Ingresa un monto mayor a cero.'
-      );
-
-      return;
-    }
-
-    if (!selectedCategory) {
-      Alert.alert(
-        'Categoría requerida',
-        'Selecciona una categoría.'
-      );
-
+    const { errors: validationErrors, numericAmount } = validateMovement(amount, selectedCategory);
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length) {
+      scrollRef.current?.scrollTo({ y: validationErrors.amount ? 0 : categoryY.current, animated: true });
+      if (validationErrors.amount) amountRef.current?.focus();
       return;
     }
 
@@ -193,7 +246,7 @@ export default function ExpensesScreen() {
           ? 'income'
           : 'expense';
 
-      const today = getLocalDateString();
+
 
       const { error } = await supabase
         .from('transactions')
@@ -201,9 +254,10 @@ export default function ExpensesScreen() {
           user_id: user.id,
           type: transactionType,
           amount: numericAmount,
-          category: selectedCategory,
+          category: selectedCategory.trim(),
           description: notes.trim() || null,
-          transaction_date: today,
+          transaction_date: transactionDate,
+          ...(modeReady ? { card_id: type === 'Gasto' && mode === 'cards' ? cardId : null } : {}),
         });
 
       if (error) {
@@ -220,17 +274,16 @@ export default function ExpensesScreen() {
         return;
       }
 
+      preferredCategories.current[type] = selectedCategory.trim();
+      persistCategories();
       setAmount('');
       setNotes('');
+      setNoteOpen(false);
+      draftDirty.current = false;
 
       await loadTransactions();
 
-      Alert.alert(
-        'Movimiento registrado',
-        type === 'Ingreso'
-          ? 'El ingreso fue registrado correctamente.'
-          : 'El gasto fue registrado correctamente.'
-      );
+      setSaveNotice(type === 'Ingreso' ? 'Ingreso guardado' : 'Gasto guardado');
     } catch (error) {
       console.log(
         'Error inesperado registrando movimiento:',
@@ -254,6 +307,7 @@ export default function ExpensesScreen() {
     Keyboard.dismiss();
 
     setSelectedTransaction(transaction);
+    setEditErrors({});
 
     setEditType(
       transaction.type === 'income'
@@ -273,6 +327,8 @@ export default function ExpensesScreen() {
       transaction.description || ''
     );
 
+    setEditCardId(transaction.card_id || null);
+    setEditDate(transaction.transaction_date || localDate());
     setEditModalVisible(true);
   }
 
@@ -307,31 +363,10 @@ export default function ExpensesScreen() {
       return;
     }
 
-    const cleanAmount = editAmount
-      .trim()
-      .replace(',', '.');
-
-    const numericAmount = Number(cleanAmount);
-
-    if (
-      !cleanAmount ||
-      Number.isNaN(numericAmount) ||
-      numericAmount <= 0
-    ) {
-      Alert.alert(
-        'Monto inválido',
-        'Ingresa un monto mayor a cero.'
-      );
-
-      return;
-    }
-
-    if (!editCategory) {
-      Alert.alert(
-        'Categoría requerida',
-        'Selecciona una categoría.'
-      );
-
+    const { errors: validationErrors, numericAmount } = validateMovement(editAmount, editCategory);
+    setEditErrors(validationErrors);
+    if (Object.keys(validationErrors).length) {
+      editScrollRef.current?.scrollTo({ y: 0, animated: true });
       return;
     }
 
@@ -362,8 +397,10 @@ export default function ExpensesScreen() {
         .update({
           type: transactionType,
           amount: numericAmount,
-          category: editCategory,
+          category: editCategory.trim(),
           description: editNotes.trim() || null,
+          transaction_date: editDate,
+          ...(modeReady ? { card_id: selectedTransaction.is_card_payment ? selectedTransaction.card_id : editType === 'Gasto' ? editCardId : null } : {}),
           updated_at: new Date().toISOString(),
         })
         .eq('id', selectedTransaction.id)
@@ -520,8 +557,13 @@ export default function ExpensesScreen() {
 
     setAmount('');
     setNotes('');
-    setType('Gasto');
-    setSelectedCategory('Comida');
+    setSelectedCategory(preferredCategories.current[type]);
+    setNoteOpen(false);
+    setErrors({});
+    draftDirty.current = false;
+    refreshCategoryOrder(transactions);
+    setTransactionDate(localDate());
+    setSaveNotice('');
   }
 
   // =====================================================
@@ -542,7 +584,7 @@ export default function ExpensesScreen() {
   const totalExpenses = transactions
     .filter(
       (transaction) =>
-        transaction.type === 'expense'
+        isSpending(transaction)
     )
     .reduce(
       (total, transaction) =>
@@ -550,27 +592,41 @@ export default function ExpensesScreen() {
       0
     );
 
-  const balance =
-    totalIncome - totalExpenses;
+  const balance = cashBalance(transactions);
 
   // =====================================================
   // FECHA LOCAL
   // =====================================================
 
-  function getLocalDateString() {
-    const date = new Date();
+  function changeType(nextType) {
+    if (nextType === type) return;
+    setType(nextType);
+    if (nextType === 'Ingreso') setCardId(null);
+    setSaveNotice('');
+    draftDirty.current = true;
+    setErrors({});
+    setSelectedCategory(preferredCategories.current[nextType]);
+  }
 
-    const year = date.getFullYear();
+  function changeEditType(nextType) {
+    if (nextType === editType) return;
+    setEditType(nextType);
+    if (nextType === 'Ingreso') setEditCardId(null);
+    setEditErrors({});
+    setEditCategory(categoryOptions(nextType)[0][0]);
+  }
 
-    const month = String(
-      date.getMonth() + 1
-    ).padStart(2, '0');
-
-    const day = String(
-      date.getDate()
-    ).padStart(2, '0');
-
-    return `${year}-${month}-${day}`;
+  async function changeMode(nextMode) {
+    if (modeBusy || saving || nextMode === mode) return;
+    setModeBusy(true);
+    try {
+      const { error } = await supabase.rpc('heda_set_movement_mode', { p_mode: nextMode });
+      if (error) throw new Error('No pudimos cambiar el modo. Verifica que el nuevo SQL esté habilitado.');
+      setCardId(null);
+      await loadTransactions();
+      setSaveNotice(nextMode === 'cards' ? 'Modo Con tarjetas activado' : 'Modo Simple activado');
+    } catch (error) { Alert.alert('Cambiar modo', error.message); }
+    finally { setModeBusy(false); }
   }
 
   // =====================================================
@@ -619,8 +675,10 @@ export default function ExpensesScreen() {
   // =====================================================
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
+        ref={scrollRef}
         style={styles.container}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -629,32 +687,120 @@ export default function ExpensesScreen() {
         {/* HEADER */}
 
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.logo}>
-              HEDA
+              Movimientos
             </Text>
 
             <Text style={styles.subtitle}>
-              Registro de movimientos
+              Registra lo que entra y lo que sale
+            </Text>
+          </View>
+          <View style={styles.headerBadge}>
+            <Ionicons name="swap-vertical-outline" size={26} color="#FFFFFF" />
+          </View>
+        </View>
+
+        <View style={{ marginBottom: 14 }}>
+          <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 8 }}>Elige cómo llevar tus movimientos</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>{[['simple', 'Simple'], ['cards', 'Con tarjetas']].map(([value, label]) => <TouchableOpacity key={value} accessibilityRole="radio" accessibilityState={{ checked: mode === value, disabled: !modeReady || modeBusy || saving || loading }} disabled={!modeReady || modeBusy || saving || loading} onPress={() => changeMode(value)} style={{ flex: 1, minHeight: 44, borderWidth: 1, borderColor: mode === value ? colors.primary : colors.border, backgroundColor: mode === value ? colors.softBlue : '#FFFFFF', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: mode === value ? colors.primary : colors.muted, fontWeight: '600' }}>{label}</Text></TouchableOpacity>)}</View>
+          <Text style={{ color: colors.muted, fontSize: 12, marginTop: 7 }}>{mode === 'cards' ? 'Elige Mi saldo o una tarjeta para cada gasto.' : 'Registra ingresos y gastos directamente en tu saldo.'}</Text>
+          {!modeReady && !loading && <Text style={{ color: colors.muted, fontSize: 12 }}>Habilita el nuevo SQL para elegir modo.</Text>}
+        </View>
+        <View style={styles.sectionTabs}>
+          {['Nuevo', 'Historial', 'Recurrentes'].map((name) => <TouchableOpacity key={name} accessibilityRole="tab"
+            accessibilityState={{ selected: section === name, disabled: saving }} disabled={saving}
+            onPress={() => { Keyboard.dismiss(); setSection(name); scrollRef.current?.scrollTo({ y: 0, animated: false }); }}
+            style={[styles.sectionTab, section === name && styles.sectionTabActive]}>
+            <Text style={[styles.sectionTabText, section === name && { color: '#FFFFFF' }]}>{{ Nuevo: 'Registrar', Historial: 'Historial', Recurrentes: 'Programados' }[name]}</Text>
+          </TouchableOpacity>)}
+        </View>
+        {section === 'Recurrentes' ? <RecurringMovements onConfirmed={loadTransactions} mode={mode} cards={cards} /> : section === 'Nuevo' ? <>
+        {/* TIPO */}
+
+        <MovementType value={type} onChange={changeType} disabled={saving || modeBusy || loading} />
+        {mode === 'cards' && type === 'Gasto' && <PaymentSource cards={cards} value={cardId} onChange={setCardId} disabled={saving || loading} onManage={() => { Keyboard.dismiss(); setSection('Recurrentes'); scrollRef.current?.scrollTo({ y: 0, animated: false }); }} />}
+
+        {/* MONTO */}
+
+        <View style={styles.inputCard}>
+          <Text style={styles.inputLabel}>
+            Monto en MXN
+          </Text>
+
+          <View style={styles.amountRow}>
+            <Text style={[styles.currencySymbol, { color: activeColor }]}>
+              $
+            </Text>
+
+            <TextInput
+              ref={amountRef}
+              placeholder="0.00"
+              placeholderTextColor="#C7CDD6"
+              keyboardType="decimal-pad"
+              inputAccessoryViewID={
+                Platform.OS === 'ios'
+                  ? AMOUNT_ACCESSORY_ID
+                  : undefined
+              }
+              style={[styles.amountInput, { color: activeColor }]}
+              accessibilityLabel="Monto en pesos mexicanos"
+              editable={!saving}
+              value={amount}
+              onChangeText={(value) => { draftDirty.current = true; setAmount(value); setSaveNotice(''); setErrors((previous) => ({ ...previous, amount: undefined })); }}
+            />
+          </View>
+          {errors.amount ? <Text accessibilityLiveRegion="polite" style={styles.fieldError}>{errors.amount}</Text> : null}
+        </View>
+
+        {/* CATEGORÍAS */}
+
+        <View onLayout={(event) => { categoryY.current = event.nativeEvent.layout.y; }} style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>
+            Categoría
+          </Text>
+        </View>
+
+        <CategoryPicker type={type} value={selectedCategory} onChange={selectCategory} options={categoryOrder[type]} error={errors.category} disabled={saving} />
+        <MovementDate value={transactionDate} onChange={(value) => { draftDirty.current = true; setTransactionDate(value); }} disabled={saving} />
+
+        <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: noteOpen, disabled: saving }} disabled={saving}
+          style={styles.noteToggle} onPress={() => setNoteOpen(!noteOpen)}>
+          <Ionicons name="create-outline" size={18} color={colors.primary} />
+          <Text style={styles.noteToggleText}>{noteOpen ? 'Plegar nota' : notes ? 'Ver nota' : 'Añadir nota (opcional)'}</Text>
+          <Ionicons name={noteOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.primary} />
+        </TouchableOpacity>
+        {/* NOTAS */}
+
+        {noteOpen && <View style={styles.notesCard}>
+          <View style={styles.optionLeft}>
+            <Ionicons
+              name="menu-outline"
+              size={22}
+              color={colors.ink}
+            />
+
+            <Text style={styles.optionLabel}>
+              Descripción (opcional)
             </Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.notificationButton}
-          >
-            <Ionicons
-              name="notifications-outline"
-              size={22}
-              color="#062B5F"
-            />
-          </TouchableOpacity>
-        </View>
-
+          <TextInput
+            placeholder={type === 'Ingreso' ? 'Ej. Salario de octubre, venta de bicicleta…' : 'Ej. Despensa, comida con amigos…'}
+            placeholderTextColor="#C7CDD6"
+            multiline
+            style={styles.notesInput}
+            editable={!saving}
+            value={notes}
+            onChangeText={(value) => { draftDirty.current = true; setNotes(value); }}
+          />
+        </View>}
+        </> : <>
         {/* BALANCE */}
 
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>
-            Balance
+            Saldo disponible
           </Text>
 
           <Text style={styles.balanceAmount}>
@@ -686,245 +832,7 @@ export default function ExpensesScreen() {
           </View>
         </View>
 
-        {/* TIPO */}
-
-        <View style={styles.switchContainer}>
-          <TouchableOpacity
-            style={[
-              styles.switchButton,
-              type === 'Gasto' &&
-                styles.switchButtonActive,
-            ]}
-            onPress={() => setType('Gasto')}
-          >
-            <Text
-              style={[
-                styles.switchText,
-                type === 'Gasto' &&
-                  styles.switchTextActive,
-              ]}
-            >
-              Gasto
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.switchButton,
-              type === 'Ingreso' &&
-                styles.switchButtonActive,
-            ]}
-            onPress={() => setType('Ingreso')}
-          >
-            <Text
-              style={[
-                styles.switchText,
-                type === 'Ingreso' &&
-                  styles.switchTextActive,
-              ]}
-            >
-              Ingreso
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* MONTO */}
-
-        <View style={styles.inputCard}>
-          <Text style={styles.inputLabel}>
-            Monto
-          </Text>
-
-          <View style={styles.amountRow}>
-            <Text style={styles.currencySymbol}>
-              $
-            </Text>
-
-            <TextInput
-              placeholder="0.00"
-              placeholderTextColor="#C7CDD6"
-              keyboardType="decimal-pad"
-              inputAccessoryViewID={
-                Platform.OS === 'ios'
-                  ? AMOUNT_ACCESSORY_ID
-                  : undefined
-              }
-              style={styles.amountInput}
-              value={amount}
-              onChangeText={setAmount}
-            />
-          </View>
-        </View>
-
-        {/* CATEGORÍAS */}
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            Categoría
-          </Text>
-        </View>
-
-        <View style={styles.categoryRow}>
-          <Category
-            icon="fast-food-outline"
-            label="Comida"
-            active={
-              selectedCategory === 'Comida'
-            }
-            onPress={() =>
-              setSelectedCategory('Comida')
-            }
-          />
-
-          <Category
-            icon="bag-outline"
-            label="Compras"
-            active={
-              selectedCategory === 'Compras'
-            }
-            onPress={() =>
-              setSelectedCategory('Compras')
-            }
-          />
-
-          <Category
-            icon="car-outline"
-            label="Transporte"
-            active={
-              selectedCategory ===
-              'Transporte'
-            }
-            onPress={() =>
-              setSelectedCategory(
-                'Transporte'
-              )
-            }
-          />
-
-          <Category
-            icon="home-outline"
-            label="Hogar"
-            active={
-              selectedCategory === 'Hogar'
-            }
-            onPress={() =>
-              setSelectedCategory('Hogar')
-            }
-          />
-        </View>
-
-        {/* FECHA */}
-
-        <View style={styles.optionCard}>
-          <View style={styles.optionLeft}>
-            <Ionicons
-              name="calendar-outline"
-              size={22}
-              color="#062B5F"
-            />
-
-            <View>
-              <Text style={styles.optionLabel}>
-                Fecha
-              </Text>
-
-              <Text style={styles.optionValue}>
-                {formatDate(
-                  getLocalDateString()
-                )}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* NOTAS */}
-
-        <View style={styles.notesCard}>
-          <View style={styles.optionLeft}>
-            <Ionicons
-              name="menu-outline"
-              size={22}
-              color="#062B5F"
-            />
-
-            <Text style={styles.optionLabel}>
-              Notas
-            </Text>
-          </View>
-
-          <TextInput
-            placeholder="¿Para qué fue este movimiento?"
-            placeholderTextColor="#C7CDD6"
-            multiline
-            style={styles.notesInput}
-            value={notes}
-            onChangeText={setNotes}
-          />
-        </View>
-
-        {/* HEDA PREDICTIVO */}
-
-        <View style={styles.aiCard}>
-          <View style={styles.aiIcon}>
-            <Ionicons
-              name="sparkles"
-              size={20}
-              color="#0A84FF"
-            />
-          </View>
-
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>
-              HEDA Predictivo
-            </Text>
-
-            <Text style={styles.cardText}>
-              Registra tus movimientos para que
-              HEDA pueda analizar tus hábitos
-              financieros y generar
-              recomendaciones.
-            </Text>
-          </View>
-        </View>
-
-        {/* REGISTRAR */}
-
-        <TouchableOpacity
-          style={[
-            styles.primaryButton,
-            saving &&
-              styles.primaryButtonDisabled,
-          ]}
-          onPress={handleRegisterMovement}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator
-              color="#FFFFFF"
-            />
-          ) : (
-            <Text
-              style={styles.primaryButtonText}
-            >
-              Registrar movimiento
-            </Text>
-          )}
-        </TouchableOpacity>
-
-        {/* LIMPIAR */}
-
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={handleCancel}
-          disabled={saving}
-        >
-          <Text
-            style={styles.secondaryButtonText}
-          >
-            Limpiar
-          </Text>
-        </TouchableOpacity>
-
+        {transactions.some(row => row.card_id) && <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 14 }}>Los gastos incluyen compras con tarjeta. El saldo disponible solo baja con pagos desde Mi saldo o al pagar una tarjeta.</Text>}
         {/* MOVIMIENTOS */}
 
         <View style={styles.sectionHeader}>
@@ -936,7 +844,7 @@ export default function ExpensesScreen() {
         {loading ? (
           <ActivityIndicator
             size="large"
-            color="#0A84FF"
+            color={colors.primary}
             style={{
               marginVertical: 25,
             }}
@@ -966,9 +874,7 @@ export default function ExpensesScreen() {
                   transaction.description ||
                   transaction.category
                 }
-                category={
-                  transaction.category
-                }
+                category={transaction.is_card_payment ? 'Pago de tarjeta' : transaction.card_id ? `${transaction.category} · ${cards.find(card => card.id === transaction.card_id)?.name || 'Tarjeta'}` : transaction.category}
                 date={formatDate(
                   transaction.transaction_date
                 )}
@@ -987,7 +893,23 @@ export default function ExpensesScreen() {
             )
           )
         )}
+        </>}
       </ScrollView>
+      {section === 'Nuevo' && <View style={styles.saveBar}>
+        {saveNotice ? <Text accessibilityLiveRegion="polite" style={styles.saveNotice}>{saveNotice} ✓</Text> : null}
+        <View style={styles.saveActions}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Restablecer formulario" disabled={saving}
+            onPress={handleCancel} style={styles.resetButton}>
+            <Ionicons name="refresh-outline" size={22} color={colors.muted} />
+          </TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: saving, busy: saving }}
+            style={[styles.primaryButton, { backgroundColor: activeColor }, saving && styles.primaryButtonDisabled]}
+            onPress={handleRegisterMovement} disabled={saving || modeBusy || loading}>
+            {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>{type === 'Ingreso' ? 'Guardar ingreso' : 'Guardar gasto'}</Text>}
+          </TouchableOpacity>
+        </View>
+      </View>}
+      </KeyboardAvoidingView>
 
       {/* ================================================= */}
       {/* MODAL EDITAR MOVIMIENTO */}
@@ -1041,12 +963,13 @@ export default function ExpensesScreen() {
                     <Ionicons
                       name="close"
                       size={26}
-                      color="#062B5F"
+                      color={colors.ink}
                     />
                   </TouchableOpacity>
                 </View>
 
                 <ScrollView
+                  ref={editScrollRef}
                   showsVerticalScrollIndicator={
                     false
                   }
@@ -1058,53 +981,9 @@ export default function ExpensesScreen() {
                     Tipo
                   </Text>
 
-                  <View
-                    style={
-                      styles.editSwitchContainer
-                    }
-                  >
-                    <TouchableOpacity
-                      style={[
-                        styles.switchButton,
-                        editType === 'Gasto' &&
-                          styles.switchButtonActive,
-                      ]}
-                      onPress={() =>
-                        setEditType('Gasto')
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.switchText,
-                          editType === 'Gasto' &&
-                            styles.switchTextActive,
-                        ]}
-                      >
-                        Gasto
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[
-                        styles.switchButton,
-                        editType === 'Ingreso' &&
-                          styles.switchButtonActive,
-                      ]}
-                      onPress={() =>
-                        setEditType('Ingreso')
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.switchText,
-                          editType === 'Ingreso' &&
-                            styles.switchTextActive,
-                        ]}
-                      >
-                        Ingreso
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+                  <MovementType value={editType} onChange={changeEditType} disabled={updating || deleting || selectedTransaction?.is_card_payment} />
+                  {(mode === 'cards' || editCardId) && editType === 'Gasto' && !selectedTransaction?.is_card_payment && <PaymentSource cards={cards} value={editCardId} onChange={setEditCardId} disabled={updating || deleting} />}
+                  {selectedTransaction?.is_card_payment && <Text style={{ color: colors.muted, marginBottom: 12 }}>Pago de tarjeta: reduce tu saldo y la deuda; no cuenta como un segundo gasto.</Text>}
 
                   {/* MONTO */}
 
@@ -1124,8 +1003,9 @@ export default function ExpensesScreen() {
                     </Text>
 
                     <TextInput
+                      editable={!updating && !deleting}
                       value={editAmount}
-                      onChangeText={setEditAmount}
+                      onChangeText={(value) => { setEditAmount(value); setEditErrors((previous) => ({ ...previous, amount: undefined })); }}
                       keyboardType="decimal-pad"
                       inputAccessoryViewID={
                         Platform.OS === 'ios'
@@ -1134,9 +1014,11 @@ export default function ExpensesScreen() {
                       }
                       placeholder="0.00"
                       placeholderTextColor="#C7CDD6"
-                      style={styles.editAmountInput}
+                      style={[styles.editAmountInput, { color: movementColors[editType].foreground }]}
                     />
                   </View>
+
+                  {editErrors.amount ? <Text accessibilityLiveRegion="polite" style={styles.fieldError}>{editErrors.amount}</Text> : null}
 
                   {/* CATEGORÍA */}
 
@@ -1144,61 +1026,8 @@ export default function ExpensesScreen() {
                     Categoría
                   </Text>
 
-                  <View
-                    style={
-                      styles.editCategoryRow
-                    }
-                  >
-                    <EditCategory
-                      icon="fast-food-outline"
-                      label="Comida"
-                      active={
-                        editCategory === 'Comida'
-                      }
-                      onPress={() =>
-                        setEditCategory('Comida')
-                      }
-                    />
-
-                    <EditCategory
-                      icon="bag-outline"
-                      label="Compras"
-                      active={
-                        editCategory ===
-                        'Compras'
-                      }
-                      onPress={() =>
-                        setEditCategory(
-                          'Compras'
-                        )
-                      }
-                    />
-
-                    <EditCategory
-                      icon="car-outline"
-                      label="Transporte"
-                      active={
-                        editCategory ===
-                        'Transporte'
-                      }
-                      onPress={() =>
-                        setEditCategory(
-                          'Transporte'
-                        )
-                      }
-                    />
-
-                    <EditCategory
-                      icon="home-outline"
-                      label="Hogar"
-                      active={
-                        editCategory === 'Hogar'
-                      }
-                      onPress={() =>
-                        setEditCategory('Hogar')
-                      }
-                    />
-                  </View>
+                  <CategoryPicker type={editType} value={editCategory} options={categoryOrder[editType]} error={editErrors.category} onChange={(value) => { setEditCategory(value); setEditErrors((previous) => ({ ...previous, category: undefined })); }} disabled={updating || deleting || selectedTransaction?.is_card_payment} />
+                  <MovementDate key={selectedTransaction?.id} value={editDate} onChange={setEditDate} disabled={updating || deleting} />
 
                   {/* NOTAS */}
 
@@ -1207,6 +1036,7 @@ export default function ExpensesScreen() {
                   </Text>
 
                   <TextInput
+                    editable={!updating && !deleting}
                     value={editNotes}
                     onChangeText={setEditNotes}
                     placeholder="Descripción del movimiento"
@@ -1220,6 +1050,7 @@ export default function ExpensesScreen() {
                   <TouchableOpacity
                     style={[
                       styles.modalSaveButton,
+                      { backgroundColor: movementColors[editType].foreground },
                       (updating || deleting) &&
                         styles.primaryButtonDisabled,
                     ]}
@@ -1333,101 +1164,6 @@ export default function ExpensesScreen() {
 
 
 // =====================================================
-// CATEGORY
-// =====================================================
-
-function Category({
-  icon,
-  label,
-  active,
-  onPress,
-}) {
-  return (
-    <TouchableOpacity
-      style={styles.categoryItem}
-      onPress={onPress}
-    >
-      <View
-        style={[
-          styles.categoryIcon,
-          active &&
-            styles.categoryIconActive,
-        ]}
-      >
-        <Ionicons
-          name={icon}
-          size={22}
-          color={
-            active
-              ? '#0A84FF'
-              : '#6B7280'
-          }
-        />
-      </View>
-
-      <Text
-        style={[
-          styles.categoryLabel,
-          active &&
-            styles.categoryLabelActive,
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-
-// =====================================================
-// EDIT CATEGORY
-// =====================================================
-
-function EditCategory({
-  icon,
-  label,
-  active,
-  onPress,
-}) {
-  return (
-    <TouchableOpacity
-      style={styles.editCategoryItem}
-      onPress={onPress}
-    >
-      <View
-        style={[
-          styles.editCategoryIcon,
-          active &&
-            styles.editCategoryIconActive,
-        ]}
-      >
-        <Ionicons
-          name={icon}
-          size={20}
-          color={
-            active
-              ? '#0A84FF'
-              : '#6B7280'
-          }
-        />
-      </View>
-
-      <Text
-        style={[
-          styles.editCategoryLabel,
-          active &&
-            styles.editCategoryLabelActive,
-        ]}
-        numberOfLines={1}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-
-// =====================================================
 // MOVEMENT
 // =====================================================
 
@@ -1447,7 +1183,7 @@ function Movement({
 
   return (
     <TouchableOpacity
-      style={styles.movementCard}
+      style={[styles.movementCard, { borderWidth: 1.5, borderColor: isIncome ? '#9DD4B4' : '#EFAEB5' }]}
       onPress={onPress}
       activeOpacity={0.75}
     >
@@ -1503,39 +1239,64 @@ function Movement({
 // =====================================================
 
 const styles = StyleSheet.create({
+  sectionTabs: { flexDirection: 'row', backgroundColor: '#DCE7F7', padding: 4, borderRadius: 14, marginBottom: 16 },
+  sectionTab: { flex: 1, minHeight: 44, padding: 10, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  sectionTabActive: { backgroundColor: colors.primary },
+  sectionTabText: { fontSize: 14, fontWeight: '600', color: colors.muted },
+  noteToggle: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, minHeight: 44, marginBottom: 12 },
+  noteToggleText: { color: colors.primary, fontSize: 14, flex: 1 },
+  fieldError: { color: '#B42332', fontSize: 13, marginTop: 8, marginBottom: 8 },
+  saveBar: { backgroundColor: '#FFFFFF', paddingHorizontal: 18, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border },
+  saveActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  resetButton: { width: 48, height: 52, borderRadius: 14, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  saveNotice: { color: '#157347', fontSize: 13, marginBottom: 6, textAlign: 'center' },
+  formHeading: { fontSize: 18, fontWeight: '600', color: colors.ink, marginBottom: 12 },
   safe: {
     flex: 1,
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
   },
 
   container: {
     flex: 1,
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
   },
 
   content: {
-    padding: 22,
-    paddingBottom: 115,
+    padding: 18,
+    paddingBottom: 28,
   },
 
   header: {
-    marginTop: 10,
-    marginBottom: 22,
+    backgroundColor: colors.primary,
+    padding: 18,
+    borderRadius: 20,
+    gap: 12,
+    marginTop: 2,
+    marginBottom: 18,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
 
   logo: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 
   subtitle: {
     marginTop: 4,
     fontSize: 14,
-    color: '#6B7280',
+    color: '#E6F0FF',
+  },
+
+  headerBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   notificationButton: {
@@ -1549,29 +1310,29 @@ const styles = StyleSheet.create({
   },
 
   balanceCard: {
-    backgroundColor: '#0A84FF',
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 22,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 18,
   },
 
   balanceLabel: {
     fontSize: 15,
-    color: '#DCEEFF',
+    color: colors.muted,
     marginBottom: 8,
   },
 
   balanceAmount: {
-    fontSize: 34,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    marginBottom: 20,
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.ink,
+    marginBottom: 12,
   },
 
   balanceRow: {
     flexDirection: 'row',
     backgroundColor:
-      'rgba(255,255,255,0.14)',
+      colors.background,
     borderRadius: 16,
     padding: 14,
   },
@@ -1581,67 +1342,42 @@ const styles = StyleSheet.create({
   },
 
   smallLabel: {
-    color: '#DCEEFF',
+    color: colors.muted,
     fontSize: 12,
     textTransform: 'uppercase',
     marginBottom: 4,
   },
 
   income: {
-    color: '#FFFFFF',
+    color: '#157347',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '600',
   },
 
   expense: {
-    color: '#FFFFFF',
+    color: '#B42332',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '600',
     textAlign: 'right',
   },
 
   separator: {
     width: 1,
     backgroundColor:
-      'rgba(255,255,255,0.25)',
+      colors.border,
     marginHorizontal: 12,
   },
 
-  switchContainer: {
-    backgroundColor: '#EAF1F8',
-    flexDirection: 'row',
-    borderRadius: 18,
-    padding: 5,
-    marginBottom: 18,
-  },
 
-  switchButton: {
-    flex: 1,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderRadius: 14,
-  },
 
-  switchButtonActive: {
-    backgroundColor: '#FFFFFF',
-    elevation: 2,
-  },
 
-  switchText: {
-    fontSize: 15,
-    color: '#6B7280',
-    fontWeight: '800',
-  },
 
-  switchTextActive: {
-    color: '#062B5F',
-  },
 
   inputCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    borderRadius: 18,
     padding: 20,
-    marginBottom: 22,
+    marginBottom: 18,
     elevation: 2,
   },
 
@@ -1649,7 +1385,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textTransform: 'uppercase',
     color: '#9CA3AF',
-    fontWeight: '900',
+    fontWeight: '700',
     marginBottom: 8,
   },
 
@@ -1659,17 +1395,17 @@ const styles = StyleSheet.create({
   },
 
   currencySymbol: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#6B7280',
+    fontSize: 26,
+    fontWeight: '700',
+    color: colors.muted,
     marginRight: 8,
   },
 
   amountInput: {
     flex: 1,
-    fontSize: 34,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontSize: 30,
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   sectionHeader: {
@@ -1681,59 +1417,17 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#062B5F',
-  },
-
-  categoryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 22,
-  },
-
-  categoryItem: {
-    alignItems: 'center',
-    width: '23%',
-  },
-
-  categoryIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-    elevation: 2,
-  },
-
-  categoryIconActive: {
-    backgroundColor: '#EAF4FF',
-    borderWidth: 1,
-    borderColor: '#0A84FF',
-  },
-
-  categoryLabel: {
-    fontSize: 11,
-    color: '#6B7280',
+    fontSize: 18,
     fontWeight: '700',
+    color: colors.ink,
   },
 
-  categoryLabelActive: {
-    color: '#062B5F',
-  },
 
-  optionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 14,
-    elevation: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
+
+
+
+
+
 
   optionLeft: {
     flexDirection: 'row',
@@ -1745,15 +1439,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textTransform: 'uppercase',
     color: '#9CA3AF',
-    fontWeight: '900',
-  },
-
-  optionValue: {
-    marginTop: 4,
-    fontSize: 15,
-    color: '#062B5F',
     fontWeight: '700',
   },
+
 
   notesCard: {
     backgroundColor: '#FFFFFF',
@@ -1767,51 +1455,25 @@ const styles = StyleSheet.create({
   notesInput: {
     marginTop: 12,
     fontSize: 15,
-    color: '#062B5F',
-    minHeight: 60,
+    color: colors.ink,
+    minHeight: 52,
     textAlignVertical: 'top',
   },
 
-  aiCard: {
-    flexDirection: 'row',
-    backgroundColor: '#EAF4FF',
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 22,
-    borderWidth: 1,
-    borderColor: '#D7EAFE',
-  },
 
-  aiIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
 
-  cardTitle: {
-    fontSize: 17,
-    fontWeight: '900',
-    color: '#062B5F',
-    marginBottom: 6,
-  },
 
-  cardText: {
-    fontSize: 14,
-    color: '#4B5563',
-    lineHeight: 20,
-  },
 
   primaryButton: {
-    backgroundColor: '#062B5F',
+    flex: 1,
+    minHeight: 52,
+    justifyContent: 'center',
+    backgroundColor: colors.ink,
     borderRadius: 18,
     paddingVertical: 18,
     alignItems: 'center',
-    marginTop: 12,
-    marginBottom: 12,
+    marginTop: 0,
+    marginBottom: 0,
   },
 
   primaryButtonDisabled: {
@@ -1821,7 +1483,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 
   secondaryButton: {
@@ -1829,20 +1491,20 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     paddingVertical: 16,
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 18,
     borderWidth: 1,
-    borderColor: '#062B5F',
+    borderColor: colors.ink,
   },
 
   secondaryButtonText: {
-    color: '#062B5F',
+    color: colors.ink,
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 
   movementCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 18,
     padding: 18,
     marginBottom: 14,
     elevation: 2,
@@ -1853,20 +1515,20 @@ const styles = StyleSheet.create({
 
   movementTitle: {
     fontSize: 17,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   movementDate: {
     marginTop: 4,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.muted,
   },
 
   editHint: {
     marginTop: 5,
     fontSize: 11,
-    color: '#0A84FF',
+    color: colors.primary,
     fontWeight: '700',
   },
 
@@ -1879,7 +1541,7 @@ const styles = StyleSheet.create({
 
   movementAmount: {
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 
   green: {
@@ -1887,13 +1549,13 @@ const styles = StyleSheet.create({
   },
 
   red: {
-    color: '#D71920',
+    color: '#B42332',
   },
 
   emptyCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 28,
+    borderRadius: 18,
+    padding: 18,
     alignItems: 'center',
     marginBottom: 18,
   },
@@ -1901,14 +1563,14 @@ const styles = StyleSheet.create({
   emptyTitle: {
     marginTop: 10,
     fontSize: 17,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   emptyText: {
     marginTop: 5,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.muted,
   },
 
   // =====================================================
@@ -1930,7 +1592,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    padding: 24,
+    padding: 18,
     paddingBottom: 38,
     maxHeight: '90%',
   },
@@ -1939,39 +1601,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 22,
+    marginBottom: 18,
   },
 
   modalTitle: {
     fontSize: 23,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   modalSubtitle: {
     marginTop: 4,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.muted,
   },
 
   editLabel: {
     fontSize: 12,
     textTransform: 'uppercase',
     color: '#9CA3AF',
-    fontWeight: '900',
+    fontWeight: '700',
     marginBottom: 8,
   },
 
-  editSwitchContainer: {
-    backgroundColor: '#EAF1F8',
-    flexDirection: 'row',
-    borderRadius: 18,
-    padding: 5,
-    marginBottom: 20,
-  },
 
   editAmountCard: {
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
     borderRadius: 17,
     paddingHorizontal: 16,
     flexDirection: 'row',
@@ -1981,8 +1636,8 @@ const styles = StyleSheet.create({
 
   editCurrencySymbol: {
     fontSize: 25,
-    fontWeight: '900',
-    color: '#6B7280',
+    fontWeight: '700',
+    color: colors.muted,
     marginRight: 7,
   },
 
@@ -1990,61 +1645,29 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 15,
     fontSize: 25,
-    fontWeight: '900',
-    color: '#062B5F',
-  },
-
-  editCategoryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-
-  editCategoryItem: {
-    width: '23%',
-    alignItems: 'center',
-  },
-
-  editCategoryIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 15,
-    backgroundColor: '#F4F7FB',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-
-  editCategoryIconActive: {
-    backgroundColor: '#EAF4FF',
-    borderWidth: 1,
-    borderColor: '#0A84FF',
-  },
-
-  editCategoryLabel: {
-    fontSize: 10,
-    color: '#6B7280',
     fontWeight: '700',
+    color: colors.ink,
   },
 
-  editCategoryLabelActive: {
-    color: '#062B5F',
-    fontWeight: '900',
-  },
+
+
+
+
+
 
   editNotesInput: {
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
     borderRadius: 16,
     padding: 15,
     minHeight: 85,
     fontSize: 15,
-    color: '#062B5F',
+    color: colors.ink,
     textAlignVertical: 'top',
     marginBottom: 20,
   },
 
   modalSaveButton: {
-    backgroundColor: '#062B5F',
+    backgroundColor: colors.ink,
     borderRadius: 17,
     paddingVertical: 16,
     alignItems: 'center',
@@ -2056,7 +1679,7 @@ const styles = StyleSheet.create({
   modalSaveButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 
   deleteButton: {
@@ -2073,9 +1696,9 @@ const styles = StyleSheet.create({
   },
 
   deleteButtonText: {
-    color: '#D71920',
+    color: '#B42332',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 
   // =====================================================
@@ -2083,7 +1706,7 @@ const styles = StyleSheet.create({
   // =====================================================
 
   keyboardAccessory: {
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
     borderTopWidth:
       StyleSheet.hairlineWidth,
     borderTopColor: '#D1D5DB',
@@ -2098,8 +1721,8 @@ const styles = StyleSheet.create({
   },
 
   keyboardDoneText: {
-    color: '#0A84FF',
+    color: colors.primary,
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 });

@@ -1,20 +1,23 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from '../theme/colors';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 
 export default function EthereumScreen() {
   return (
-    <ScrollView style={styles.container}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: colors.background }}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.container}>
 
       <Text style={styles.title}>
-        Predicción de Ethereum
+        Ethereum
       </Text>
 
       <Text style={styles.subtitle}>
-        Análisis predictivo basado en inteligencia artificial y tendencias del mercado.
+        Demostración educativa con valores de ejemplo; no son cotizaciones actuales.
       </Text>
 
       <View style={styles.priceCard}>
         <Text style={styles.priceLabel}>
-          Precio actual ETH
+          Precio de ejemplo · ETH
         </Text>
 
         <Text style={styles.price}>
@@ -28,15 +31,15 @@ export default function EthereumScreen() {
 
       <View style={styles.predictionCard}>
         <Text style={styles.predictionTitle}>
-          Predicción IA
+          Escenario ilustrativo
         </Text>
 
         <Text style={styles.predictionText}>
-          El modelo predictivo estima una tendencia alcista moderada para Ethereum durante los próximos 7 días.
+          Ejemplo de un escenario de subida. No existe todavía un modelo predictivo conectado.
         </Text>
 
         <Text style={styles.predictionValue}>
-          Predicción estimada:
+          Valor hipotético:
         </Text>
 
         <Text style={styles.futurePrice}>
@@ -46,7 +49,7 @@ export default function EthereumScreen() {
 
       <View style={styles.analysisCard}>
         <Text style={styles.analysisTitle}>
-          Factores analizados
+          Factores por considerar
         </Text>
 
         <Text style={styles.analysisItem}>
@@ -81,42 +84,40 @@ export default function EthereumScreen() {
         </Text>
       </View>
 
-      <TouchableOpacity style={styles.button}>
-        <Text style={styles.buttonText}>
-          Ver análisis completo
-        </Text>
-      </TouchableOpacity>
+
 
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
 
   container: {
-    flex: 1,
-    backgroundColor: '#F4F6FA',
+    flexGrow: 1,
+    backgroundColor: colors.background,
     padding: 20,
-    paddingTop: 70,
+    paddingTop: 16,
+    paddingBottom: 28,
   },
 
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#001F54',
+    color: colors.ink,
     marginBottom: 10,
   },
 
   subtitle: {
     fontSize: 16,
     color: '#555',
-    marginBottom: 25,
+    marginBottom: 18,
   },
 
   priceCard: {
-    backgroundColor: '#0A84FF',
-    borderRadius: 20,
-    padding: 25,
+    backgroundColor: colors.primary,
+    borderRadius: 18,
+    padding: 18,
     marginBottom: 20,
   },
 
@@ -127,7 +128,7 @@ const styles = StyleSheet.create({
 
   price: {
     color: 'white',
-    fontSize: 38,
+    fontSize: 32,
     fontWeight: 'bold',
     marginTop: 10,
   },
@@ -140,8 +141,8 @@ const styles = StyleSheet.create({
 
   predictionCard: {
     backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 22,
+    borderRadius: 18,
+    padding: 18,
     marginBottom: 20,
 
     shadowColor: '#000',
@@ -151,9 +152,9 @@ const styles = StyleSheet.create({
   },
 
   predictionTitle: {
-    fontSize: 22,
+    fontSize: 19,
     fontWeight: 'bold',
-    color: '#001F54',
+    color: colors.ink,
     marginBottom: 12,
   },
 
@@ -170,16 +171,16 @@ const styles = StyleSheet.create({
   },
 
   futurePrice: {
-    fontSize: 34,
+    fontSize: 30,
     fontWeight: 'bold',
-    color: '#0A84FF',
+    color: colors.primary,
     marginTop: 8,
   },
 
   analysisCard: {
     backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 22,
+    borderRadius: 18,
+    padding: 18,
     marginBottom: 20,
 
     shadowColor: '#000',
@@ -189,9 +190,9 @@ const styles = StyleSheet.create({
   },
 
   analysisTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#001F54',
+    color: colors.ink,
     marginBottom: 15,
   },
 
@@ -202,15 +203,15 @@ const styles = StyleSheet.create({
   },
 
   riskCard: {
-    backgroundColor: '#001F54',
-    borderRadius: 20,
-    padding: 22,
-    marginBottom: 25,
+    backgroundColor: colors.ink,
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 18,
   },
 
   riskTitle: {
     color: 'white',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 10,
   },
@@ -222,7 +223,7 @@ const styles = StyleSheet.create({
   },
 
   button: {
-    backgroundColor: '#0A84FF',
+    backgroundColor: colors.primary,
     padding: 18,
     borderRadius: 15,
     marginBottom: 40,

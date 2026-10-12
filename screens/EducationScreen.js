@@ -1,3 +1,5 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from '../theme/colors';
 import React, { useState } from 'react';
 import {
   View,
@@ -5,7 +7,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   TextInput,
   ActivityIndicator,
 } from 'react-native';
@@ -70,7 +71,7 @@ export default function EducationScreen({ navigation }) {
   // =====================================================
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -91,7 +92,7 @@ export default function EducationScreen({ navigation }) {
             <Ionicons
               name="sparkles-outline"
               size={22}
-              color="#062B5F"
+              color={colors.ink}
             />
           </TouchableOpacity>
         </View>
@@ -131,7 +132,7 @@ export default function EducationScreen({ navigation }) {
             <Ionicons
               name="chatbubble-ellipses-outline"
               size={22}
-              color="#0A84FF"
+              color={colors.primary}
             />
 
             <TextInput
@@ -172,7 +173,7 @@ export default function EducationScreen({ navigation }) {
                 <Ionicons
                   name="sparkles"
                   size={18}
-                  color="#0A84FF"
+                  color={colors.primary}
                 />
 
                 <Text style={styles.responseTitle}>
@@ -209,7 +210,7 @@ export default function EducationScreen({ navigation }) {
               <Ionicons
                 name="bulb-outline"
                 size={22}
-                color="#0A84FF"
+                color={colors.primary}
               />
             </View>
 
@@ -237,18 +238,21 @@ export default function EducationScreen({ navigation }) {
             icon="school-outline"
             title="Educación"
             text="Aprende conceptos financieros básicos."
+            onPress={() => navigation.navigate('EducacionFinanciera')}
           />
 
           <ToolCard
             icon="analytics-outline"
             title="Hábitos"
-            text="Analiza patrones de ingreso y gasto."
+            text="Explora ejemplos de patrones de ingreso y gasto."
+            onPress={() => navigation.navigate('Habitos')}
           />
 
           <ToolCard
             icon="warning-outline"
             title="Alertas"
-            text="Detecta gastos inusuales o excesos."
+            text="Consulta ejemplos de avisos financieros."
+            onPress={() => navigation.navigate('Alertas')}
           />
 
           <ToolCard
@@ -265,9 +269,13 @@ export default function EducationScreen({ navigation }) {
             Contenido recomendado
           </Text>
 
-          <Text style={styles.sectionLink}>
-            Ver todo
-          </Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('EducacionFinanciera')}
+          >
+            <Text style={styles.sectionLink}>
+              Ver todo
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <LessonCard
@@ -325,7 +333,7 @@ function ToolCard({ icon, title, text, onPress }) {
         <Ionicons
           name={icon}
           size={23}
-          color="#0A84FF"
+          color={colors.primary}
         />
       </View>
 
@@ -356,7 +364,7 @@ function LessonCard({
         <Ionicons
           name={icon}
           size={24}
-          color="#0A84FF"
+          color={colors.primary}
         />
       </View>
 
@@ -386,37 +394,37 @@ function LessonCard({
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
   },
 
   container: {
     flex: 1,
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
   },
 
   content: {
-    padding: 22,
-    paddingBottom: 115,
+    padding: 18,
+    paddingBottom: 28,
   },
 
   header: {
-    marginTop: 10,
-    marginBottom: 22,
+    marginTop: 2,
+    marginBottom: 18,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
 
   logo: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontSize: 26,
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   subtitle: {
     marginTop: 4,
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.muted,
   },
 
   notificationButton: {
@@ -430,15 +438,15 @@ const styles = StyleSheet.create({
   },
 
   heroCard: {
-    backgroundColor: '#0A84FF',
-    borderRadius: 26,
-    padding: 24,
+    backgroundColor: colors.primary,
+    borderRadius: 18,
+    padding: 18,
     marginBottom: 20,
   },
 
   heroIcon: {
-    width: 54,
-    height: 54,
+    width: 42,
+    height: 42,
     borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
@@ -449,7 +457,7 @@ const styles = StyleSheet.create({
   heroTitle: {
     color: '#FFFFFF',
     fontSize: 25,
-    fontWeight: '900',
+    fontWeight: '700',
     marginBottom: 8,
   },
 
@@ -461,23 +469,23 @@ const styles = StyleSheet.create({
 
   assistantCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: 18,
     padding: 20,
     marginBottom: 18,
     elevation: 2,
   },
 
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.ink,
     marginBottom: 10,
   },
 
   cardTitle: {
     fontSize: 18,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontWeight: '700',
+    color: colors.ink,
     marginBottom: 6,
   },
 
@@ -490,7 +498,7 @@ const styles = StyleSheet.create({
   inputBox: {
     marginTop: 16,
     marginBottom: 16,
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 4,
@@ -502,12 +510,12 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
     fontSize: 15,
-    color: '#062B5F',
+    color: colors.ink,
     paddingVertical: 14,
   },
 
   primaryButton: {
-    backgroundColor: '#062B5F',
+    backgroundColor: colors.ink,
     borderRadius: 18,
     paddingVertical: 16,
     alignItems: 'center',
@@ -522,7 +530,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 
   // ===================================================
@@ -547,8 +555,8 @@ const styles = StyleSheet.create({
   responseTitle: {
     marginLeft: 7,
     fontSize: 14,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   responseText: {
@@ -582,10 +590,10 @@ const styles = StyleSheet.create({
   },
 
   aiAdviceCard: {
-    backgroundColor: '#EAF4FF',
-    borderRadius: 22,
+    backgroundColor: colors.softBlue,
+    borderRadius: 18,
     padding: 18,
-    marginBottom: 22,
+    marginBottom: 18,
     borderWidth: 1,
     borderColor: '#D7EAFE',
   },
@@ -608,13 +616,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 22,
+    marginBottom: 18,
   },
 
   toolCard: {
     width: '48%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    borderRadius: 18,
     padding: 16,
     marginBottom: 14,
     elevation: 2,
@@ -624,7 +632,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 15,
-    backgroundColor: '#EAF4FF',
+    backgroundColor: colors.softBlue,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -632,14 +640,14 @@ const styles = StyleSheet.create({
 
   toolTitle: {
     fontSize: 16,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontWeight: '700',
+    color: colors.ink,
     marginBottom: 6,
   },
 
   toolText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.muted,
     lineHeight: 18,
   },
 
@@ -653,14 +661,14 @@ const styles = StyleSheet.create({
 
   sectionLink: {
     fontSize: 12,
-    fontWeight: '900',
-    color: '#0A84FF',
+    fontWeight: '700',
+    color: colors.primary,
     textTransform: 'uppercase',
   },
 
   lessonCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    borderRadius: 18,
     padding: 18,
     marginBottom: 14,
     elevation: 2,
@@ -671,7 +679,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 16,
-    backgroundColor: '#EAF4FF',
+    backgroundColor: colors.softBlue,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -685,17 +693,17 @@ const styles = StyleSheet.create({
 
   lessonTitle: {
     fontSize: 16,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontWeight: '700',
+    color: colors.ink,
     flex: 1,
     marginRight: 8,
   },
 
   level: {
     fontSize: 11,
-    fontWeight: '900',
-    color: '#0A84FF',
-    backgroundColor: '#EAF4FF',
+    fontWeight: '700',
+    color: colors.primary,
+    backgroundColor: colors.softBlue,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 10,
@@ -704,7 +712,7 @@ const styles = StyleSheet.create({
   lessonDescription: {
     marginTop: 6,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.muted,
     lineHeight: 18,
   },
 

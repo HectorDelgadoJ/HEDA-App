@@ -1,3 +1,7 @@
+import { cashBalance, isSpending } from '../utils/finance';
+import { transactionRows } from '../services/finance';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from '../theme/colors';
 import React, { useCallback, useMemo, useState } from 'react';
 
 import {
@@ -6,7 +10,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   TextInput,
   Modal,
   Alert,
@@ -73,15 +76,7 @@ export default function GoalsScreen() {
       }
 
       const [transactionsResult, goalsResult] = await Promise.all([
-        supabase
-          .from('transactions')
-          .select(
-            'id, type, amount, category, description, transaction_date, created_at'
-          )
-          .eq('user_id', user.id)
-          .order('transaction_date', {
-            ascending: false,
-          }),
+        transactionRows(user.id),
 
         supabase
           .from('goals')
@@ -461,7 +456,7 @@ export default function GoalsScreen() {
   const totalExpenses = filteredTransactions
     .filter(
       (transaction) =>
-        transaction.type === 'expense'
+        isSpending(transaction)
     )
     .reduce(
       (total, transaction) =>
@@ -469,8 +464,7 @@ export default function GoalsScreen() {
       0
     );
 
-  const balance =
-    totalIncome - totalExpenses;
+  const balance = cashBalance(filteredTransactions);
 
   // =====================================================
   // CATEGORÍAS
@@ -482,7 +476,7 @@ export default function GoalsScreen() {
     filteredTransactions
       .filter(
         (transaction) =>
-          transaction.type === 'expense'
+          isSpending(transaction)
       )
       .forEach((transaction) => {
         const category =
@@ -552,8 +546,7 @@ export default function GoalsScreen() {
             }
 
             if (
-              transaction.type ===
-              'expense'
+              isSpending(transaction)
             ) {
               expenses += Number(
                 transaction.amount
@@ -685,7 +678,7 @@ export default function GoalsScreen() {
   // =====================================================
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -713,7 +706,7 @@ export default function GoalsScreen() {
             <Ionicons
               name="bar-chart-outline"
               size={22}
-              color="#062B5F"
+              color={colors.ink}
             />
           </TouchableOpacity>
         </View>
@@ -777,6 +770,7 @@ export default function GoalsScreen() {
           </View>
         </View>
 
+        {transactions.some(row => row.card_id) && <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18, marginBottom: 14 }}>El importe superior muestra el cambio de tu saldo disponible en el periodo. Los egresos incluyen compras con tarjeta; pagarla no cuenta como un nuevo gasto.</Text>}
         {/* FILTROS */}
 
         <View style={styles.filterRow}>
@@ -977,7 +971,7 @@ export default function GoalsScreen() {
                 <Ionicons
                   name="flag-outline"
                   size={24}
-                  color="#0A84FF"
+                  color={colors.primary}
                 />
               </View>
 
@@ -1076,7 +1070,7 @@ export default function GoalsScreen() {
             <Ionicons
               name="flag-outline"
               size={34}
-              color="#0A84FF"
+              color={colors.primary}
             />
 
             <Text style={styles.emptyGoalTitle}>
@@ -1097,7 +1091,7 @@ export default function GoalsScreen() {
             <Ionicons
               name="sparkles"
               size={21}
-              color="#0A84FF"
+              color={colors.primary}
             />
           </View>
 
@@ -1152,7 +1146,7 @@ export default function GoalsScreen() {
                     <Ionicons
                       name="close"
                       size={25}
-                      color="#062B5F"
+                      color={colors.ink}
                     />
                   </TouchableOpacity>
                 </View>
@@ -1291,7 +1285,7 @@ export default function GoalsScreen() {
                     <Ionicons
                       name="close"
                       size={25}
-                      color="#062B5F"
+                      color={colors.ink}
                     />
                   </TouchableOpacity>
                 </View>
@@ -1488,7 +1482,7 @@ function CategoryBar({
             <Ionicons
               name={icon}
               size={21}
-              color="#0A84FF"
+              color={colors.primary}
             />
           </View>
 
@@ -1536,37 +1530,37 @@ function CategoryBar({
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
   },
 
   container: {
     flex: 1,
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
   },
 
   content: {
-    padding: 22,
-    paddingBottom: 115,
+    padding: 18,
+    paddingBottom: 28,
   },
 
   header: {
-    marginTop: 10,
-    marginBottom: 22,
+    marginTop: 2,
+    marginBottom: 18,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
 
   logo: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontSize: 26,
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   subtitle: {
     marginTop: 4,
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.muted,
   },
 
   notificationButton: {
@@ -1580,9 +1574,9 @@ const styles = StyleSheet.create({
   },
 
   summaryCard: {
-    backgroundColor: '#0A84FF',
-    borderRadius: 26,
-    padding: 24,
+    backgroundColor: colors.primary,
+    borderRadius: 18,
+    padding: 18,
     marginBottom: 20,
   },
 
@@ -1593,10 +1587,10 @@ const styles = StyleSheet.create({
   },
 
   summaryAmount: {
-    fontSize: 34,
-    fontWeight: '900',
+    fontSize: 30,
+    fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 22,
+    marginBottom: 18,
   },
 
   summaryRow: {
@@ -1621,13 +1615,13 @@ const styles = StyleSheet.create({
   income: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 
   expense: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
     textAlign: 'right',
   },
 
@@ -1663,20 +1657,20 @@ const styles = StyleSheet.create({
   },
 
   filterText: {
-    color: '#6B7280',
-    fontWeight: '800',
+    color: colors.muted,
+    fontWeight: '600',
   },
 
   filterActiveText: {
-    color: '#062B5F',
-    fontWeight: '900',
+    color: colors.ink,
+    fontWeight: '700',
   },
 
   chartCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: 18,
     padding: 20,
-    marginBottom: 22,
+    marginBottom: 18,
     elevation: 2,
   },
 
@@ -1697,15 +1691,15 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   sectionLink: {
     fontSize: 12,
-    fontWeight: '900',
-    color: '#0A84FF',
+    fontWeight: '700',
+    color: colors.primary,
     textTransform: 'uppercase',
   },
 
@@ -1727,7 +1721,7 @@ const styles = StyleSheet.create({
   },
 
   incomeDot: {
-    backgroundColor: '#062B5F',
+    backgroundColor: colors.ink,
   },
 
   expenseDot: {
@@ -1736,7 +1730,7 @@ const styles = StyleSheet.create({
 
   legendText: {
     fontSize: 11,
-    color: '#6B7280',
+    color: colors.muted,
     fontWeight: '700',
   },
 
@@ -1766,7 +1760,7 @@ const styles = StyleSheet.create({
   },
 
   incomeBar: {
-    backgroundColor: '#062B5F',
+    backgroundColor: colors.ink,
   },
 
   expenseBar: {
@@ -1776,14 +1770,14 @@ const styles = StyleSheet.create({
   barLabel: {
     marginTop: 8,
     fontSize: 11,
-    color: '#6B7280',
+    color: colors.muted,
     fontWeight: '700',
     textTransform: 'capitalize',
   },
 
   categoryCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 18,
     padding: 18,
     marginBottom: 14,
     elevation: 2,
@@ -1805,7 +1799,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 15,
-    backgroundColor: '#EAF4FF',
+    backgroundColor: colors.softBlue,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -1813,39 +1807,39 @@ const styles = StyleSheet.create({
 
   categoryTitle: {
     fontSize: 16,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   categoryAmount: {
     marginTop: 4,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.muted,
     fontWeight: '700',
   },
 
   categoryPercent: {
     fontSize: 16,
-    color: '#0A84FF',
-    fontWeight: '900',
+    color: colors.primary,
+    fontWeight: '700',
   },
 
   categoryProgress: {
     height: 8,
     backgroundColor: '#EAF1F8',
-    borderRadius: 20,
+    borderRadius: 18,
     overflow: 'hidden',
   },
 
   categoryProgressFill: {
     height: '100%',
-    backgroundColor: '#0A84FF',
-    borderRadius: 20,
+    backgroundColor: colors.primary,
+    borderRadius: 18,
   },
 
   goalCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: 18,
     padding: 20,
     marginBottom: 18,
     elevation: 2,
@@ -1861,7 +1855,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 16,
-    backgroundColor: '#EAF4FF',
+    backgroundColor: colors.softBlue,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -1869,8 +1863,8 @@ const styles = StyleSheet.create({
 
   cardTitle: {
     fontSize: 18,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontWeight: '700',
+    color: colors.ink,
     marginBottom: 4,
   },
 
@@ -1881,23 +1875,23 @@ const styles = StyleSheet.create({
   },
 
   goalPercent: {
-    color: '#0A84FF',
+    color: colors.primary,
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 
   progressBackground: {
     height: 9,
     backgroundColor: '#DDEBFA',
-    borderRadius: 20,
+    borderRadius: 18,
     overflow: 'hidden',
     marginBottom: 12,
   },
 
   progressFill: {
     height: '100%',
-    backgroundColor: '#062B5F',
-    borderRadius: 20,
+    backgroundColor: colors.ink,
+    borderRadius: 18,
   },
 
   goalFooter: {
@@ -1907,19 +1901,19 @@ const styles = StyleSheet.create({
 
   goalText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.muted,
     fontWeight: '700',
   },
 
   goalDate: {
     marginTop: 10,
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.muted,
   },
 
   contributionButton: {
     marginTop: 18,
-    backgroundColor: '#062B5F',
+    backgroundColor: colors.ink,
     borderRadius: 15,
     paddingVertical: 13,
     flexDirection: 'row',
@@ -1930,14 +1924,14 @@ const styles = StyleSheet.create({
 
   contributionButtonText: {
     color: '#FFFFFF',
-    fontWeight: '900',
+    fontWeight: '700',
     fontSize: 14,
   },
 
   emptyGoalCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 28,
+    borderRadius: 18,
+    padding: 18,
     marginBottom: 18,
     alignItems: 'center',
     elevation: 2,
@@ -1946,21 +1940,21 @@ const styles = StyleSheet.create({
   emptyGoalTitle: {
     marginTop: 10,
     fontSize: 17,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   emptyGoalText: {
     marginTop: 5,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.muted,
     textAlign: 'center',
   },
 
   emptyCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 25,
+    borderRadius: 18,
+    padding: 18,
     alignItems: 'center',
     marginBottom: 18,
     elevation: 2,
@@ -1969,21 +1963,21 @@ const styles = StyleSheet.create({
   emptyTitle: {
     marginTop: 8,
     fontSize: 16,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   emptyText: {
     marginTop: 5,
-    color: '#6B7280',
+    color: colors.muted,
     fontSize: 13,
     textAlign: 'center',
   },
 
   aiCard: {
     flexDirection: 'row',
-    backgroundColor: '#EAF4FF',
-    borderRadius: 22,
+    backgroundColor: colors.softBlue,
+    borderRadius: 18,
     padding: 18,
     marginTop: 4,
     borderWidth: 1,
@@ -2019,7 +2013,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    padding: 24,
+    padding: 18,
     paddingBottom: 40,
     maxHeight: '85%',
   },
@@ -2028,41 +2022,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 22,
+    marginBottom: 18,
   },
 
   modalTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontSize: 19,
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   modalDescription: {
     fontSize: 15,
-    color: '#6B7280',
+    color: colors.muted,
     marginBottom: 18,
   },
 
   inputLabel: {
     fontSize: 12,
     textTransform: 'uppercase',
-    color: '#6B7280',
-    fontWeight: '900',
+    color: colors.muted,
+    fontWeight: '700',
     marginBottom: 7,
   },
 
   input: {
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
     borderRadius: 15,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    color: '#062B5F',
+    color: colors.ink,
     fontSize: 16,
     marginBottom: 18,
   },
 
   saveButton: {
-    backgroundColor: '#062B5F',
+    backgroundColor: colors.ink,
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
@@ -2076,7 +2070,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 
   // =====================================================
@@ -2084,7 +2078,7 @@ const styles = StyleSheet.create({
   // =====================================================
 
   keyboardAccessory: {
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#D1D5DB',
     paddingHorizontal: 16,
@@ -2098,8 +2092,8 @@ const styles = StyleSheet.create({
   },
 
   keyboardDoneText: {
-    color: '#0A84FF',
+    color: colors.primary,
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 });

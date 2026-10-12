@@ -1,3 +1,5 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from '../theme/colors';
 import React, { useEffect, useState } from 'react';
 
 import {
@@ -6,7 +8,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
 } from 'react-native';
 
@@ -147,7 +148,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -173,7 +174,7 @@ export default function ProfileScreen() {
             <Ionicons
               name="settings-outline"
               size={22}
-              color="#062B5F"
+              color={colors.ink}
             />
           </TouchableOpacity>
         </View>
@@ -210,7 +211,7 @@ export default function ProfileScreen() {
               <Ionicons
                 name="shield-checkmark-outline"
                 size={14}
-                color="#0A84FF"
+                color={colors.primary}
               />
 
               <Text style={styles.badgeText}>
@@ -232,7 +233,7 @@ export default function ProfileScreen() {
               <Ionicons
                 name="school-outline"
                 size={24}
-                color="#0A84FF"
+                color={colors.primary}
               />
             </View>
 
@@ -371,7 +372,7 @@ export default function ProfileScreen() {
           <Ionicons
             name="information-circle-outline"
             size={22}
-            color="#0A84FF"
+            color={colors.primary}
           />
 
           <Text style={styles.infoText}>
@@ -429,7 +430,7 @@ function StatCard({
         <Ionicons
           name={icon}
           size={21}
-          color="#0A84FF"
+          color={colors.primary}
         />
       </View>
 
@@ -467,7 +468,7 @@ function OptionItem({
           <Ionicons
             name={icon}
             size={22}
-            color="#0A84FF"
+            color={colors.primary}
           />
         </View>
 
@@ -503,37 +504,37 @@ const styles = StyleSheet.create({
 
   safe: {
     flex: 1,
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
   },
 
   container: {
     flex: 1,
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
   },
 
   content: {
-    padding: 22,
-    paddingBottom: 115,
+    padding: 18,
+    paddingBottom: 28,
   },
 
   header: {
-    marginTop: 10,
-    marginBottom: 22,
+    marginTop: 2,
+    marginBottom: 18,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
 
   logo: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontSize: 26,
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   subtitle: {
     marginTop: 4,
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.muted,
   },
 
   notificationButton: {
@@ -547,9 +548,9 @@ const styles = StyleSheet.create({
   },
 
   profileCard: {
-    backgroundColor: '#0A84FF',
-    borderRadius: 26,
-    padding: 22,
+    backgroundColor: colors.primary,
+    borderRadius: 18,
+    padding: 18,
     marginBottom: 18,
     flexDirection: 'row',
     alignItems: 'center',
@@ -558,7 +559,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 76,
     height: 76,
-    borderRadius: 24,
+    borderRadius: 18,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
@@ -566,14 +567,14 @@ const styles = StyleSheet.create({
   },
 
   avatarText: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#0A84FF',
+    fontSize: 21,
+    fontWeight: '700',
+    color: colors.primary,
   },
 
   userName: {
     fontSize: 23,
-    fontWeight: '900',
+    fontWeight: '700',
     color: '#FFFFFF',
   },
 
@@ -594,7 +595,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     alignSelf: 'flex-start',
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 18,
     paddingHorizontal: 10,
     paddingVertical: 6,
     flexDirection: 'row',
@@ -603,14 +604,14 @@ const styles = StyleSheet.create({
 
   badgeText: {
     marginLeft: 5,
-    color: '#0A84FF',
-    fontWeight: '900',
+    color: colors.primary,
+    fontWeight: '700',
     fontSize: 12,
   },
 
   levelCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: 18,
     padding: 20,
     marginBottom: 18,
     elevation: 2,
@@ -626,7 +627,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 16,
-    backgroundColor: '#EAF4FF',
+    backgroundColor: colors.softBlue,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -634,21 +635,21 @@ const styles = StyleSheet.create({
 
   cardTitle: {
     fontSize: 18,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontWeight: '700',
+    color: colors.ink,
     marginBottom: 4,
   },
 
   cardText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.muted,
     lineHeight: 20,
   },
 
   progressBackground: {
     height: 9,
     backgroundColor: '#DDEBFA',
-    borderRadius: 20,
+    borderRadius: 18,
     overflow: 'hidden',
     marginBottom: 12,
   },
@@ -656,13 +657,13 @@ const styles = StyleSheet.create({
   progressFill: {
     width: '35%',
     height: '100%',
-    backgroundColor: '#062B5F',
-    borderRadius: 20,
+    backgroundColor: colors.ink,
+    borderRadius: 18,
   },
 
   progressText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.muted,
     lineHeight: 18,
     fontWeight: '600',
   },
@@ -670,13 +671,13 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 22,
+    marginBottom: 18,
   },
 
   statCard: {
     width: '31%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 18,
     padding: 14,
     alignItems: 'center',
     elevation: 2,
@@ -686,37 +687,37 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 13,
-    backgroundColor: '#EAF4FF',
+    backgroundColor: colors.softBlue,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
   },
 
   statValue: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   statTitle: {
     marginTop: 3,
     fontSize: 11,
-    color: '#6B7280',
-    fontWeight: '800',
+    color: colors.muted,
+    fontWeight: '600',
     textAlign: 'center',
   },
 
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.ink,
     marginBottom: 14,
     marginTop: 6,
   },
 
   optionCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 18,
     padding: 17,
     marginBottom: 13,
     elevation: 2,
@@ -735,7 +736,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 15,
-    backgroundColor: '#EAF4FF',
+    backgroundColor: colors.softBlue,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -743,21 +744,21 @@ const styles = StyleSheet.create({
 
   optionTitle: {
     fontSize: 16,
-    fontWeight: '900',
-    color: '#062B5F',
+    fontWeight: '700',
+    color: colors.ink,
   },
 
   optionSubtitle: {
     marginTop: 4,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.muted,
     lineHeight: 18,
   },
 
   infoCard: {
     marginTop: 8,
-    backgroundColor: '#EAF4FF',
-    borderRadius: 20,
+    backgroundColor: colors.softBlue,
+    borderRadius: 18,
     padding: 16,
     flexDirection: 'row',
     borderWidth: 1,
@@ -776,7 +777,7 @@ const styles = StyleSheet.create({
 
   logoutButton: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 18,
     paddingVertical: 17,
     alignItems: 'center',
     justifyContent: 'center',
@@ -790,7 +791,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     color: '#D71920',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 
 });

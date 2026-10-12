@@ -1,15 +1,18 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from '../theme/colors';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 
 export default function QRScreen() {
   return (
-    <ScrollView style={styles.container}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: colors.background }}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.container}>
 
       <Text style={styles.title}>
         Pagos con Código QR
       </Text>
 
       <Text style={styles.subtitle}>
-        Realiza pagos digitales rápidos y seguros mediante códigos QR.
+        Vista de demostración. Los pagos y el escáner aún no están conectados.
       </Text>
 
       <View style={styles.qrCard}>
@@ -24,7 +27,7 @@ export default function QRScreen() {
         </View>
 
         <Text style={styles.userName}>
-          Héctor Delgado
+          Cuenta de ejemplo
         </Text>
 
         <Text style={styles.accountInfo}>
@@ -34,7 +37,7 @@ export default function QRScreen() {
 
       <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>
-          Funciones disponibles
+          Funciones previstas
         </Text>
 
         <Text style={styles.option}>
@@ -60,52 +63,54 @@ export default function QRScreen() {
         </Text>
 
         <Text style={styles.securityText}>
-          Todos los pagos son protegidos mediante autenticación segura y cifrado de datos.
+          Este prototipo no procesa pagos ni contiene un código QR válido.
         </Text>
       </View>
 
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity disabled style={[styles.button, { opacity: 0.5 }]}>
         <Text style={styles.buttonText}>
           Escanear QR
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.secondaryButton}>
+      <TouchableOpacity disabled style={[styles.secondaryButton, { opacity: 0.5 }]}>
         <Text style={styles.secondaryButtonText}>
           Generar QR
         </Text>
       </TouchableOpacity>
 
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
 
   container: {
-    flex: 1,
-    backgroundColor: '#F4F6FA',
+    flexGrow: 1,
+    backgroundColor: colors.background,
     padding: 20,
-    paddingTop: 70,
+    paddingTop: 16,
+    paddingBottom: 28,
   },
 
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#001F54',
+    color: colors.ink,
     marginBottom: 10,
   },
 
   subtitle: {
     fontSize: 16,
     color: '#555',
-    marginBottom: 25,
+    marginBottom: 18,
   },
 
   qrCard: {
     backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 25,
+    borderRadius: 18,
+    padding: 18,
     alignItems: 'center',
     marginBottom: 20,
 
@@ -116,9 +121,9 @@ const styles = StyleSheet.create({
   },
 
   qrTitle: {
-    fontSize: 22,
+    fontSize: 19,
     fontWeight: 'bold',
-    color: '#001F54',
+    color: colors.ink,
     marginBottom: 20,
   },
 
@@ -126,22 +131,22 @@ const styles = StyleSheet.create({
     width: 220,
     height: 220,
     backgroundColor: '#D9E6FF',
-    borderRadius: 20,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
 
   qrText: {
-    fontSize: 48,
+    fontSize: 40,
     fontWeight: 'bold',
-    color: '#001F54',
+    color: colors.ink,
   },
 
   userName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#001F54',
+    color: colors.ink,
     marginBottom: 5,
   },
 
@@ -152,8 +157,8 @@ const styles = StyleSheet.create({
 
   sectionCard: {
     backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 22,
+    borderRadius: 18,
+    padding: 18,
     marginBottom: 20,
 
     shadowColor: '#000',
@@ -163,9 +168,9 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#001F54',
+    color: colors.ink,
     marginBottom: 15,
   },
 
@@ -176,15 +181,15 @@ const styles = StyleSheet.create({
   },
 
   securityCard: {
-    backgroundColor: '#001F54',
-    borderRadius: 20,
-    padding: 22,
-    marginBottom: 25,
+    backgroundColor: colors.ink,
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 18,
   },
 
   securityTitle: {
     color: 'white',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 10,
   },
@@ -196,7 +201,7 @@ const styles = StyleSheet.create({
   },
 
   button: {
-    backgroundColor: '#0A84FF',
+    backgroundColor: colors.primary,
     padding: 18,
     borderRadius: 15,
     marginBottom: 15,
@@ -210,7 +215,7 @@ const styles = StyleSheet.create({
   },
 
   secondaryButton: {
-    backgroundColor: '#001F54',
+    backgroundColor: colors.ink,
     padding: 18,
     borderRadius: 15,
     marginBottom: 40,
