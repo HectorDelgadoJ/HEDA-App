@@ -1,3 +1,5 @@
+import ScreenHeader from '../components/ScreenHeader';
+import { layout } from '../theme/layout';
 import PaymentSource from '../components/PaymentSource';
 import { transactionRows, accountRows } from '../services/finance';
 import { cashBalance, isSpending } from '../utils/finance';
@@ -63,7 +65,7 @@ export default function ExpensesScreen({ route, navigation }) {
   const [saving, setSaving] = useState(false);
   const [saveNotice, setSaveNotice] = useState('');
   const [section, setSection] = useState('Nuevo');
-  useEffect(() => { if (route?.params?.openSection === 'Recurrentes') { setSection('Recurrentes'); navigation.setParams({ openSection: undefined }); } }, [route?.params?.openSection, navigation]);
+  useEffect(() => { if (['Nuevo', 'Historial', 'Recurrentes'].includes(route?.params?.openSection)) { setSection(route.params.openSection); navigation.setParams({ openSection: undefined }); } }, [route?.params?.openSection, navigation]);
   const [noteOpen, setNoteOpen] = useState(false);
   const [errors, setErrors] = useState({});
   const [editErrors, setEditErrors] = useState({});
@@ -686,20 +688,7 @@ export default function ExpensesScreen({ route, navigation }) {
       >
         {/* HEADER */}
 
-        <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.logo}>
-              Movimientos
-            </Text>
-
-            <Text style={styles.subtitle}>
-              Registra lo que entra y lo que sale
-            </Text>
-          </View>
-          <View style={styles.headerBadge}>
-            <Ionicons name="swap-vertical-outline" size={26} color="#FFFFFF" />
-          </View>
-        </View>
+        <ScreenHeader title="Movimientos" subtitle="Registra lo que entra y lo que sale" icon="swap-vertical-outline" />
 
         <View style={{ marginBottom: 14 }}>
           <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 8 }}>Elige cómo llevar tus movimientos</Text>
@@ -1262,52 +1251,14 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    padding: 18,
+    padding: layout.screenPadding,
     paddingBottom: 28,
   },
 
-  header: {
-    backgroundColor: colors.primary,
-    padding: 18,
-    borderRadius: 20,
-    gap: 12,
-    marginTop: 2,
-    marginBottom: 18,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
 
-  logo: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
 
-  subtitle: {
-    marginTop: 4,
-    fontSize: 14,
-    color: '#E6F0FF',
-  },
 
-  headerBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 
-  notificationButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 2,
-  },
 
   balanceCard: {
     backgroundColor: '#FFFFFF',

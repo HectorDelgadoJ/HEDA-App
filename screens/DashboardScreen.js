@@ -1,3 +1,5 @@
+import ScreenHeader from '../components/ScreenHeader';
+import { layout } from '../theme/layout';
 import { cashBalance, isSpending, cardDebt } from '../utils/finance';
 import { transactionRows, accountRows } from '../services/finance';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +17,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +31,7 @@ export default function DashboardScreen({ navigation }) {
   const [cardError, setCardError] = useState(false);
   const [mainGoal, setMainGoal] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   // =====================================================
   // CARGAR DASHBOARD
@@ -42,6 +46,7 @@ export default function DashboardScreen({ navigation }) {
   async function loadDashboard() {
     try {
       setLoading(true);
+      setLoadError(false);
 
       const {
         data: { user },
@@ -49,6 +54,7 @@ export default function DashboardScreen({ navigation }) {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
+        setLoadError(true);
         console.log(
           'Error obteniendo usuario:',
           userError?.message
@@ -76,6 +82,7 @@ export default function DashboardScreen({ navigation }) {
           accountRows('card_payments', '*', user.id),
         ]);
 
+      setLoadError(!!transactionsResult.error || !!goalResult.error);
       setCards(cardResult.data || []);
       setCardError(!!cardResult.error && !['PGRST205', '42P01'].includes(cardResult.error.code));
       // MOVIMIENTOS
@@ -102,6 +109,7 @@ export default function DashboardScreen({ navigation }) {
         setMainGoal(goalResult.data || null);
       }
     } catch (error) {
+      setLoadError(true);
       console.log(
         'Error inesperado cargando Dashboard:',
         error
@@ -126,8 +134,13 @@ export default function DashboardScreen({ navigation }) {
   // TOTALES GENERALES
   // =====================================================
 
+  const monthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+  const monthTransactions = useMemo(() => transactions.filter(item => item.transaction_date?.startsWith(monthKey)), [transactions, monthKey]);
+  const monthLabel = new Date().toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+  const recentTransactions = [...transactions].sort((a, b) => (b.transaction_date || '').localeCompare(a.transaction_date || '') || (b.created_at || '').localeCompare(a.created_at || '')).slice(0, 3);
+
   const totalIncome = useMemo(() => {
-    return transactions
+    return monthTransactions
       .filter(
         (transaction) =>
           transaction.type === 'income'
@@ -137,10 +150,10 @@ export default function DashboardScreen({ navigation }) {
           total + Number(transaction.amount),
         0
       );
-  }, [transactions]);
+  }, [monthTransactions]);
 
   const totalExpenses = useMemo(() => {
-    return transactions
+    return monthTransactions
       .filter(
         (transaction) =>
           isSpending(transaction)
@@ -150,7 +163,7 @@ export default function DashboardScreen({ navigation }) {
           total + Number(transaction.amount),
         0
       );
-  }, [transactions]);
+  }, [monthTransactions]);
 
   const balance = cashBalance(transactions);
 
@@ -161,7 +174,7 @@ export default function DashboardScreen({ navigation }) {
   const categoryData = useMemo(() => {
     const categories = {};
 
-    transactions
+    monthTransactions
       .filter(
         (transaction) =>
           isSpending(transaction)
@@ -182,7 +195,7 @@ export default function DashboardScreen({ navigation }) {
     return Object.entries(categories)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3);
-  }, [transactions]);
+  }, [monthTransactions]);
 
   // =====================================================
   // DATOS ÚLTIMOS 6 MESES
@@ -290,8 +303,8 @@ export default function DashboardScreen({ navigation }) {
   // =====================================================
 
   function getFinancialSummary() {
-    if (transactions.length === 0) {
-      return 'Registra tus primeros movimientos para comenzar a generar tu resumen financiero.';
+    if (monthTransactions.length === 0) {
+      return 'Todavía no tienes movimientos este mes. Registra un ingreso o gasto para empezar.';
     }
 
     if (
@@ -323,7 +336,7 @@ export default function DashboardScreen({ navigation }) {
 
       return `Tu mayor categoría de gasto es ${biggestCategory}, con aproximadamente ${percentage.toFixed(
         0
-      )}% de tus egresos registrados.`;
+      )}% de tus gastos de este mes.`;
     }
 
     return 'Continúa registrando movimientos para obtener un análisis financiero más completo.';
@@ -357,31 +370,13 @@ export default function DashboardScreen({ navigation }) {
         style={styles.container}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadDashboard} tintColor={colors.primary} />}
       >
         {/* HEADER */}
 
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.logo}>
-              HEDA
-            </Text>
+        <ScreenHeader title="Inicio" subtitle="Tu dinero, de un vistazo" actionIcon="notifications-outline" actionLabel="Abrir notificaciones" onAction={() => navigation.navigate('Alertas')} />
 
-            <Text style={styles.subtitle}>
-              Gestión financiera inteligente
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.notificationButton}
-          >
-            <Ionicons
-              name="notifications-outline"
-              size={22}
-              color={colors.ink}
-            />
-          </TouchableOpacity>
-        </View>
-
+        {loadError && <View style={styles.errorCard}><Text style={styles.cardText}>No pudimos actualizar toda tu información. Desliza hacia abajo para reintentar; los datos pueden estar desactualizados.</Text></View>}
         {/* BALANCE */}
 
         <View style={styles.balanceCard}>
@@ -396,34 +391,42 @@ export default function DashboardScreen({ navigation }) {
               style={styles.loadingBalance}
             />
           ) : (
-            <Text style={styles.balanceAmount}>
+            <Text style={styles.balanceAmount} numberOfLines={1} adjustsFontSizeToFit>
               ${formatCurrency(balance)}
             </Text>
           )}
 
+          <Text style={styles.balanceHint}>MXN · Acumulado de tus movimientos</Text>
+          <Text style={styles.periodLabel}>Este mes · {monthLabel}</Text>
           <View style={styles.balanceRow}>
-            <View style={styles.balanceItem}>
-              <Text style={styles.smallLabel}>
+            <View style={[styles.balanceItem, styles.incomeTile]}>
+              <View style={styles.metricHeading}><Ionicons name="arrow-down-outline" size={15} color="#157347" /><Text style={[styles.smallLabel, styles.incomeLabel]}>
                 Ingresos
-              </Text>
+              </Text></View>
 
-              <Text style={styles.income}>
+              <Text style={styles.income} numberOfLines={1} adjustsFontSizeToFit>
                 +${formatCurrency(totalIncome)}
               </Text>
             </View>
 
-            <View style={styles.separator} />
-
-            <View style={styles.balanceItem}>
-              <Text style={styles.smallLabel}>
+            <View style={[styles.balanceItem, styles.expenseTile]}>
+              <View style={styles.metricHeading}><Ionicons name="arrow-up-outline" size={15} color="#B42332" /><Text style={[styles.smallLabel, styles.expenseLabel]}>
                 Gastos
-              </Text>
+              </Text></View>
 
-              <Text style={styles.expense}>
+              <Text style={styles.expense} numberOfLines={1} adjustsFontSizeToFit>
                 -${formatCurrency(totalExpenses)}
               </Text>
             </View>
           </View>
+          {cards.some(card => card.ledger_enabled) && <Text style={styles.balanceHint}>Los cargos a crédito se incluyen en gastos. Tu saldo baja cuando pagas la tarjeta.</Text>}
+        </View>
+
+        <View style={styles.quickRow}>
+          <QuickAction icon="add-circle-outline" label="Registrar" onPress={() => navigation.navigate('Movimientos', { openSection: 'Nuevo' })} />
+          <QuickAction icon="receipt-outline" label="Historial" onPress={() => navigation.navigate('Movimientos', { openSection: 'Historial' })} />
+          <QuickAction icon="calendar-outline" label="Programados" onPress={() => navigation.navigate('Movimientos', { openSection: 'Recurrentes' })} />
+          <QuickAction icon="sparkles-outline" label="IA" onPress={() => navigation.navigate('IA')} />
         </View>
 
         {!loading && (cards.some(card => card.ledger_enabled) || cardError) && <View style={{ padding: 16, borderRadius: 18, borderWidth: 1, borderColor: colors.border, backgroundColor: '#FFFFFF', marginBottom: 18 }}>
@@ -434,42 +437,6 @@ export default function DashboardScreen({ navigation }) {
           </View>)}
           <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('Movimientos', { openSection: 'Recurrentes' })} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: colors.primary, fontWeight: '600' }}>Ver tarjetas y pagos</Text></TouchableOpacity>
         </View>}
-        {/* ACCESOS RÁPIDOS */}
-
-        <View style={styles.quickRow}>
-          <QuickAction
-            icon="add-circle-outline"
-            label="Agregar"
-            onPress={() =>
-              navigation.navigate('Movimientos')
-            }
-          />
-
-          <QuickAction
-            icon="wallet-outline"
-            label="Gastos"
-            onPress={() =>
-              navigation.navigate('Movimientos')
-            }
-          />
-
-          <QuickAction
-            icon="qr-code-outline"
-            label="QR"
-            onPress={() =>
-              navigation.navigate('QR')
-            }
-          />
-
-          <QuickAction
-            icon="sparkles-outline"
-            label="IA"
-            onPress={() =>
-              navigation.navigate('IA')
-            }
-          />
-        </View>
-
         {/* RESUMEN */}
 
         <View style={styles.aiCard}>
@@ -483,7 +450,7 @@ export default function DashboardScreen({ navigation }) {
 
           <View style={{ flex: 1 }}>
             <Text style={styles.cardTitle}>
-              Resumen inteligente
+              Tu resumen del mes
             </Text>
 
             <Text style={styles.cardText}>
@@ -492,6 +459,16 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
 
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Últimos movimientos</Text>
+          <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('Movimientos', { openSection: 'Historial' })} style={styles.linkButton}><Text style={styles.sectionLink}>Ver todos</Text></TouchableOpacity>
+        </View>
+        <View style={styles.recentCard}>
+          {recentTransactions.length === 0 ? <Text style={styles.cardText}>Tu historial comienza con tu primer movimiento.</Text> : recentTransactions.map(item => <View key={item.id} style={styles.recentRow}>
+            <View style={{ flex: 1 }}><Text style={styles.recentTitle}>{item.is_card_payment ? 'Pago de tarjeta' : item.category || 'Movimiento'}</Text><Text style={styles.recentDate}>{new Date(`${item.transaction_date}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}{item.card_id && !item.is_card_payment ? ' · A crédito' : ''}</Text></View>
+            <Text style={{ color: item.type === 'income' ? '#157347' : '#B42332', fontWeight: '700', fontSize: 15 }}>{item.type === 'income' ? '+' : '−'}${formatCurrency(item.amount)}</Text>
+          </View>)}
+        </View>
         {/* TARJETAS */}
 
         <View style={styles.twoCards}>
@@ -679,7 +656,7 @@ export default function DashboardScreen({ navigation }) {
                             maxMonthlyAmount) *
                             105
                         )
-                      : 3
+                      : 0
                   }
                   expenseHeight={
                     month.expenses > 0
@@ -689,7 +666,7 @@ export default function DashboardScreen({ navigation }) {
                             maxMonthlyAmount) *
                             105
                         )
-                      : 3
+                      : 0
                   }
                 />
               )
@@ -701,7 +678,7 @@ export default function DashboardScreen({ navigation }) {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
-            Categorías de gasto
+            Gastos de este mes
           </Text>
 
           <TouchableOpacity
@@ -767,6 +744,7 @@ function QuickAction({
 }) {
   return (
     <TouchableOpacity
+      accessibilityRole="button"
       style={styles.quickAction}
       onPress={onPress}
     >
@@ -867,6 +845,21 @@ function Category({
 // =====================================================
 
 const styles = StyleSheet.create({
+  incomeTile: { backgroundColor: '#EAF7EF', borderWidth: 1, borderColor: '#B9E1C9' },
+  expenseTile: { backgroundColor: '#FFF0F0', borderWidth: 1, borderColor: '#F2C4C9' },
+  metricHeading: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 },
+  incomeLabel: { color: '#157347' },
+  expenseLabel: { color: '#B42332' },
+
+  balanceHint: { color: '#E0ECFF', fontSize: 12, marginBottom: 16 },
+  periodLabel: { color: '#FFFFFF', fontSize: 12, marginBottom: 8, textTransform: 'capitalize' },
+  errorCard: { padding: 14, borderRadius: 14, backgroundColor: '#FFF4E5', marginBottom: 14 },
+  recentCard: { backgroundColor: '#FFFFFF', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 8, marginBottom: 18 },
+  recentRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
+  recentTitle: { color: colors.ink, fontWeight: '600', fontSize: 14 },
+  recentDate: { color: colors.muted, marginTop: 4, fontSize: 12 },
+  linkButton: { minHeight: 44, justifyContent: 'center', paddingLeft: 8 },
+
   safe: {
     flex: 1,
     backgroundColor: colors.background,
@@ -878,39 +871,13 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    padding: 18,
+    padding: layout.screenPadding,
     paddingBottom: 28,
   },
 
-  header: {
-    marginTop: 2,
-    marginBottom: 18,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
 
-  logo: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: colors.ink,
-  },
 
-  subtitle: {
-    marginTop: 4,
-    fontSize: 14,
-    color: colors.muted,
-  },
 
-  notificationButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 2,
-  },
 
   balanceCard: {
     backgroundColor: colors.primary,
@@ -938,37 +905,11 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
 
-  balanceRow: {
-    flexDirection: 'row',
-    backgroundColor:
-      'rgba(255,255,255,0.14)',
-    borderRadius: 16,
-    padding: 14,
-  },
-
-  balanceItem: {
-    flex: 1,
-  },
-
-  smallLabel: {
-    color: '#DCEEFF',
-    fontSize: 12,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-
-  income: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  expense: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'right',
-  },
+  balanceRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  balanceItem: { flex: 1, minWidth: 0, borderRadius: 15, padding: 12 },
+  smallLabel: { fontSize: 12, fontWeight: '600' },
+  income: { color: '#157347', fontSize: 18, fontWeight: '700' },
+  expense: { color: '#B42332', fontSize: 18, fontWeight: '700' },
 
   separator: {
     width: 1,
@@ -1140,11 +1081,11 @@ const styles = StyleSheet.create({
   },
 
   incomeLegend: {
-    backgroundColor: colors.ink,
+    backgroundColor: '#157347',
   },
 
   expenseLegend: {
-    backgroundColor: '#AFCDEC',
+    backgroundColor: '#D86666',
   },
 
   legendText: {
@@ -1179,11 +1120,11 @@ const styles = StyleSheet.create({
   },
 
   incomeBar: {
-    backgroundColor: colors.ink,
+    backgroundColor: '#157347',
   },
 
   expenseBar: {
-    backgroundColor: '#AFCDEC',
+    backgroundColor: '#D86666',
   },
 
   barLabel: {

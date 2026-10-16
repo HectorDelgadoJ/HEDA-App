@@ -45,8 +45,8 @@ export function CategoryPicker({ type, value, onChange, disabled = false, option
   </View>;
 }
 
-export function MovementDate({ value, onChange, disabled = false }) {
-  const [open, setOpen] = useState(false);
+export function MovementDate({ value, onChange, disabled = false, title = 'Fecha del movimiento', initiallyOpen = false }) {
+  const [open, setOpen] = useState(initiallyOpen);
   const [month, setMonth] = useState(() => value.slice(0, 7));
   const [year, monthNumber] = month.split('-').map(Number);
   const palette = colors.primary;
@@ -61,7 +61,7 @@ export function MovementDate({ value, onChange, disabled = false }) {
     <TouchableOpacity disabled={disabled} accessibilityRole="button" accessibilityLabel={`Fecha: ${label}. Cambiar fecha`}
       accessibilityState={{ expanded: open, disabled }} onPress={() => { setMonth(value.slice(0, 7)); setOpen(!open); }} style={styles.dateHeader}>
       <Ionicons name="calendar-outline" size={22} color={colors.ink} />
-      <View style={{ flex: 1 }}><Text style={styles.caption}>Fecha del movimiento</Text><Text style={styles.dateValue}>{label}</Text></View>
+      <View style={{ flex: 1 }}><Text style={styles.caption}>{title}</Text><Text style={styles.dateValue}>{label}</Text></View>
       <Text style={styles.change}>Cambiar</Text>
       <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color={palette} />
     </TouchableOpacity>

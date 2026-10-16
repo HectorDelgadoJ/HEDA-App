@@ -1,10 +1,11 @@
+import SwipeBackToIA from '../components/SwipeBackToIA';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 
-export default function EthereumScreen() {
+export default function EthereumScreen({ navigation }) {
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: colors.background }}>
+    <SwipeBackToIA navigation={navigation}><SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: colors.background }}>
     <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.container}>
 
       <Text style={styles.title}>
@@ -87,7 +88,7 @@ export default function EthereumScreen() {
 
 
     </ScrollView>
-    </SafeAreaView>
+    </SafeAreaView></SwipeBackToIA>
   );
 }
 

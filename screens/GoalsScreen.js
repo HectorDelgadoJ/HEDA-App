@@ -1,4 +1,9 @@
-import { cashBalance, isSpending } from '../utils/finance';
+import ScreenHeader from '../components/ScreenHeader';
+import { layout } from '../theme/layout';
+import { MovementDate } from '../components/MovementFields';
+import { localDate } from '../utils/movementForm';
+import { reportPeriod, reportData } from '../utils/reports';
+import { isSpending } from '../utils/finance';
 import { transactionRows } from '../services/finance';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
@@ -14,6 +19,7 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
+  RefreshControl,
   Keyboard,
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
@@ -37,6 +43,9 @@ export default function GoalsScreen() {
   const [savingContribution, setSavingContribution] = useState(false);
 
   const [filter, setFilter] = useState('monthly');
+  const [periodOffset, setPeriodOffset] = useState(0);
+  const [loadError, setLoadError] = useState(false);
+  const [selectedBar, setSelectedBar] = useState(null);
 
   const [goalModalVisible, setGoalModalVisible] = useState(false);
   const [contributionModalVisible, setContributionModalVisible] =
@@ -45,6 +54,9 @@ export default function GoalsScreen() {
   const [goalName, setGoalName] = useState('');
   const [goalTarget, setGoalTarget] = useState('');
   const [goalDate, setGoalDate] = useState('');
+  const [chooseGoalDate, setChooseGoalDate] = useState(false);
+  const [selectedGoalId, setSelectedGoalId] = useState(null);
+  const [deletingGoalId, setDeletingGoalId] = useState(null);
 
   const [contributionAmount, setContributionAmount] = useState('');
 
@@ -61,6 +73,7 @@ export default function GoalsScreen() {
   async function loadData() {
     try {
       setLoading(true);
+      setLoadError(false);
 
       const {
         data: { user },
@@ -68,6 +81,7 @@ export default function GoalsScreen() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
+        setLoadError(true);
         console.log(
           'Error obteniendo usuario:',
           userError?.message
@@ -90,6 +104,7 @@ export default function GoalsScreen() {
           }),
       ]);
 
+      setLoadError(!!transactionsResult.error || !!goalsResult.error);
       if (transactionsResult.error) {
         console.log(
           'Error cargando movimientos:',
@@ -108,6 +123,7 @@ export default function GoalsScreen() {
         setGoals(goalsResult.data || []);
       }
     } catch (error) {
+      setLoadError(true);
       console.log(
         'Error cargando reportes:',
         error
@@ -135,6 +151,30 @@ export default function GoalsScreen() {
   // CREAR META
   // =====================================================
 
+  function confirmDeleteGoal(goal) {
+    Alert.alert('Eliminar meta', `¿Quieres eliminar “${goal.name}”? Se borrará su progreso registrado. Esto no cambia tus movimientos ni tu saldo disponible.`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar', style: 'destructive', onPress: () => deleteGoal(goal) },
+    ]);
+  }
+
+  async function deleteGoal(goal) {
+    if (deletingGoalId) return;
+    setDeletingGoalId(goal.id);
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error('Sesión no disponible');
+      const { data, error } = await supabase.from('goals').delete().eq('id', goal.id).eq('user_id', user.id).select('id');
+      if (error || !data?.length) throw error || new Error('No se pudo eliminar la meta');
+      setGoals(current => current.filter(item => item.id !== goal.id));
+      if (selectedGoalId === goal.id) { setSelectedGoalId(null); setContributionModalVisible(false); }
+    } catch (error) {
+      Alert.alert('No se pudo eliminar', 'Tu meta sigue guardada. Revisa tu conexión e inténtalo de nuevo.');
+    } finally {
+      setDeletingGoalId(null);
+    }
+  }
+
   async function createGoal() {
     Keyboard.dismiss();
 
@@ -153,7 +193,7 @@ export default function GoalsScreen() {
     }
 
     if (
-      Number.isNaN(numericTarget) ||
+      !Number.isFinite(numericTarget) ||
       numericTarget <= 0
     ) {
       Alert.alert(
@@ -243,6 +283,7 @@ export default function GoalsScreen() {
       setGoalName('');
       setGoalTarget('');
       setGoalDate('');
+      setChooseGoalDate(false);
 
       Keyboard.dismiss();
       setGoalModalVisible(false);
@@ -275,7 +316,7 @@ export default function GoalsScreen() {
   async function addContribution() {
     Keyboard.dismiss();
 
-    const mainGoal = goals[0];
+    const mainGoal = goals.find(goal => goal.id === selectedGoalId);
 
     if (!mainGoal) {
       Alert.alert(
@@ -292,7 +333,7 @@ export default function GoalsScreen() {
     );
 
     if (
-      Number.isNaN(numericAmount) ||
+      !Number.isFinite(numericAmount) ||
       numericAmount <= 0
     ) {
       Alert.alert(
@@ -375,96 +416,13 @@ export default function GoalsScreen() {
   // FILTRAR TRANSACCIONES
   // =====================================================
 
-  const filteredTransactions = useMemo(() => {
-    const now = new Date();
-
-    return transactions.filter((transaction) => {
-      if (!transaction.transaction_date) {
-        return false;
-      }
-
-      const [year, month, day] =
-        transaction.transaction_date
-          .split('-')
-          .map(Number);
-
-      const transactionDate = new Date(
-        year,
-        month - 1,
-        day
-      );
-
-      if (filter === 'monthly') {
-        return (
-          transactionDate.getFullYear() ===
-            now.getFullYear() &&
-          transactionDate.getMonth() ===
-            now.getMonth()
-        );
-      }
-
-      if (filter === 'yearly') {
-        return (
-          transactionDate.getFullYear() ===
-          now.getFullYear()
-        );
-      }
-
-      if (filter === 'weekly') {
-        const today = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate()
-        );
-
-        const selectedDate = new Date(
-          transactionDate.getFullYear(),
-          transactionDate.getMonth(),
-          transactionDate.getDate()
-        );
-
-        const difference =
-          today.getTime() -
-          selectedDate.getTime();
-
-        const days =
-          difference /
-          (1000 * 60 * 60 * 24);
-
-        return days >= 0 && days < 7;
-      }
-
-      return true;
-    });
-  }, [transactions, filter]);
-
-  // =====================================================
-  // TOTALES
-  // =====================================================
-
-  const totalIncome = filteredTransactions
-    .filter(
-      (transaction) =>
-        transaction.type === 'income'
-    )
-    .reduce(
-      (total, transaction) =>
-        total + Number(transaction.amount),
-      0
-    );
-
-  const totalExpenses = filteredTransactions
-    .filter(
-      (transaction) =>
-        isSpending(transaction)
-    )
-    .reduce(
-      (total, transaction) =>
-        total + Number(transaction.amount),
-      0
-    );
-
-  const balance = cashBalance(filteredTransactions);
+  const period = reportPeriod(filter, periodOffset);
+  const report = reportData(transactions, period);
+  const filteredTransactions = report.rows;
+  const totalIncome = report.income;
+  const totalExpenses = report.expenses;
+  const balance = report.result;
+  const periodText = `${new Date(`${period.start}T12:00:00`).toLocaleDateString('es-MX', {day:'numeric',month:'short',year:'numeric'})} – ${new Date(`${period.end}T12:00:00`).toLocaleDateString('es-MX', {day:'numeric',month:'short',year:'numeric'})}`;
 
   // =====================================================
   // CATEGORÍAS
@@ -500,77 +458,7 @@ export default function GoalsScreen() {
   // GRÁFICA DE LOS ÚLTIMOS 6 MESES
   // =====================================================
 
-  const monthlyData = useMemo(() => {
-    const result = [];
-    const now = new Date();
-
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(
-        now.getFullYear(),
-        now.getMonth() - i,
-        1
-      );
-
-      const year = date.getFullYear();
-      const month = date.getMonth();
-
-      let income = 0;
-      let expenses = 0;
-
-      transactions.forEach(
-        (transaction) => {
-          if (
-            !transaction.transaction_date
-          ) {
-            return;
-          }
-
-          const [
-            transactionYear,
-            transactionMonth,
-          ] = transaction.transaction_date
-            .split('-')
-            .map(Number);
-
-          if (
-            transactionYear === year &&
-            transactionMonth - 1 === month
-          ) {
-            if (
-              transaction.type ===
-              'income'
-            ) {
-              income += Number(
-                transaction.amount
-              );
-            }
-
-            if (
-              isSpending(transaction)
-            ) {
-              expenses += Number(
-                transaction.amount
-              );
-            }
-          }
-        }
-      );
-
-      result.push({
-        label: date
-          .toLocaleDateString('es-MX', {
-            month: 'short',
-          })
-          .replace('.', '')
-          .substring(0, 3),
-
-        income,
-        expenses,
-      });
-    }
-
-    return result;
-  }, [transactions]);
+  const monthlyData = report.buckets;
 
   const maxChartAmount = Math.max(
     ...monthlyData.map((month) =>
@@ -586,16 +474,7 @@ export default function GoalsScreen() {
   // META PRINCIPAL
   // =====================================================
 
-  const mainGoal = goals[0];
-
-  const goalPercentage = mainGoal
-    ? Math.min(
-        (Number(mainGoal.current_amount) /
-          Number(mainGoal.target_amount)) *
-          100,
-        100
-      )
-    : 0;
+  const mainGoal = goals.find(goal => goal.id === selectedGoalId);
 
   // =====================================================
   // ANÁLISIS FINANCIERO
@@ -661,18 +540,6 @@ export default function GoalsScreen() {
     );
   }
 
-  function getPeriodName() {
-    if (filter === 'weekly') {
-      return 'Balance semanal';
-    }
-
-    if (filter === 'yearly') {
-      return 'Balance anual';
-    }
-
-    return 'Balance del mes';
-  }
-
   // =====================================================
   // INTERFAZ
   // =====================================================
@@ -684,38 +551,23 @@ export default function GoalsScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} tintColor={colors.primary} />}
       >
         {/* HEADER */}
 
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.logo}>
-              Reportes
-            </Text>
+        <ScreenHeader title="Reportes" subtitle="Entiende cómo se mueve tu dinero" icon="bar-chart-outline" />
 
-            <Text style={styles.subtitle}>
-              Resumen financiero
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={
-              styles.notificationButton
-            }
-          >
-            <Ionicons
-              name="bar-chart-outline"
-              size={22}
-              color={colors.ink}
-            />
-          </TouchableOpacity>
+        {loadError && <View style={styles.notice}><Text style={styles.cardText}>No pudimos actualizar todos los datos. Desliza hacia abajo para reintentar.</Text></View>}
+        <View style={styles.periodNav}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Periodo anterior" style={styles.periodButton} onPress={() => { setPeriodOffset(value => value - 1); setSelectedBar(null); }}><Ionicons name="chevron-back" size={22} color={colors.ink} /></TouchableOpacity>
+          <Text style={styles.periodText}>{periodText}</Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Periodo siguiente" disabled={periodOffset === 0} style={[styles.periodButton, periodOffset === 0 && {opacity:0.3}]} onPress={() => { setPeriodOffset(value => Math.min(value + 1, 0)); setSelectedBar(null); }}><Ionicons name="chevron-forward" size={22} color={colors.ink} /></TouchableOpacity>
         </View>
-
         {/* RESUMEN */}
 
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>
-            {getPeriodName()}
+            Resultado del periodo
           </Text>
 
           {loading ? (
@@ -729,21 +581,22 @@ export default function GoalsScreen() {
             />
           ) : (
             <Text
-              style={styles.summaryAmount}
+              style={styles.summaryAmount} numberOfLines={1} adjustsFontSizeToFit
             >
               ${formatCurrency(balance)} MXN
             </Text>
           )}
 
+          <Text style={styles.summaryHint}>Ingresos menos gastos · No es tu saldo disponible</Text>
           <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
+            <View style={[styles.summaryItem, styles.incomeTile]}>
               <Text
-                style={styles.smallLabel}
+                style={[styles.smallLabel, { color: '#157347' }]}
               >
                 Ingresos
               </Text>
 
-              <Text style={styles.income}>
+              <Text style={styles.income} numberOfLines={1} adjustsFontSizeToFit>
                 +$
                 {formatCurrency(
                   totalIncome
@@ -751,16 +604,16 @@ export default function GoalsScreen() {
               </Text>
             </View>
 
-            <View style={styles.separator} />
 
-            <View style={styles.summaryItem}>
+
+            <View style={[styles.summaryItem, styles.expenseTile]}>
               <Text
-                style={styles.smallLabel}
+                style={[styles.smallLabel, { color: '#B42332' }]}
               >
-                Egresos
+                Gastos
               </Text>
 
-              <Text style={styles.expense}>
+              <Text style={styles.expense} numberOfLines={1} adjustsFontSizeToFit>
                 -$
                 {formatCurrency(
                   totalExpenses
@@ -770,7 +623,150 @@ export default function GoalsScreen() {
           </View>
         </View>
 
-        {transactions.some(row => row.card_id) && <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18, marginBottom: 14 }}>El importe superior muestra el cambio de tu saldo disponible en el periodo. Los egresos incluyen compras con tarjeta; pagarla no cuenta como un nuevo gasto.</Text>}
+        {transactions.some(row => row.card_id) && <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18, marginBottom: 14 }}>Los gastos incluyen compras con tarjeta. Pagar la tarjeta no cuenta como un nuevo gasto.</Text>}
+        {/* META */}
+
+        <View
+          style={styles.goalSectionHeader}
+        >
+          <Text style={styles.sectionTitle}>
+            Mis metas
+          </Text>
+
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Crear nueva meta de ahorro"
+            style={styles.newGoalButton}
+            onPress={() =>
+              setGoalModalVisible(true)
+            }
+          >
+            <Ionicons name="add" size={20} color="#FFFFFF" />
+            <Text style={styles.newGoalButtonText}>Nueva meta</Text>
+          </TouchableOpacity>
+        </View>
+
+        {goals.length > 0 ? goals.map(mainGoal => {
+          const goalPercentage = Number(mainGoal.target_amount) > 0 ? Math.min(100, Number(mainGoal.current_amount) / Number(mainGoal.target_amount) * 100) : 0;
+          return (
+          <View key={mainGoal.id} style={styles.goalCard}>
+            <View style={styles.goalHeader}>
+              <View style={styles.goalIcon}>
+                <Ionicons
+                  name="flag-outline"
+                  size={24}
+                  color={colors.primary}
+                />
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={styles.cardTitle}
+                >
+                  Meta de ahorro
+                </Text>
+
+                <Text
+                  style={styles.cardText}
+                >
+                  {mainGoal.name}
+                </Text>
+              </View>
+
+              <Text
+                style={styles.goalPercent}
+              >
+                {goalPercentage.toFixed(0)}%
+              </Text>
+            </View>
+
+            <View
+              style={
+                styles.progressBackground
+              }
+            >
+              <View
+                style={[
+                  styles.progressFill,
+                  {
+                    width: `${goalPercentage}%`,
+                  },
+                ]}
+              />
+            </View>
+
+            <View style={styles.goalFooter}>
+              <Text style={styles.goalText}>
+                $
+                {formatCurrency(
+                  mainGoal.current_amount
+                )}{' '}
+                acumulado
+              </Text>
+
+              <Text style={styles.goalText}>
+                Meta: $
+                {formatCurrency(
+                  mainGoal.target_amount
+                )}
+              </Text>
+            </View>
+
+            {mainGoal.target_date && (
+              <Text style={styles.goalDate}>
+                Fecha objetivo:{' '}
+                {new Date(`${mainGoal.target_date}T12:00:00`).toLocaleDateString('es-MX', {day:'numeric',month:'long',year:'numeric'})}
+              </Text>
+            )}
+
+            <TouchableOpacity
+              style={
+                styles.contributionButton
+              }
+              onPress={() => { setSelectedGoalId(mainGoal.id); setContributionAmount(''); setContributionModalVisible(true); }}
+            >
+              <Ionicons
+                name="add-circle-outline"
+                size={20}
+                color="#FFFFFF"
+              />
+
+              <Text
+                style={
+                  styles.contributionButtonText
+                }
+              >
+                Agregar ahorro
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Eliminar meta ${mainGoal.name}`} disabled={!!deletingGoalId} onPress={() => confirmDeleteGoal(mainGoal)} style={[styles.deleteGoalButton, deletingGoalId && { opacity: 0.5 }]}>
+              {deletingGoalId === mainGoal.id ? <ActivityIndicator color="#B42332" /> : <><Ionicons name="trash-outline" size={17} color="#B42332" /><Text style={styles.deleteGoalText}>Eliminar meta</Text></>}
+            </TouchableOpacity>
+          </View>
+        ); }) : (
+          <TouchableOpacity
+            style={styles.emptyGoalCard}
+            onPress={() =>
+              setGoalModalVisible(true)
+            }
+          >
+            <Ionicons
+              name="flag-outline"
+              size={34}
+              color={colors.primary}
+            />
+
+            <Text style={styles.emptyGoalTitle}>
+              Crea tu primera meta
+            </Text>
+
+            <Text style={styles.emptyGoalText}>
+              Define cuánto quieres ahorrar y
+              registra tu progreso.
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {/* FILTROS */}
 
         <View style={styles.filterRow}>
@@ -780,7 +776,7 @@ export default function GoalsScreen() {
               filter === 'monthly'
             }
             onPress={() =>
-              setFilter('monthly')
+              { setFilter('monthly'); setPeriodOffset(0); setSelectedBar(null); }
             }
           />
 
@@ -790,7 +786,7 @@ export default function GoalsScreen() {
               filter === 'weekly'
             }
             onPress={() =>
-              setFilter('weekly')
+              { setFilter('weekly'); setPeriodOffset(0); setSelectedBar(null); }
             }
           />
 
@@ -800,7 +796,7 @@ export default function GoalsScreen() {
               filter === 'yearly'
             }
             onPress={() =>
-              setFilter('yearly')
+              { setFilter('yearly'); setPeriodOffset(0); setSelectedBar(null); }
             }
           />
         </View>
@@ -818,7 +814,7 @@ export default function GoalsScreen() {
             <Text
               style={styles.sectionLink}
             >
-              6 meses
+              {filter === 'weekly' ? 'Por día' : filter === 'yearly' ? 'Por mes' : 'Por semana'}
             </Text>
           </View>
 
@@ -854,12 +850,18 @@ export default function GoalsScreen() {
             </View>
           </View>
 
-          <View style={styles.chart}>
+          <Text style={styles.chartHint}>Toca las barras para ver los importes · MXN</Text>
+          {selectedBar && <View style={styles.notice}><Text style={styles.cardText}>{selectedBar.label}: ingresos ${formatCurrency(selectedBar.income)} · gastos ${formatCurrency(selectedBar.expenses)}</Text></View>}
+          {totalIncome === 0 && totalExpenses === 0 && <Text style={styles.chartHint}>Sin ingresos ni gastos en este periodo.</Text>}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={[styles.chart, { minWidth: filter === 'yearly' ? 560 : 280, flex: 1 }]}>
             {monthlyData.map(
               (month, index) => (
                 <DoubleBar
                   key={`${month.label}-${index}`}
                   label={month.label}
+                  onPress={() => setSelectedBar(month)}
+                  description={`${month.label}: ingresos ${formatCurrency(month.income)}, gastos ${formatCurrency(month.expenses)}`}
                   incomeHeight={
                     month.income > 0
                       ? Math.max(
@@ -868,7 +870,7 @@ export default function GoalsScreen() {
                             maxChartAmount) *
                             110
                         )
-                      : 4
+                      : 0
                   }
                   expenseHeight={
                     month.expenses > 0
@@ -878,12 +880,14 @@ export default function GoalsScreen() {
                             maxChartAmount) *
                             110
                         )
-                      : 4
+                      : 0
                   }
                 />
               )
             )}
           </View>
+          </ScrollView>
+          {report.cardPayments > 0 && <Text style={styles.chartHint}>Pagaste ${formatCurrency(report.cardPayments)} a tarjetas. Estos pagos reducen tu dinero disponible y no vuelven a contar como gastos.</Text>}
         </View>
 
         {/* CATEGORÍAS */}
@@ -942,146 +946,6 @@ export default function GoalsScreen() {
               );
             }
           )
-        )}
-
-        {/* META */}
-
-        <View
-          style={styles.goalSectionHeader}
-        >
-          <Text style={styles.sectionTitle}>
-            Meta de ahorro
-          </Text>
-
-          <TouchableOpacity
-            onPress={() =>
-              setGoalModalVisible(true)
-            }
-          >
-            <Text style={styles.sectionLink}>
-              Nueva meta
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {mainGoal ? (
-          <View style={styles.goalCard}>
-            <View style={styles.goalHeader}>
-              <View style={styles.goalIcon}>
-                <Ionicons
-                  name="flag-outline"
-                  size={24}
-                  color={colors.primary}
-                />
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={styles.cardTitle}
-                >
-                  Meta principal
-                </Text>
-
-                <Text
-                  style={styles.cardText}
-                >
-                  {mainGoal.name}
-                </Text>
-              </View>
-
-              <Text
-                style={styles.goalPercent}
-              >
-                {goalPercentage.toFixed(0)}%
-              </Text>
-            </View>
-
-            <View
-              style={
-                styles.progressBackground
-              }
-            >
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    width: `${goalPercentage}%`,
-                  },
-                ]}
-              />
-            </View>
-
-            <View style={styles.goalFooter}>
-              <Text style={styles.goalText}>
-                $
-                {formatCurrency(
-                  mainGoal.current_amount
-                )}{' '}
-                acumulado
-              </Text>
-
-              <Text style={styles.goalText}>
-                Meta: $
-                {formatCurrency(
-                  mainGoal.target_amount
-                )}
-              </Text>
-            </View>
-
-            {mainGoal.target_date && (
-              <Text style={styles.goalDate}>
-                Fecha objetivo:{' '}
-                {mainGoal.target_date}
-              </Text>
-            )}
-
-            <TouchableOpacity
-              style={
-                styles.contributionButton
-              }
-              onPress={() =>
-                setContributionModalVisible(
-                  true
-                )
-              }
-            >
-              <Ionicons
-                name="add-circle-outline"
-                size={20}
-                color="#FFFFFF"
-              />
-
-              <Text
-                style={
-                  styles.contributionButtonText
-                }
-              >
-                Agregar ahorro
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity
-            style={styles.emptyGoalCard}
-            onPress={() =>
-              setGoalModalVisible(true)
-            }
-          >
-            <Ionicons
-              name="flag-outline"
-              size={34}
-              color={colors.primary}
-            />
-
-            <Text style={styles.emptyGoalTitle}>
-              Crea tu primera meta
-            </Text>
-
-            <Text style={styles.emptyGoalText}>
-              Define cuánto quieres ahorrar y
-              registra tu progreso.
-            </Text>
-          </TouchableOpacity>
         )}
 
         {/* ANÁLISIS */}
@@ -1156,6 +1020,7 @@ export default function GoalsScreen() {
                     false
                   }
                   keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} tintColor={colors.primary} />}
                 >
                   <Text
                     style={styles.inputLabel}
@@ -1198,17 +1063,11 @@ export default function GoalsScreen() {
                     Fecha objetivo (opcional)
                   </Text>
 
-                  <TextInput
-                    value={goalDate}
-                    onChangeText={setGoalDate}
-                    placeholder="2026-12-20"
-                    placeholderTextColor="#9CA3AF"
-                    style={styles.input}
-                    returnKeyType="done"
-                    onSubmitEditing={
-                      Keyboard.dismiss
-                    }
-                  />
+                  {chooseGoalDate ? <>
+                    <MovementDate title="Fecha meta" value={goalDate || localDate()} onChange={setGoalDate} initiallyOpen />
+                    <TouchableOpacity accessibilityRole="button" style={styles.optionalDateButton} onPress={() => { setGoalDate(''); setChooseGoalDate(false); }}><Text style={styles.sectionLink}>Quitar fecha · Sin fecha límite</Text></TouchableOpacity>
+                  </> : <TouchableOpacity accessibilityRole="button" style={styles.optionalDateButton} onPress={() => { Keyboard.dismiss(); setGoalDate(localDate()); setChooseGoalDate(true); }}><Ionicons name="calendar-outline" size={20} color={colors.primary} /><Text style={styles.sectionLink}>Elegir fecha</Text></TouchableOpacity>}
+                  <Text style={styles.chartHint}>Puedes crear la meta sin fecha límite.</Text>
 
                   <TouchableOpacity
                     style={[
@@ -1430,9 +1289,11 @@ function DoubleBar({
   incomeHeight,
   expenseHeight,
   label,
+  onPress,
+  description,
 }) {
   return (
-    <View style={styles.barContainer}>
+    <TouchableOpacity accessibilityRole="button" accessibilityLabel={description} onPress={onPress} style={styles.barContainer}>
       <View style={styles.doubleBar}>
         <View
           style={[
@@ -1458,7 +1319,7 @@ function DoubleBar({
       <Text style={styles.barLabel}>
         {label}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -1467,6 +1328,17 @@ function DoubleBar({
 // CATEGORÍA
 // =====================================================
 
+function categoryPalette(title) {
+  const palettes = {
+    Comida: ['#B65A11', '#FFF1E3'], Compras: ['#AD3E7B', '#FCECF5'],
+    Transporte: ['#2463B5', '#EAF2FF'], Hogar: ['#7951B0', '#F2ECFC'],
+    Servicios: ['#167B83', '#E5F5F5'], Salud: ['#B94454', '#FDECF0'],
+    Educación: ['#397547', '#EAF5EB'], Entretenimiento: ['#88631E', '#FFF5D9'],
+    Ocio: ['#88631E', '#FFF5D9'],
+  };
+  return palettes[title] || ['#59677C', '#EDF1F6'];
+}
+
 function CategoryBar({
   icon,
   title,
@@ -1474,15 +1346,16 @@ function CategoryBar({
   percent,
   width,
 }) {
+  const [accent, background] = categoryPalette(title);
   return (
-    <View style={styles.categoryCard}>
+    <View style={[styles.categoryCard, { borderLeftWidth: 4, borderLeftColor: accent }]}>
       <View style={styles.categoryHeader}>
         <View style={styles.categoryLeft}>
-          <View style={styles.categoryIcon}>
+          <View style={[styles.categoryIcon, {backgroundColor: background}]}>
             <Ionicons
               name={icon}
               size={21}
-              color={colors.primary}
+              color={accent}
             />
           </View>
 
@@ -1502,19 +1375,19 @@ function CategoryBar({
         </View>
 
         <Text
-          style={styles.categoryPercent}
+          style={[styles.categoryPercent, {color: accent}]}
         >
           {percent}
         </Text>
       </View>
 
       <View
-        style={styles.categoryProgress}
+        style={[styles.categoryProgress, {backgroundColor: background}]}
       >
         <View
           style={[
             styles.categoryProgressFill,
-            { width },
+            { width, backgroundColor: accent },
           ]}
         />
       </View>
@@ -1528,6 +1401,23 @@ function CategoryBar({
 // =====================================================
 
 const styles = StyleSheet.create({
+  newGoalButton: { minHeight: 44, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 13, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  newGoalButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+
+  deleteGoalButton: { marginTop: 10, minHeight: 44, borderRadius: 12, borderWidth: 1, borderColor: '#F2C4C9', backgroundColor: '#FFF0F0', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  deleteGoalText: { color: '#B42332', fontSize: 13, fontWeight: '600' },
+
+  optionalDateButton: { flexDirection:'row', gap:10, alignItems:'center', padding:14, borderRadius:14, backgroundColor:colors.softBlue, minHeight:48, marginBottom:8 },
+
+  notice: { padding: 12, borderRadius: 12, backgroundColor: '#EDF4FF', marginBottom: 12 },
+  periodNav: { flexDirection:'row', alignItems:'center', gap:8, marginBottom:14 },
+  periodButton: { width:44, height:44, borderRadius:14, backgroundColor:'#FFFFFF', alignItems:'center', justifyContent:'center' },
+  periodText: { flex:1, color:colors.ink, fontSize:12, fontWeight:'600', textAlign:'center' },
+  chartHint: { fontSize:12, color:colors.muted, lineHeight:18, marginTop:10, marginBottom:8 },
+  summaryHint: { color:'#E0ECFF', fontSize:12, lineHeight:18, marginBottom:14 },
+  incomeTile: { backgroundColor:'#EAF7EF', borderWidth:1, borderColor:'#B9E1C9' },
+  expenseTile: { backgroundColor:'#FFF0F0', borderWidth:1, borderColor:'#F2C4C9' },
+
   safe: {
     flex: 1,
     backgroundColor: colors.background,
@@ -1539,39 +1429,13 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    padding: 18,
+    padding: layout.screenPadding,
     paddingBottom: 28,
   },
 
-  header: {
-    marginTop: 2,
-    marginBottom: 18,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
 
-  logo: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: colors.ink,
-  },
 
-  subtitle: {
-    marginTop: 4,
-    fontSize: 14,
-    color: colors.muted,
-  },
 
-  notificationButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 2,
-  },
 
   summaryCard: {
     backgroundColor: colors.primary,
@@ -1593,37 +1457,11 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
 
-  summaryRow: {
-    flexDirection: 'row',
-    backgroundColor:
-      'rgba(255,255,255,0.14)',
-    borderRadius: 16,
-    padding: 14,
-  },
-
-  summaryItem: {
-    flex: 1,
-  },
-
-  smallLabel: {
-    color: '#DCEEFF',
-    fontSize: 12,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-
-  income: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-
-  expense: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'right',
-  },
+  summaryRow: { flexDirection:'row', gap:10 },
+  summaryItem: { flex:1, minWidth:0, padding:12, borderRadius:15 },
+  smallLabel: { fontSize:12, fontWeight:'600', marginBottom:8 },
+  income: { color:'#157347', fontSize:16, fontWeight:'700' },
+  expense: { color:'#B42332', fontSize:16, fontWeight:'700' },
 
   separator: {
     width: 1,
@@ -1721,11 +1559,11 @@ const styles = StyleSheet.create({
   },
 
   incomeDot: {
-    backgroundColor: colors.ink,
+    backgroundColor: '#157347',
   },
 
   expenseDot: {
-    backgroundColor: '#AFCDEC',
+    backgroundColor: '#D86666',
   },
 
   legendText: {
@@ -1743,6 +1581,8 @@ const styles = StyleSheet.create({
   },
 
   barContainer: {
+    minWidth: 38,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
@@ -1760,11 +1600,11 @@ const styles = StyleSheet.create({
   },
 
   incomeBar: {
-    backgroundColor: colors.ink,
+    backgroundColor: '#157347',
   },
 
   expenseBar: {
-    backgroundColor: '#AFCDEC',
+    backgroundColor: '#D86666',
   },
 
   barLabel: {
@@ -1791,6 +1631,8 @@ const styles = StyleSheet.create({
   },
 
   categoryLeft: {
+    flex: 1,
+    marginRight: 10,
     flexDirection: 'row',
     alignItems: 'center',
   },

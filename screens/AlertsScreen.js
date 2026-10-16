@@ -1,699 +1,205 @@
+import React, { useCallback, useRef, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Modal, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '../theme/colors';
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import ScreenHeader from '../components/ScreenHeader';
+import SwipeBackToIA from '../components/SwipeBackToIA';
+import { CategoryPicker } from '../components/MovementFields';
+import { categoryOptions, validateMovement, localDate } from '../utils/movementForm';
+import { financialAlerts, budgetProgress } from '../utils/alerts';
+import { accountRows } from '../services/finance';
+import { supabase } from '../services/supabase';
+import { colors } from '../theme/colors';
 
-const alerts = [
-  {
-    id: 1,
-    type: 'Presupuesto',
-    title: 'Presupuesto casi agotado',
-    message: 'Has usado el 92% de tu presupuesto de entretenimiento este mes.',
-    time: 'Hace 10 min',
-    priority: 'Alta',
-    icon: 'warning-outline',
-    category: 'danger',
-  },
-  {
-    id: 2,
-    type: 'Gasto inusual',
-    title: 'Gasto mayor al promedio',
-    message: 'Tu gasto en comida aumentó 34% respecto a semanas anteriores.',
-    time: 'Hace 1 hora',
-    priority: 'Media',
-    icon: 'fast-food-outline',
-    category: 'warning',
-  },
-  {
-    id: 3,
-    type: 'Meta de ahorro',
-    title: 'Buen avance en tu meta',
-    message: 'Estás al 85% de completar tu meta principal de ahorro.',
-    time: 'Hoy',
-    priority: 'Positiva',
-    icon: 'flag-outline',
-    category: 'success',
-  },
-  {
-    id: 4,
-    type: 'Ethereum',
-    title: 'Alta volatilidad detectada',
-    message: 'Ethereum presenta variaciones importantes. Consulta la información solo con fines educativos.',
-    time: 'Hoy',
-    priority: 'Media',
-    icon: 'trending-up-outline',
-    category: 'warning',
-  },
-  {
-    id: 5,
-    type: 'Seguridad',
-    title: 'Revisa tus datos de acceso',
-    message: 'Recuerda no compartir tus credenciales ni códigos de verificación.',
-    time: 'Ayer',
-    priority: 'Informativa',
-    icon: 'shield-checkmark-outline',
-    category: 'info',
-  },
-];
+const money = value => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
+const emptyData = () => ({ rows: null, budgets: null, rules: null, cards: null, goals: null });
+const palettes = { danger: ['#B91C1C', '#FEF2F2'], warning: ['#92400E', '#FFFBEB'], success: ['#15803D', '#F0FDF4'], info: [colors.primary, colors.softBlue] };
 
 export default function AlertsScreen({ navigation }) {
-  const [selectedFilter, setSelectedFilter] = useState('Todas');
+  const [tab, setTab] = useState('Alertas');
+  const [filter, setFilter] = useState('Todas');
+  const [data, setData] = useState(emptyData);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [errors, setErrors] = useState([]);
+  const [budgetMissing, setBudgetMissing] = useState(false);
+  const [readIds, setReadIds] = useState([]);
+  const [readReady, setReadReady] = useState(false);
+  const [modal, setModal] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [category, setCategory] = useState('Comida');
+  const [limit, setLimit] = useState('');
+  const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [reading, setReading] = useState(false);
+  const owner = useRef(null), sequence = useRef(0), focused = useRef(false), mutating = useRef(false), readingBusy = useRef(false);
 
-  const filters = ['Todas', 'Alta', 'Media', 'Positiva'];
+  const load = useCallback(async (refresh = false) => {
+    const request = ++sequence.current;
+    if (refresh) setRefreshing(true); else setLoading(true);
+    setErrors([]); setBudgetMissing(false);
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (request !== sequence.current || !focused.current) return;
+      if (error || !user) throw new Error('Vuelve a iniciar sesión para consultar tus alertas.');
+      if (owner.current !== user.id) { setData(emptyData()); setReadIds([]); setReadReady(false); setModal(false); owner.current = user.id; }
+      const tables = [
+        ['rows', 'transactions', 'id,type,amount,category,transaction_date,is_card_payment,card_id'],
+        ['budgets', 'budgets', 'id,category,monthly_limit'],
+        ['rules', 'recurring_movements', 'id,name,type,amount,next_date,active'],
+        ['cards', 'card_payments', 'id,name,amount,due_date,reminder,paid,ledger_enabled,opening_balance'],
+        ['goals', 'goals', 'id,name,target_amount,current_amount,target_date,status'],
+      ];
+      const results = await Promise.allSettled(tables.map(([, table, columns]) => accountRows(table, columns, user.id)));
+      const read = await AsyncStorage.getItem(`heda:alerts:read:v1:${user.id}`).then(raw => {
+        const parsed = raw ? JSON.parse(raw) : []; if (!Array.isArray(parsed)) throw new Error('Invalid read state');
+        return parsed.filter(id => typeof id === 'string').slice(-1000);
+      }).catch(() => null);
+      const { data: session } = await supabase.auth.getSession();
+      if (request !== sequence.current || !focused.current) return;
+      if (session.session?.user?.id !== user.id) throw new Error('Tu sesión cambió. Vuelve a abrir Alertas.');
+      const next = emptyData(), problems = [];
+      results.forEach((result, index) => {
+        const [key] = tables[index];
+        const resultError = result.status === 'rejected' ? result.reason : result.value.error;
+        if (resultError) {
+          if (key === 'budgets' && ['42P01', 'PGRST205'].includes(resultError.code)) setBudgetMissing(true);
+          problems.push({ rows: 'No pudimos cargar movimientos: el avance de presupuestos y los avisos de tarjetas no están disponibles.', budgets: 'No pudimos cargar presupuestos. Si es la primera vez, ejecuta el SQL de presupuestos y actualiza.', rules: 'No pudimos cargar tus programaciones.', cards: 'No pudimos cargar tus tarjetas.', goals: 'No pudimos cargar tus metas.' }[key]);
+        } else next[key] = result.value.data || [];
+      });
+      if (read === null) problems.push('No pudimos recuperar las alertas leídas en este dispositivo. Actualiza para reintentar.');
+      setReadReady(read !== null); setReadIds(read || []); setData(next); setErrors(problems);
+    } catch (error) {
+      if (request === sequence.current && focused.current) { setData(emptyData()); setErrors([error.message || 'No pudimos cargar las alertas.']); }
+    } finally {
+      if (request === sequence.current && focused.current) { setLoading(false); setRefreshing(false); }
+    }
+  }, []);
 
-  const filteredAlerts =
-    selectedFilter === 'Todas'
-      ? alerts
-      : alerts.filter((alert) => alert.priority === selectedFilter);
+  useFocusEffect(useCallback(() => {
+    focused.current = true; void load();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (owner.current && owner.current !== (session?.user?.id || null)) {
+        sequence.current++; owner.current = null; setData(emptyData()); setReadIds([]); setReadReady(false); setModal(false); setLoading(false); setRefreshing(false); setErrors(['Tu sesión cambió. Vuelve a abrir Alertas.']);
+      }
+    });
+    return () => { focused.current = false; sequence.current++; subscription.unsubscribe(); };
+  }, [load]));
 
-  return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* HEADER */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.navigate('IA')}
-          >
-            <Ionicons name="arrow-back" size={22} color={colors.ink} />
-          </TouchableOpacity>
+  const alerts = financialAlerts(data);
+  const budgets = data.rows && data.budgets ? budgetProgress(data.budgets, data.rows) : [];
+  const unread = alerts.filter(item => !readIds.includes(item.id)).length;
+  const visible = alerts.filter(item => filter === 'Todas' || (filter === 'Sin leer' ? !readIds.includes(item.id) : item.type === filter));
+  const options = categoryOptions('Gasto');
+  const names = [...new Set([...(data.rows || []).filter(row => row.type === 'expense' && !row.is_card_payment).map(row => row.category), ...(data.budgets || []).map(row => row.category)])];
+  names.forEach(name => { if (name && !options.some(([label]) => label === name)) options.push([name, 'pricetag-outline']); });
 
-          <View style={{ flex: 1 }}>
-            <Text style={styles.logo}>Alertas</Text>
-            <Text style={styles.subtitle}>Demostración · Alertas de ejemplo</Text>
-          </View>
+  function openBudget(budget = null) {
+    if (!data.budgets || loading || mutating.current) return;
+    setEditing(budget); setCategory(budget?.category || 'Comida'); setLimit(budget ? String(budget.monthly_limit) : ''); setFormError(''); setModal(true);
+  }
+  async function mutateBudget(budget, remove = false) {
+    if (mutating.current) return;
+    const parsed = validateMovement(limit, category);
+    if (!remove && (Object.keys(parsed.errors).length || parsed.numericAmount >= 10000000000 || category.trim().length > 60)) {
+      setFormError(parsed.errors.amount || parsed.errors.category || 'Usa una categoría de hasta 60 caracteres y un monto menor a 10 mil millones.'); return;
+    }
+    if (!remove && (data.budgets || []).some(item => item.id !== editing?.id && item.category.trim().toLocaleLowerCase('es-MX') === category.trim().toLocaleLowerCase('es-MX'))) { setFormError('Ya tienes un presupuesto para esta categoría. Edítalo desde la lista.'); return; }
+    mutating.current = true; setSaving(true);
+    const request = sequence.current, expectedOwner = owner.current;
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user || user.id !== expectedOwner || sequence.current !== request) throw new Error('Tu sesión cambió. Actualiza antes de guardar.');
+      let query;
+      if (remove) query = supabase.from('budgets').delete().eq('id', budget.id).eq('user_id', user.id);
+      else if (editing) query = supabase.from('budgets').update({ category: category.trim(), monthly_limit: parsed.numericAmount }).eq('id', editing.id).eq('user_id', user.id);
+      else query = supabase.from('budgets').insert({ user_id: user.id, category: category.trim(), monthly_limit: parsed.numericAmount });
+      const result = await query.select('id');
+      if (result.error) throw new Error(result.error.code === '23505' ? 'Ya existe un presupuesto para esa categoría.' : 'No se guardó el cambio. Revisa la conexión y la configuración de presupuestos.');
+      if (!result.data?.length) throw new Error('El presupuesto ya no está disponible. Actualiza la lista.');
+      if (focused.current && owner.current === expectedOwner && sequence.current === request) { setModal(false); void load(true); }
+    } catch (error) {
+      if (focused.current && owner.current === expectedOwner) {
+        if (remove) Alert.alert('No se eliminó el presupuesto', error.message); else setFormError(error.message);
+      }
+    } finally { mutating.current = false; setSaving(false); }
+  }
+  function deleteBudget(budget) {
+    Alert.alert('Eliminar presupuesto', `Se quitará el límite mensual de ${budget.category}. Tus movimientos se conservan.`, [{ text: 'Cancelar', style: 'cancel' }, { text: 'Eliminar', style: 'destructive', onPress: () => mutateBudget(budget, true) }]);
+  }
+  async function markRead(ids) {
+    if (!readReady || readingBusy.current || !owner.current) return;
+    readingBusy.current = true; setReading(true);
+    const userId = owner.current, request = sequence.current, next = [...new Set([...readIds, ...ids])].slice(-1000);
+    try {
+      await AsyncStorage.setItem(`heda:alerts:read:v1:${userId}`, JSON.stringify(next));
+      if (owner.current === userId && sequence.current === request) setReadIds(next);
+    } catch { if (owner.current === userId) Alert.alert('No se guardó', 'No pudimos marcar la alerta como leída. Reintenta.'); }
+    finally { readingBusy.current = false; setReading(false); }
+  }
+  function openAlert(item) {
+    if (item.route === 'budgets') setTab('Presupuestos');
+    else if (item.route === 'goals') navigation.navigate('Reportes');
+    else navigation.navigate('Movimientos', { openSection: 'Recurrentes' });
+  }
 
-          <View style={styles.headerIcon}>
-            <Ionicons name="notifications-outline" size={22} color={colors.ink} />
-          </View>
-        </View>
-
-        {/* HERO */}
-        <View style={styles.heroCard}>
-          <View style={styles.heroIcon}>
-            <Ionicons name="notifications" size={28} color="#FFFFFF" />
-          </View>
-
-          <Text style={styles.heroTitle}>Alertas inteligentes</Text>
-          <Text style={styles.heroText}>
-            HEDA te avisa cuando detecta gastos inusuales, exceso de presupuesto,
-            riesgos financieros o eventos importantes.
-          </Text>
-        </View>
-
-        {/* RESUMEN */}
-        <View style={styles.summaryRow}>
-          <SummaryCard title="Alertas" value="5" icon="notifications-outline" />
-          <SummaryCard title="Alta" value="1" icon="warning-outline" />
-          <SummaryCard title="Leídas" value="2" icon="checkmark-done-outline" />
-        </View>
-
-        {/* FILTROS */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterList}
-        >
-          {filters.map((filter) => (
-            <TouchableOpacity
-              key={filter}
-              style={[
-                styles.filterChip,
-                selectedFilter === filter && styles.filterChipActive,
-              ]}
-              onPress={() => setSelectedFilter(filter)}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  selectedFilter === filter && styles.filterTextActive,
-                ]}
-              >
-                {filter}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* ALERTA DESTACADA */}
-        <View style={styles.featuredCard}>
-          <View style={styles.featuredHeader}>
-            <View style={styles.featuredIcon}>
-              <Ionicons name="warning-outline" size={24} color="#D71920" />
-            </View>
-
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>Atención recomendada</Text>
-              <Text style={styles.cardText}>
-                Tu presupuesto de entretenimiento está cerca de agotarse. Puedes
-                reducir gastos esta semana para mantener tu meta de ahorro.
-              </Text>
-            </View>
-          </View>
-
-          <TouchableOpacity style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Ver presupuesto</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* LISTA DE ALERTAS */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Alertas recientes</Text>
-          <Text style={styles.sectionLink}>{filteredAlerts.length} activas</Text>
-        </View>
-
-        {filteredAlerts.map((alert) => (
-          <AlertCard key={alert.id} alert={alert} />
-        ))}
-
-        {/* CONFIGURACIÓN */}
-        <Text style={styles.sectionTitle}>Configuración de alertas</Text>
-
-        <ConfigCard
-          icon="wallet-outline"
-          title="Presupuestos"
-          text="Recibir avisos cuando una categoría esté cerca de su límite."
-          enabled
-        />
-
-        <ConfigCard
-          icon="flag-outline"
-          title="Metas de ahorro"
-          text="Recibir recordatorios sobre el avance de tus metas."
-          enabled
-        />
-
-        <ConfigCard
-          icon="trending-up-outline"
-          title="Ethereum informativo"
-          text="Recibir avisos sobre volatilidad o tendencias informativas."
-        />
-
-        {/* INFO */}
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle-outline" size={22} color={colors.primary} />
-          <Text style={styles.infoText}>
-            Las alertas son orientativas y se generan con base en la información
-            registrada por el usuario. No sustituyen asesoría financiera profesional.
-          </Text>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
+  return <SwipeBackToIA navigation={navigation}><SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
+    <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { if (!saving && !reading) void load(true); }} tintColor={colors.primary} />}>
+      <ScreenHeader title="Alertas y límites" subtitle="Ten presentes tus pagos y tu plan del mes." actionIcon="arrow-back" actionLabel="Volver a IA" onAction={() => navigation.navigate('IA')} />
+      <View style={styles.tabs}>{['Alertas', 'Presupuestos'].map(name => <TouchableOpacity key={name} accessibilityRole="tab" accessibilityState={{ selected: tab === name }} style={[styles.tab, tab === name && styles.tabActive]} onPress={() => setTab(name)}><Text style={[styles.tabText, tab === name && styles.white]}>{name}{name === 'Alertas' && unread ? ` (${unread})` : ''}</Text></TouchableOpacity>)}</View>
+      <View style={styles.info}><Ionicons name="information-circle-outline" size={21} color={colors.primary} /><Text style={[styles.small, styles.flex]}>Avisos dentro de HEDA, actualizados al abrir esta pantalla. Aún no se envían notificaciones al teléfono.</Text></View>
+      {errors.length ? <View style={styles.warning}>{errors.map(message => <Text key={message} style={styles.body}>{message}</Text>)}<Action label="Actualizar" icon="refresh-outline" secondary onPress={() => load(true)} disabled={refreshing || saving || reading} /></View> : null}
+      {loading ? <View style={styles.loading}><ActivityIndicator color={colors.primary} /><Text style={styles.body}>Revisando tus registros…</Text></View> : tab === 'Presupuestos' ? <>
+        <View style={styles.card}><Text style={styles.title}>Tu plan de gasto mensual</Text><Text style={styles.body}>Define cuánto quieres gastar por categoría. El mismo límite se renueva cada mes; editarlo cambia el límite actual y de los meses siguientes.</Text><Action label="Nuevo presupuesto" icon="add-circle-outline" onPress={() => openBudget()} disabled={!data.budgets || saving} /></View>
+        {budgetMissing ? <View style={styles.warning}><Text style={styles.title}>Falta activar Presupuestos</Text><Text style={styles.body}>Ejecuta el archivo 202610150006_budgets.sql en SQL Editor de Supabase y toca Actualizar. No borra tus movimientos.</Text></View> : null}
+        {data.budgets && !data.budgets.length ? <View style={styles.card}><Ionicons name="pie-chart-outline" size={34} color={colors.primary} /><Text style={styles.title}>Empieza con una categoría</Text><Text style={styles.body}>Por ejemplo, elige Comida y define tu límite mensual. El gasto se calcula a partir de tus movimientos ya registrados.</Text></View> : null}
+        {!data.rows && data.budgets?.length ? <View style={styles.card}><Text style={styles.body}>Tus límites están guardados. Actualiza para recuperar los movimientos y calcular el avance.</Text></View> : null}
+        {(data.rows ? budgets : (data.budgets || [])).map(budget => {
+          const tone = budget.status === 'exceeded' ? 'danger' : budget.status === 'near' ? 'warning' : 'info';
+          const [color, background] = palettes[tone];
+          return <View key={budget.id} style={[styles.card, { borderColor: color }]}><View style={styles.row}><Text style={[styles.title, styles.flex]}>{budget.category}</Text><Text style={[styles.tag, { color, backgroundColor: background }]}>{budget.status ? budget.status === 'exceeded' ? 'Límite alcanzado' : budget.status === 'near' ? 'Cerca del límite' : 'Dentro del límite' : 'Sin calcular'}</Text></View><Text style={styles.body}>Límite mensual: {money(budget.monthly_limit)}</Text>{budget.status ? <><Text style={styles.big}>{money(budget.spent)} <Text style={styles.small}>gastados · {budget.percent}%</Text></Text><View style={styles.track}><View style={{ height: '100%', width: `${Math.min(budget.percent, 100)}%`, backgroundColor: color, borderRadius: 8 }} /></View><Text style={[styles.small, { color }]}>{budget.remaining >= 0 ? `Disponible en esta categoría: ${money(budget.remaining)}` : `Exceso sobre el límite: ${money(-budget.remaining)}`}</Text></> : null}<View style={styles.buttons}><Action secondary label="Editar" icon="create-outline" disabled={saving} onPress={() => openBudget(budget)} /><Action secondary label="Eliminar" icon="trash-outline" disabled={saving} onPress={() => deleteBudget(budget)} /></View></View>;
+        })}
+        <Text style={styles.small}>Se consideran gastos del mes hasta hoy, incluidas compras con tarjeta. Pagar la tarjeta no vuelve a sumar el gasto. Programaciones sin confirmar no consumen presupuesto. Los límites no separan dinero ni bloquean compras.</Text>
+      </> : <>
+        <View style={styles.hero}><Text style={styles.white}>PENDIENTES DE REVISAR</Text><Text style={styles.heroNumber}>{unread}</Text><Text style={styles.heroText}>{unread ? 'Revisa lo importante y abre el detalle para tomar una decisión.' : errors.length ? 'Algunas fuentes no están disponibles. Actualiza para completar la revisión.' : 'No tienes avisos nuevos con tus registros actuales.'}</Text><Text style={styles.heroFoot}>Marcar como leído no registra movimientos ni confirma pagos.</Text></View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>{['Todas', 'Sin leer', 'Presupuestos', 'Pagos', 'Metas'].map(name => <TouchableOpacity key={name} accessibilityRole="button" accessibilityState={{ selected: filter === name }} style={[styles.chip, filter === name && styles.tabActive]} onPress={() => setFilter(name)}><Text style={[styles.tabText, filter === name && styles.white]}>{name}</Text></TouchableOpacity>)}</ScrollView>
+        {unread ? <Action label="Marcar todas como leídas" icon="checkmark-done-outline" secondary disabled={!readReady || reading} onPress={() => markRead(alerts.map(item => item.id))} /> : null}
+        {!visible.length ? <View style={styles.card}><Ionicons name="checkmark-circle-outline" size={34} color={colors.primary} /><Text style={styles.title}>Sin avisos en esta vista</Text><Text style={styles.body}>Los avisos aparecen al acercarte al límite, alcanzar el presupuesto, tener un pago dentro de siete días o una meta próxima. También se muestran fechas pendientes.</Text><Action label="Configurar un presupuesto" icon="add-outline" secondary onPress={() => setTab('Presupuestos')} /></View> : null}
+        {visible.map(item => {
+          const [color, background] = palettes[item.severity], read = readIds.includes(item.id);
+          return <View key={item.id} style={[styles.card, { borderLeftWidth: 4, borderLeftColor: color }]}><View style={styles.row}><Ionicons name={item.icon} size={23} color={color} /><Text style={[styles.small, styles.flex]}>{item.type}</Text><Text style={[styles.tag, { color, backgroundColor: background }]}>{read ? 'Leída' : 'Sin leer'}</Text></View><Text style={[styles.title, { marginTop: 12 }]}>{item.title}</Text><Text style={styles.body}>{item.message}</Text><Action label={item.route === 'budgets' ? 'Ver presupuestos' : item.route === 'goals' ? 'Ver metas' : item.route === 'cards' ? 'Revisar tarjeta en Programados' : 'Revisar en Programados'} icon="arrow-forward-outline" secondary onPress={() => openAlert(item)} />{!read ? <Action label="Marcar como leída" icon="checkmark-outline" secondary disabled={!readReady || reading} onPress={() => markRead([item.id])} /> : null}</View>;
+        })}
+        <Text style={styles.small}>Los avisos se calculan con tus registros; no verifican tu banco. Las alertas leídas se guardan por cuenta en este dispositivo y pueden reaparecer si cambia el vencimiento o la situación.</Text>
+      </>}
+    </ScrollView>
+    <Modal visible={modal} animationType="slide" onRequestClose={() => { if (!saving) setModal(false); }}>
+      <SafeAreaView style={styles.safe}><KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}><View style={styles.modalHeader}><Text style={[styles.title, styles.flex]}>{editing ? 'Editar presupuesto' : 'Nuevo presupuesto'}</Text><TouchableOpacity accessibilityRole="button" accessibilityLabel="Cerrar presupuesto" disabled={saving} onPress={() => setModal(false)} style={styles.close}><Ionicons name="close" size={26} color={colors.ink} /></TouchableOpacity></View><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}><Text style={styles.body}>Un límite mensual por categoría. Recibirás un aviso dentro de HEDA al usar el 80% y al llegar al límite.</Text><Text style={styles.label}>Categoría de gasto</Text><CategoryPicker type="Gasto" value={category} options={options} onChange={setCategory} disabled={saving} /><Text style={styles.label}>Límite mensual en MXN</Text><TextInput accessibilityLabel="Límite mensual en pesos" value={limit} onChangeText={setLimit} editable={!saving} placeholder="Ej. 2500.00" placeholderTextColor={colors.muted} keyboardType="decimal-pad" maxLength={14} style={styles.input} /><Text style={styles.small}>Aplica desde ahora y se renueva cada mes. Los gastos que ya registraste este mes también cuentan.</Text>{formError ? <Text accessibilityLiveRegion="polite" style={styles.formError}>{formError}</Text> : null}<Action label={saving ? 'Guardando…' : 'Guardar presupuesto'} icon="checkmark-outline" disabled={saving} onPress={() => mutateBudget()} /></ScrollView></KeyboardAvoidingView></SafeAreaView>
+    </Modal>
+  </SafeAreaView></SwipeBackToIA>;
 }
 
-function SummaryCard({ title, value, icon }) {
-  return (
-    <View style={styles.summaryCard}>
-      <View style={styles.summaryIcon}>
-        <Ionicons name={icon} size={21} color={colors.primary} />
-      </View>
-
-      <Text style={styles.summaryValue}>{value}</Text>
-      <Text style={styles.summaryTitle}>{title}</Text>
-    </View>
-  );
+function Action({ label, icon, onPress, secondary, disabled }) {
+  return <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: !!disabled }} disabled={disabled} style={[styles.action, secondary && styles.secondary, disabled && { opacity: 0.45 }]} onPress={onPress}><Ionicons name={icon} size={19} color={secondary ? colors.primary : '#FFFFFF'} /><Text style={[styles.actionText, secondary && { color: colors.primary }]}>{label}</Text></TouchableOpacity>;
 }
-
-function AlertCard({ alert }) {
-  const isDanger = alert.category === 'danger';
-  const isWarning = alert.category === 'warning';
-  const isSuccess = alert.category === 'success';
-
-  return (
-    <TouchableOpacity style={styles.alertCard} activeOpacity={0.85}>
-      <View
-        style={[
-          styles.alertIcon,
-          isDanger && styles.dangerBg,
-          isWarning && styles.warningBg,
-          isSuccess && styles.successBg,
-        ]}
-      >
-        <Ionicons
-          name={alert.icon}
-          size={23}
-          color={
-            isDanger
-              ? '#D71920'
-              : isWarning
-              ? '#B7791F'
-              : isSuccess
-              ? '#008A2E'
-              : colors.primary
-          }
-        />
-      </View>
-
-      <View style={{ flex: 1 }}>
-        <View style={styles.alertHeader}>
-          <Text style={styles.alertType}>{alert.type}</Text>
-          <Text
-            style={[
-              styles.priority,
-              isDanger && styles.priorityDanger,
-              isWarning && styles.priorityWarning,
-              isSuccess && styles.prioritySuccess,
-            ]}
-          >
-            {alert.priority}
-          </Text>
-        </View>
-
-        <Text style={styles.alertTitle}>{alert.title}</Text>
-        <Text style={styles.alertMessage}>{alert.message}</Text>
-        <Text style={styles.alertTime}>{alert.time}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-function ConfigCard({ icon, title, text, enabled }) {
-  return (
-    <View style={styles.configCard}>
-      <View style={styles.configLeft}>
-        <View style={styles.configIcon}>
-          <Ionicons name={icon} size={22} color={colors.primary} />
-        </View>
-
-        <View style={{ flex: 1 }}>
-          <Text style={styles.configTitle}>{title}</Text>
-          <Text style={styles.configText}>{text}</Text>
-        </View>
-      </View>
-
-      <View style={[styles.switch, enabled && styles.switchActive]}>
-        <View style={[styles.switchCircle, enabled && styles.switchCircleActive]} />
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-
-  content: {
-    padding: 18,
-    paddingBottom: 28,
-  },
-
-  header: {
-    marginTop: 2,
-    marginBottom: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-    elevation: 2,
-  },
-
-  logo: {
-    fontSize: 31,
-    fontWeight: '700',
-    color: colors.ink,
-  },
-
-  subtitle: {
-    marginTop: 4,
-    fontSize: 14,
-    color: colors.muted,
-  },
-
-  headerIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 2,
-  },
-
-  heroCard: {
-    backgroundColor: colors.primary,
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 18,
-  },
-
-  heroIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-
-  heroTitle: {
-    color: '#FFFFFF',
-    fontSize: 25,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-
-  heroText: {
-    color: '#DCEEFF',
-    fontSize: 15,
-    lineHeight: 21,
-  },
-
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 18,
-  },
-
-  summaryCard: {
-    width: '31%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 14,
-    alignItems: 'center',
-    elevation: 2,
-  },
-
-  summaryIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 13,
-    backgroundColor: colors.softBlue,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-
-  summaryValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.ink,
-  },
-
-  summaryTitle: {
-    marginTop: 3,
-    fontSize: 11,
-    color: colors.muted,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-
-  filterList: {
-    paddingBottom: 14,
-  },
-
-  filterChip: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 10,
-    elevation: 2,
-  },
-
-  filterChipActive: {
-    backgroundColor: colors.ink,
-  },
-
-  filterText: {
-    color: colors.primary,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-
-  filterTextActive: {
-    color: '#FFFFFF',
-  },
-
-  featuredCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 20,
-    marginBottom: 18,
-    elevation: 2,
-  },
-
-  featuredHeader: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-
-  featuredIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#FFEAEA',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.ink,
-    marginBottom: 5,
-  },
-
-  cardText: {
-    fontSize: 14,
-    color: colors.muted,
-    lineHeight: 20,
-  },
-
-  primaryButton: {
-    backgroundColor: colors.ink,
-    borderRadius: 18,
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-
-  sectionHeader: {
-    marginTop: 4,
-    marginBottom: 14,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.ink,
-    marginBottom: 14,
-  },
-
-  sectionLink: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.primary,
-    textTransform: 'uppercase',
-  },
-
-  alertCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 14,
-    elevation: 2,
-    flexDirection: 'row',
-  },
-
-  alertIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: colors.softBlue,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-
-  dangerBg: {
-    backgroundColor: '#FFEAEA',
-  },
-
-  warningBg: {
-    backgroundColor: '#FFF8E6',
-  },
-
-  successBg: {
-    backgroundColor: '#EAF8EF',
-  },
-
-  alertHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-
-  alertType: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.primary,
-    textTransform: 'uppercase',
-  },
-
-  priority: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.primary,
-    backgroundColor: colors.softBlue,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-
-  priorityDanger: {
-    color: '#D71920',
-    backgroundColor: '#FFEAEA',
-  },
-
-  priorityWarning: {
-    color: '#B7791F',
-    backgroundColor: '#FFF8E6',
-  },
-
-  prioritySuccess: {
-    color: '#008A2E',
-    backgroundColor: '#EAF8EF',
-  },
-
-  alertTitle: {
-    marginTop: 7,
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.ink,
-  },
-
-  alertMessage: {
-    marginTop: 5,
-    fontSize: 13,
-    color: colors.muted,
-    lineHeight: 18,
-  },
-
-  alertTime: {
-    marginTop: 8,
-    fontSize: 12,
-    color: '#9CA3AF',
-    fontWeight: '600',
-  },
-
-  configCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 14,
-    elevation: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  configLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-
-  configIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
-    backgroundColor: colors.softBlue,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-
-  configTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.ink,
-  },
-
-  configText: {
-    marginTop: 5,
-    fontSize: 13,
-    color: colors.muted,
-    lineHeight: 18,
-  },
-
-  switch: {
-    width: 46,
-    height: 26,
-    borderRadius: 18,
-    backgroundColor: '#D1D5DB',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
-    marginLeft: 10,
-  },
-
-  switchActive: {
-    backgroundColor: colors.primary,
-  },
-
-  switchCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-  },
-
-  switchCircleActive: {
-    alignSelf: 'flex-end',
-  },
-
-  infoCard: {
-    marginTop: 6,
-    backgroundColor: colors.softBlue,
-    borderRadius: 18,
-    padding: 16,
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderColor: '#D7EAFE',
-  },
-
-  infoText: {
-    flex: 1,
-    marginLeft: 10,
-    color: '#24527A',
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '600',
-  },
+  safe: { flex: 1, backgroundColor: colors.background }, flex: { flex: 1, minWidth: 0 },
+  content: { padding: 18, paddingBottom: 30 }, tabs: { flexDirection: 'row', padding: 4, borderRadius: 16, backgroundColor: '#DCE7F7', marginBottom: 14 },
+  tab: { flex: 1, minHeight: 46, alignItems: 'center', justifyContent: 'center', borderRadius: 12, padding: 10 },
+  tabActive: { backgroundColor: colors.primary }, tabText: { color: colors.ink, fontSize: 14, fontWeight: '700' }, white: { color: '#FFFFFF' },
+  info: { flexDirection: 'row', gap: 10, padding: 14, borderRadius: 16, backgroundColor: colors.softBlue, marginBottom: 16 },
+  warning: { padding: 16, borderRadius: 16, backgroundColor: '#FFFBEB', gap: 8, marginBottom: 16 },
+  loading: { alignItems: 'center', padding: 50, gap: 12 }, card: { borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: '#FFFFFF', padding: 18, marginBottom: 16, marginTop: 8 },
+  title: { fontSize: 18, color: colors.ink, fontWeight: '700', marginBottom: 7 }, body: { fontSize: 14, color: colors.muted, lineHeight: 21 }, small: { fontSize: 12, color: colors.muted, lineHeight: 18 },
+  hero: { backgroundColor: colors.primary, borderRadius: 22, padding: 20, marginBottom: 16 }, heroNumber: { color: '#FFFFFF', fontSize: 40, fontWeight: '700', marginVertical: 8 },
+  heroText: { color: '#FFFFFF', fontSize: 15, lineHeight: 22 }, heroFoot: { color: '#FFFFFF', fontSize: 11, lineHeight: 17, marginTop: 12 },
+  filters: { gap: 8, paddingBottom: 10 }, chip: { backgroundColor: '#FFFFFF', borderRadius: 14, minHeight: 44, padding: 12, justifyContent: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 9 }, tag: { fontSize: 10, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 10, flexShrink: 1 },
+  big: { fontSize: 23, fontWeight: '700', color: colors.ink, marginTop: 14 }, track: { height: 8, backgroundColor: colors.background, borderRadius: 8, overflow: 'hidden', marginVertical: 12 },
+  buttons: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' }, action: { minHeight: 46, padding: 12, backgroundColor: colors.primary, borderRadius: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 },
+  secondary: { backgroundColor: colors.softBlue, borderWidth: 1, borderColor: colors.headerBorder }, actionText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF', flexShrink: 1 },
+  modalHeader: { padding: 18, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: colors.border }, close: { width: 46, height: 46, borderRadius: 14, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  label: { color: colors.ink, fontSize: 15, fontWeight: '700', marginTop: 22, marginBottom: 12 }, input: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 16, fontSize: 22, color: colors.ink, marginBottom: 12 },
+  formError: { color: '#B91C1C', fontSize: 13, lineHeight: 19, marginTop: 14 },
 });

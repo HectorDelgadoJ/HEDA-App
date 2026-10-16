@@ -228,3 +228,17 @@ Las pruebas de cálculos no necesitan Supabase. La prueba local de PostgreSQL es
 - Dependencias exactas y requisitos de Node/npm: `package.json`.
 
 Referencias: [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/) y [requisito de inicio de sesión de Expo Go en iOS](https://docs.expo.dev/troubleshooting/expo-go-sign-in-required/).
+
+
+## Asistente HEDA IA
+
+La conexión activa utiliza Gemini mediante una Edge Function autenticada de Supabase. Sigue [la guía de configuración](GUIA_IA_GEMINI.md) para configurar Secrets y publicar el código. El asistente solo consulta agregados de tus registros al pulsar Analizar mis finanzas; antes de enviarlos a Gemini muestra una vista previa y pide autorización. La búsqueda web queda desactivada por defecto para probar en el nivel gratuito; activarla depende del acceso y facturación del proyecto de Gemini. No basta con iniciar Expo para publicar la función.
+
+El asistente mantiene contexto reciente dentro del chat (hasta seis intercambios completos). Nueva conversación o cerrar sesión limpia ese contexto local; no hay historial permanente. Para activar seguimientos, publica la versión actual de la función según la guía.
+
+Analizar mis finanzas prepara un resumen del mes hasta hoy, tarjetas con seguimiento y metas activas. Las categorías personalizadas se agrupan en Otros. Compartirlo inicia un chat con esos datos; Nueva conversación deja de compartirlos. Requiere publicar la función actualizada, sin SQL nuevo.
+
+
+## Alertas y presupuestos mensuales
+
+Para activar los límites por categoría, ejecuta una vez en SQL Editor la migración `supabase/migrations/202610150006_budgets.sql`, después de las migraciones anteriores. Consulta [GUIA_ALERTAS_PRESUPUESTOS.md](GUIA_ALERTAS_PRESUPUESTOS.md) para el comando de copia y las pruebas. Los avisos funcionan dentro de la app; no son notificaciones push.
