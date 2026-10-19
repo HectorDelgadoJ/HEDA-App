@@ -39,3 +39,13 @@ test('financial analysis sends consent and digest, never a client-calculated sum
  await send('Analiza',[],{summaryDigest:'approved-digest'});assert.deepEqual(body,{message:'Analiza',financialConsent:true,summaryDigest:'approved-digest'});
  await assert.rejects(make(client(async()=>({data:{ok:true,message:'Old'}})))('Analiza',[],{summaryDigest:'approved-digest'}),/versión de análisis/);
 });
+
+test('session changed during a request never returns another account answer',async()=>{
+ const mock=client(async()=>({data:{ok:true,message:'Private'}}));let reads=0;mock.auth.getSession=async()=>({data:{session:{user:{id:++reads===1?'A':'B'}}}});
+ await assert.rejects(make(mock)('Pregunta'),error=>error.code==='AI_SESSION_CHANGED');
+});
+test('invalid body and unavailable provider preserve an actionable error and do not auto-retry',async()=>{
+ let calls=0;const send=make(client(async()=>{calls++;return {error:{context:Response.json({error:'GEMINI_MODEL_UNAVAILABLE',message:'Modelo no disponible'},{status:503})}};}));
+ await assert.rejects(send('Pregunta'),error=>error.code==='GEMINI_MODEL_UNAVAILABLE'&&error.status===503);assert.equal(calls,1);
+ await assert.rejects(make(client(async()=>({data:{ok:false,error:'SUMMARY_NO_DATA',message:'Sin movimientos'}})))('Analiza'),error=>error.code==='SUMMARY_NO_DATA');
+});

@@ -25,3 +25,8 @@ test('yearly reports have twelve buckets and exclude neighbouring years', () => 
  const p=reportPeriod('yearly',-1,new Date(2026,9,15));assert.equal(p.start,'2025-01-01');assert.equal(p.end,'2025-12-31');assert.equal(p.buckets.length,12);
  const d=reportData([{type:'income',amount:10,transaction_date:'2025-12-31'},{type:'income',amount:20,transaction_date:'2026-01-01'}],p);assert.equal(d.income,10);assert.equal(d.buckets[11].income,10);
 });
+
+test('current reports share the same today cutoff as balance, budgets and AI',()=>{
+ const p=reportPeriod('monthly',0,new Date(2026,9,17));
+ const data=reportData([{type:'income',amount:100,transaction_date:'2026-10-17'},{type:'income',amount:999,transaction_date:'2026-10-18'}],p,'2026-10-17');assert.equal(data.income,100);assert.equal(data.rows.length,1);
+});

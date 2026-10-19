@@ -24,6 +24,7 @@ test('card modes and payment RPCs on PostgreSQL with authenticated RLS', { skip:
     await db.query(`insert into public.transactions(user_id,type,amount,category) values ($1,'income',10000,'Salario'),($1,'expense',200,'Comida')`, [owner]);
     await db.query(`insert into public.card_payments(id,user_id,name,amount,due_date) values ($1,$2,'Nu',1000,'2026-10-20')`, [card, owner]);
     await db.exec(readFileSync(new URL('../supabase/migrations/202610110005_movement_modes.sql', import.meta.url), 'utf8'));
+    await db.exec(readFileSync(new URL('../supabase/migrations/202610170007_card_payment_dates.sql', import.meta.url), 'utf8'));
     await db.exec('set role authenticated');
     await db.query("select set_config('app.test_user',$1,false)", [owner]);
     await t.test('existing records and reminder debt are preserved when choosing card mode', async () => {
@@ -37,6 +38,14 @@ test('card modes and payment RPCs on PostgreSQL with authenticated RLS', { skip:
       await db.query(`insert into public.transactions(id,user_id,type,amount,category,card_id) values ($1,$2,'expense',100,'Comida',$3)`, [charge, owner, card]);
       await db.query('update public.transactions set amount=150 where id=$1', [charge]);
       await db.query('update public.transactions set amount=100 where id=$1', [charge]);
+    });
+    await t.test('future card records cannot inflate or erase the payable debt today', async () => {
+      const later='66666666-6666-4666-8666-666666666666';
+      await db.query(`insert into public.transactions(id,user_id,type,amount,category,card_id,transaction_date) values ($1,$2,'expense',999,'Servicios',$3,(now() at time zone 'America/Mexico_City')::date+1)`,[later,owner,card]);
+      await assert.rejects(db.query('select public.heda_pay_tracked_card($1,2099)',[card]));
+      await db.query('select public.heda_pay_tracked_card($1,1100)',[card]);
+      // Restore test fixtures for the following retry scenario.
+      await db.query('delete from public.transactions where is_card_payment or id=$1',[later]);
     });
     await t.test('full payment is atomic and retrying does not insert twice', async () => {
       await assert.rejects(db.query('select public.heda_pay_tracked_card($1,1000)', [card]));
@@ -70,6 +79,40 @@ test('card modes and payment RPCs on PostgreSQL with authenticated RLS', { skip:
       await assert.rejects(db.query('select public.heda_pay_tracked_card($1,200)', [card]));
       await assert.rejects(db.query(`insert into public.transactions(user_id,type,amount,category,card_id) values ($1,'expense',10,'Comida',$2)`, [other, card]));
       await assert.rejects(db.query(`insert into public.recurring_movements(user_id,name,type,amount,category,frequency,next_date,anchor_day,anchor_month,card_id) values ($1,'Netflix','expense',10,'Servicios','monthly','2026-01-15',15,1,$2)`, [other, card]));
+    });
+    await t.test('budgets enforce ownership, uniqueness, positive limits and preserve transactions', async () => {
+      await db.exec('reset role');
+      await db.exec(readFileSync(new URL('../supabase/migrations/202610150006_budgets.sql', import.meta.url), 'utf8'));
+      await db.exec('set role authenticated');
+      await db.query("select set_config('app.test_user',$1,false)",[owner]);
+      const budget='77777777-7777-4777-8777-777777777777';
+      const before=(await db.query('select count(*)::int as n from public.transactions')).rows[0].n;
+      await db.query("insert into public.budgets(id,user_id,category,monthly_limit) values ($1,$2,'Comida',100)",[budget,owner]);
+      await assert.rejects(db.query("insert into public.budgets(user_id,category,monthly_limit) values ($1,'comida',200)",[owner]));
+      await assert.rejects(db.query("update public.budgets set monthly_limit=0 where id=$1",[budget]));
+      await db.query("select set_config('app.test_user',$1,false)",[other]);
+      assert.equal((await db.query('select * from public.budgets')).rows.length,0);
+      assert.equal((await db.query('update public.budgets set monthly_limit=999 where id=$1 returning id',[budget])).rows.length,0);
+      await assert.rejects(db.query("insert into public.budgets(user_id,category,monthly_limit) values ($1,'Hogar',100)",[owner]));
+      await db.query("select set_config('app.test_user',$1,false)",[owner]);
+      await db.query('update public.budgets set monthly_limit=150 where id=$1',[budget]);
+      await db.query('delete from public.budgets where id=$1',[budget]);
+      assert.equal((await db.query('select count(*)::int as n from public.transactions')).rows[0].n,before);
+    });
+    await t.test('every application table isolates two owners, including profiles, goals and schedules', async () => {
+      await db.exec('reset role;set role authenticated');
+      await db.query("select set_config('app.test_user',$1,false)",[owner]);
+      await db.query("insert into public.goals(user_id,name,target_amount) values ($1,'Private goal',100)",[owner]);
+      await db.query("insert into public.budgets(user_id,category,monthly_limit) values ($1,'Servicios',100)",[owner]);
+      await db.query("select set_config('app.test_user',$1,false)",[other]);
+      for(const table of ['transactions','goals','recurring_movements','card_payments','budgets']){
+        assert.equal((await db.query('select * from public.'+table)).rows.length,0,table+' must hide foreign rows');
+        assert.equal((await db.query('delete from public.'+table+' where user_id=$1 returning id',[owner])).rows.length,0);
+      }
+      assert.equal((await db.query('select * from public.profiles where id=$1',[owner])).rows.length,0);
+      await assert.rejects(db.query("insert into public.goals(user_id,name,target_amount) values ($1,'forged',10)",[owner]));
+      await assert.rejects(db.query("insert into public.transactions(user_id,type,amount,category) values ($1,'income',10,'forged')",[owner]));
+      assert.equal((await db.query("update public.profiles set full_name='forged' where id=$1 returning id",[owner])).rows.length,0);
     });
     await t.test('anonymous users have no card access', async () => {
       await db.exec('reset role; set role anon');

@@ -1,348 +1,44 @@
-import { colors } from '../theme/colors';
-import { useState } from 'react';
-
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-
+import BirthDateField from '../components/BirthDateField';
+import { dismissAuthKeyboard } from '../services/keyboard';
+import AuthCaptcha, { useAuthCaptcha } from '../components/AuthCaptcha';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import AuthLayout from '../components/AuthLayout';
+import { AuthButton, AuthField, AuthNotice } from '../components/AuthFields';
+import InfoButton from '../components/InfoButton';
 import { supabase } from '../services/supabase';
-
-export default function RegisterScreen({ navigation }) {
-  const [fullName, setFullName] = useState('');
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  // =====================================================
-  // REGISTRAR USUARIO
-  // =====================================================
-  async function handleRegister() {
-    const cleanFullName = fullName.trim();
-    const cleanUsername = username.trim().toLowerCase();
-    const cleanEmail = email.trim().toLowerCase();
-
-    // Validar campos vacíos
-    if (
-      !cleanFullName ||
-      !cleanUsername ||
-      !cleanEmail ||
-      !password ||
-      !confirmPassword
-    ) {
-      Alert.alert(
-        'Campos incompletos',
-        'Completa todos los campos.'
-      );
-      return;
-    }
-
-    // Validar longitud del nombre de usuario
-    if (cleanUsername.length < 3) {
-      Alert.alert(
-        'Nombre de usuario inválido',
-        'El nombre de usuario debe tener al menos 3 caracteres.'
-      );
-      return;
-    }
-
-    // Validar caracteres del username
-    const usernameRegex = /^[a-z0-9._]+$/;
-
-    if (!usernameRegex.test(cleanUsername)) {
-      Alert.alert(
-        'Nombre de usuario inválido',
-        'Utiliza únicamente letras, números, puntos o guiones bajos.'
-      );
-      return;
-    }
-
-    // Validar contraseña
-    if (password !== confirmPassword) {
-      Alert.alert(
-        'Contraseñas diferentes',
-        'Las contraseñas no coinciden.'
-      );
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert(
-        'Contraseña muy corta',
-        'La contraseña debe tener al menos 6 caracteres.'
-      );
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      // =====================================================
-      // CREAR USUARIO EN SUPABASE AUTH
-      // =====================================================
-      const { data, error } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password,
-
-        options: {
-          data: {
-            full_name: cleanFullName,
-            username: cleanUsername,
-          },
-        },
-      });
-
-      if (error) {
-        console.log(
-          'Error registrando usuario:',
-          error.message
-        );
-
-        Alert.alert(
-          'No se pudo crear la cuenta',
-          error.message
-        );
-
-        return;
-      }
-
-      console.log(
-        'Usuario creado:',
-        data.user?.id
-      );
-
-      /*
-       * Nuestro trigger de Supabase hará automáticamente:
-       *
-       * auth.users
-       *      ↓
-       * public.profiles
-       *
-       * y copiará:
-       *
-       * full_name
-       * username
-       */
-
-      // =====================================================
-      // SI SUPABASE ENTREGA SESIÓN
-      // =====================================================
-      if (data.session) {
-        /*
-         * No necesitamos navigation.navigate().
-         *
-         * AppNavigator detectará automáticamente
-         * la nueva sesión y mostrará la aplicación.
-         */
-        return;
-      }
-
-      // =====================================================
-      // SI EN EL FUTURO ACTIVAMOS CONFIRMACIÓN POR CORREO
-      // =====================================================
-      Alert.alert(
-        'Cuenta creada',
-        'Tu cuenta fue creada. Revisa tu correo electrónico para confirmar tu cuenta.',
-        [
-          {
-            text: 'Aceptar',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
-
-    } catch (error) {
-      console.log(
-        'Error inesperado registrando usuario:',
-        error
-      );
-
-      Alert.alert(
-        'Error',
-        'Ocurrió un problema al crear la cuenta.'
-      );
-
-    } finally {
-      setLoading(false);
-    }
+import { registerAccount, checkUsername } from '../services/authActions';
+import { validateRegistration } from '../utils/auth';
+export default function RegisterScreen({navigation}){
+  const captcha=useAuthCaptcha();
+  const [form,setForm]=useState({fullName:'',birthDate:'',username:'',email:'',password:'',confirmPassword:''}),[errors,setErrors]=useState({}),[failure,setFailure]=useState(''),[loading,setLoading]=useState(false),[step,setStep]=useState(0),[confirmation,setConfirmation]=useState(null);
+  const busy=useRef(false),active=useRef(true),fields=useRef({});
+  useEffect(()=>{active.current=true;return()=>{active.current=false;};},[]);
+  const change=useCallback((key,value)=>{setForm(current=>({...current,[key]:value}));setErrors(current=>current[key]?({...current,[key]:undefined}):current);setFailure('');},[]);
+  const callbacks=useMemo(()=>Object.fromEntries(['fullName','birthDate','email','password','confirmPassword','username'].map(key=>[key,{ref:ref=>{fields.current[key]=ref;},change:value=>change(key,value),focus:()=>fields.current[key]?.focus()}])),[change]);
+  function check(){const result=validateRegistration(form);setErrors(result.errors);if(Object.keys(result.errors).length){setFailure('Revisa los campos marcados.');fields.current[Object.keys(result.errors)[0]]?.focus();return false;}return true;}
+  async function next(){if(busy.current||!check())return;busy.current=true;setLoading(true);dismissAuthKeyboard();try{await checkUsername(supabase,form.username);if(active.current){setFailure('');setStep(1);}}catch(error){if(active.current){setFailure(error.message);if(error.fields)setErrors(error.fields);}}finally{busy.current=false;if(active.current)setLoading(false);}}
+  async function submit(){
+    if(busy.current || !check())return;
+    if(captcha.required&&!captcha.token){setFailure('Completa la verificación de seguridad.');return;}busy.current=true;setLoading(true);setFailure('');dismissAuthKeyboard();
+    try{const result=await registerAccount(supabase,form,{captchaToken:captcha.token});dismissAuthKeyboard();if(active.current&&result.needsConfirmation){setForm(current=>({...current,password:'',confirmPassword:''}));setConfirmation(result.email);}}
+    catch(error){if(active.current){setFailure(error.message);if(error.fields){setErrors(error.fields);setStep(0);}}}
+    finally{captcha.reset();busy.current=false;if(active.current)setLoading(false);}
   }
-
-  return (
-    <KeyboardAvoidingView
-      style={styles.keyboardContainer}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.logo}>
-          HEDA
-        </Text>
-
-        <Text style={styles.subtitle}>
-          Crea tu cuenta
-        </Text>
-
-        {/* NOMBRE COMPLETO */}
-        <TextInput
-          placeholder="Nombre completo"
-          style={styles.input}
-          value={fullName}
-          onChangeText={setFullName}
-          autoCapitalize="words"
-          autoCorrect={false}
-        />
-
-        {/* NOMBRE DE USUARIO */}
-        <TextInput
-          placeholder="Nombre de usuario"
-          style={styles.input}
-          value={username}
-          onChangeText={setUsername}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-
-        {/* CORREO */}
-        <TextInput
-          placeholder="Correo electrónico"
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoCorrect={false}
-        />
-
-        {/* CONTRASEÑA */}
-        <TextInput
-          placeholder="Contraseña"
-          secureTextEntry
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-        />
-
-        {/* CONFIRMAR CONTRASEÑA */}
-        <TextInput
-          placeholder="Confirmar contraseña"
-          secureTextEntry
-          style={styles.input}
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-        />
-
-        {/* BOTÓN CREAR CUENTA */}
-        <TouchableOpacity
-          style={[
-            styles.button,
-            loading && styles.buttonDisabled,
-          ]}
-          onPress={handleRegister}
-          disabled={loading}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.buttonText}>
-              Crear cuenta
-            </Text>
-          )}
-        </TouchableOpacity>
-
-        {/* REGRESAR AL LOGIN */}
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          disabled={loading}
-        >
-          <Text style={styles.loginText}>
-            Ya tengo una cuenta
-          </Text>
-        </TouchableOpacity>
-
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
+  function back(){if(loading)return;if(step===1&&!confirmation){setStep(0);setFailure('');}else navigation.goBack();}
+  return <AuthLayout showBanner={false} title={confirmation?'Revisa tu correo':step===0?'Empieza con HEDA':'Todo listo para crear tu cuenta'} description={confirmation?'Tu configuración actual requiere confirmar el correo para entrar.':step===0?'Crea tu cuenta y empieza a organizar tu dinero.':'Al entrar podrás personalizar HEDA con dos preguntas rápidas.'} onBack={loading?undefined:back} backLabel={step===1&&!confirmation?'Tus datos':'Iniciar sesión'} step={confirmation?undefined:`${step+1} de 2`}>
+    <AuthNotice text={failure}/>
+    {confirmation?<><AuthNotice success text={`Si la dirección puede registrarse, recibirás un mensaje en ${confirmation}. Confirma desde ese correo y vuelve para iniciar sesión.`}/><AuthButton label="Ir a iniciar sesión" onPress={()=>navigation.goBack()}/></>:step===0?<>
+      <AuthField ref={callbacks.fullName.ref} label="¿Cómo te llamas?" placeholder="Tu nombre" value={form.fullName} onChangeText={callbacks.fullName.change} autoCapitalize="words" autoComplete="name" textContentType="name" maxLength={100} returnKeyType="next" onSubmitEditing={callbacks.birthDate.focus} error={errors.fullName} editable={!loading}/>
+      <BirthDateField value={form.birthDate} onChangeText={callbacks.birthDate.change} error={errors.birthDate} editable={!loading}/>
+      <AuthField ref={callbacks.username.ref} label="Tu @usuario" placeholder="Por ejemplo, @vicente" value={form.username} onChangeText={callbacks.username.change} autoComplete="username-new" textContentType="username" maxLength={31} returnKeyType="next" onSubmitEditing={callbacks.email.focus} error={errors.username} editable={!loading}/>
+      <AuthField ref={callbacks.email.ref} label="Correo electrónico" placeholder="nombre@correo.com" value={form.email} onChangeText={callbacks.email.change} keyboardType="email-address" autoComplete="email" textContentType="emailAddress" maxLength={254} returnKeyType="next" onSubmitEditing={callbacks.password.focus} error={errors.email} editable={!loading}/>
+      <AuthField ref={callbacks.password.ref} label="Crea una contraseña" placeholder="Al menos 8 caracteres" value={form.password} onChangeText={callbacks.password.change} password autoComplete="new-password" textContentType="newPassword" maxLength={128} returnKeyType="next" onSubmitEditing={callbacks.confirmPassword.focus} error={errors.password} editable={!loading}/>
+      <AuthField ref={callbacks.confirmPassword.ref} label="Repite tu contraseña" placeholder="Escríbela una vez más" value={form.confirmPassword} onChangeText={callbacks.confirmPassword.change} password autoComplete="new-password" textContentType="newPassword" maxLength={128} returnKeyType="next" onSubmitEditing={next} error={errors.confirmPassword} editable={!loading}/>
+      <AuthButton label="Continuar" loading={loading} onPress={next}/>
+      <InfoButton title="Tus datos al crear la cuenta" text="El correo y la contraseña se usan para acceder mediante Supabase Auth. Tu nombre, fecha de nacimiento privada y @usuario forman tu perfil. El @usuario debe ser único. Las siguientes preguntas solo personalizan lo que ves en HEDA; no se comparten con la IA al registrarte."/>
+    </>:<>
+      <AuthCaptcha captcha={captcha}/>
+      <AuthButton label="Crear mi cuenta" loading={loading} onPress={()=>submit()}/>
+    </>}
+  </AuthLayout>;
 }
-
-const styles = StyleSheet.create({
-  keyboardContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-
-  container: {
-    flexGrow: 1,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    padding: 18,
-    paddingVertical: 45,
-  },
-
-  logo: {
-    fontSize: 40,
-    fontWeight: 'bold',
-    color: colors.ink,
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-
-  subtitle: {
-    color: colors.ink,
-    textAlign: 'center',
-    marginBottom: 35,
-    fontSize: 16,
-  },
-
-  input: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: colors.border,
-    color: colors.ink,
-    minHeight: 52,
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 15,
-    fontSize: 16,
-  },
-
-  button: {
-    backgroundColor: colors.ink,
-    padding: 15,
-    borderRadius: 12,
-    marginTop: 10,
-    minHeight: 50,
-    justifyContent: 'center',
-  },
-
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-
-  buttonText: {
-    color: 'white',
-    textAlign: 'center',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-
-  loginText: {
-    color: colors.ink,
-    textAlign: 'center',
-    marginTop: 20,
-    fontSize: 14,
-  },
-});

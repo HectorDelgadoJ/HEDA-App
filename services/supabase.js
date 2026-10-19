@@ -1,7 +1,8 @@
+import './nativeCrypto';
 import { AppState, Platform } from 'react-native';
 import 'react-native-url-polyfill/auto';
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { sessionStorage } from './sessionStorage';
 import { createClient, processLock } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -14,12 +15,13 @@ export const supabase = createClient(
   {
     auth: {
       ...(Platform.OS !== 'web'
-        ? { storage: AsyncStorage }
+        ? { storage: sessionStorage }
         : {}),
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: false,
-      lock: processLock,
+      detectSessionInUrl: Platform.OS === 'web',
+      flowType: 'pkce',
+      ...(Platform.OS !== 'web' ? { lock: processLock } : {}),
     },
   }
 );

@@ -4,6 +4,8 @@ export const HEDA_INSTRUCTIONS = "Eres HEDA, un asistente especializado exclusiv
 
 export function geminiError(error) {
   const errors = {
+    AI_LIMITS_UNAVAILABLE: [503, 'El asistente no está disponible mientras se configura su límite de uso. Inténtalo más tarde.'],
+    SUMMARY_INVALID_DATA: [503, 'Hay importes no válidos en tus registros. Revisa tus movimientos antes de analizarlos.'],
     SUMMARY_LOAD_FAILED: [503, 'No pudimos cargar tu resumen completo. Inténtalo de nuevo; no se envió un análisis parcial.'],
     SUMMARY_TOO_LARGE: [413, 'Tu historial supera el tamaño que puede analizar esta versión.'],
     INVALID_HISTORY: [400, 'La conversación no es válida o es demasiado larga. Inicia una nueva conversación.'],
@@ -86,7 +88,7 @@ export function createGeminiClient(env, fetcher = fetch, now = () => new Date())
     if (!/^gemini-[a-zA-Z0-9.-]+$/.test(model)) throw new Error('GEMINI_MODEL_INVALID');
     // New free projects do not include Google Search. Explicit server opt-in only.
     const webEnabled = !financialSummary && env('GEMINI_SEARCH_ENABLED') === 'true';
-    const financialContext = financialSummary ? '\nRESUMEN CALCULADO POR EL SERVIDOR Y AUTORIZADO PARA ESTE CHAT:\n' + JSON.stringify(financialSummary) + '\nUsa estos totales como hechos registrados, indicando el periodo. No tienes los movimientos individuales ni los nombres. No inventes causas, presupuestos o tendencias. No presentes el resultado como ahorro garantizado ni restes dos veces pagos de tarjeta. No uses búsqueda web con este resumen. Si preguntan por otro periodo o detalle no incluido, aclara que el resumen no lo contiene. Esta información agregada es la única excepción a la falta de acceso descrita arriba.' : '';
+    const financialContext = financialSummary ? '\nRESUMEN CALCULADO POR EL SERVIDOR Y AUTORIZADO PARA ESTE CHAT:\n' + JSON.stringify(financialSummary) + '\nUsa estos totales como hechos registrados, indicando el periodo. No tienes los movimientos individuales ni los nombres. Usa budgets únicamente como límites agregados de las categorías configuradas. No inventes causas ni tendencias. Si coverage.sparseMonth es true, señala que hay pocos registros para sacar conclusiones. Explica el periodo y distingue resultado mensual, saldo disponible y deuda. No presentes el resultado como ahorro garantizado ni restes dos veces pagos de tarjeta. No uses búsqueda web con este resumen. Si preguntan por otro periodo o detalle no incluido, aclara que el resumen no lo contiene. Esta información agregada es la única excepción a la falta de acceso descrita arriba.' : '';
     const body = {
       systemInstruction: { parts: [{ text: HEDA_INSTRUCTIONS + `\nFecha UTC de referencia: ${now().toISOString().slice(0,10)}. Búsqueda web ${webEnabled ? 'disponible; úsala solo cuando sea necesaria' : 'NO disponible; no afirmes conocer precios o noticias actuales ni haber buscado en internet'}.` + financialContext }] },
       contents: [...context, { role: 'user', parts: [{ text: message.trim() }] }],
@@ -115,7 +117,8 @@ export function summaryDate(now = new Date()) {
   const get = name => parts.find(part=>part.type===name).value;
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
-export function calculateFinancialSummary(transactions, cards, goals, today) {
+export function calculateFinancialSummary(transactions, cards, goals, today, budgets = []) {
+  if ([...transactions.map(row=>row.amount),...cards.map(row=>row.opening_balance ?? 0),...goals.flatMap(row=>[row.target_amount,row.current_amount]),...budgets.map(row=>row.monthly_limit)].some(value=>!Number.isFinite(Number(value)))) throw new Error('SUMMARY_INVALID_DATA');
   const start = today.slice(0,7) + '-01';
   const recorded = transactions.filter(row=>row.transaction_date <= today);
   const month = recorded.filter(row=>row.transaction_date >= start);
@@ -139,14 +142,20 @@ export function calculateFinancialSummary(transactions, cards, goals, today) {
   const remaining = activeGoals.reduce((total,goal)=>total+Math.max(0,money(goal.target_amount)-money(goal.current_amount)),0);
   const income = sum(month.filter(row=>row.type==='income'));
   const expenses = sum(month.filter(spending));
+  const categoryKey=value=>String(value||'').trim().toLocaleLowerCase('es-MX');
+  const budgetTotals=new Map();
+  for(const row of month.filter(spending)){const key=categoryKey(row.category);budgetTotals.set(key,(budgetTotals.get(key)||0)+money(row.amount));}
+  const budgetStats=budgets.map(budget=>{const limit=money(budget.monthly_limit),spent=budgetTotals.get(categoryKey(budget.category))||0;return {limit,spent};}).filter(item=>item.limit>0);
   return {
+    coverage:{recordedTransactionCount:recorded.length,firstRecordedDate:recorded.length?recorded.map(row=>row.transaction_date).sort()[0]:null,sparseMonth:month.length<5},
+    budgets:{configuredCount:budgetStats.length,nearCount:budgetStats.filter(item=>item.spent<item.limit && item.spent*100>=item.limit*80).length,reachedCount:budgetStats.filter(item=>item.spent>=item.limit).length,monthlyLimitTotal:amount(budgetStats.reduce((sum,item)=>sum+item.limit,0)),spentInBudgetedCategories:amount(budgetStats.reduce((sum,item)=>sum+item.spent,0))},
     currency:'MXN',period:{start,end:today,timeZone:'America/Mexico_City'},
     availableBalance:amount(cash(recorded)),
     monthly:{income:amount(income),expenses:amount(expenses),result:amount(income-expenses),cashChange:amount(cash(month)),cardPayments:amount(sum(month.filter(row=>row.is_card_payment))),transactionCount:month.length,
       categories:[...categories].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).map(([category,cents])=>({category,amount:amount(cents),percent:expenses?Math.round(cents/expenses*100):0}))},
     cards:{trackedCount:tracked.length,debt:amount(debt),credit:amount(credit),untrackedReminderCount:cards.filter(card=>!card.ledger_enabled && !card.paid).length},
     goals:{activeCount:activeGoals.length,target:amount(target),saved:amount(saved),remaining:amount(remaining),progressPercent:target?Math.min(100,Math.round(saved/target*100)):0},
-    limitations:['Solo registros hasta la fecha indicada; no incluye movimientos futuros ni recurrentes pendientes.','El resultado mensual no es dinero libre garantizado.','La deuda solo incluye tarjetas con seguimiento de cargos; otros recordatorios no representan deuda calculada.','El avance de metas es progreso registrado, no dinero separado del saldo.','Categorías personalizadas agrupadas en Otros.'],
+    limitations:['Solo registros hasta la fecha indicada; no incluye movimientos futuros ni recurrentes pendientes.','El resultado mensual no es dinero libre garantizado.','La deuda solo incluye tarjetas con seguimiento de cargos; otros recordatorios no representan deuda calculada.','El avance de metas es progreso registrado, no dinero separado del saldo.','Categorías personalizadas agrupadas en Otros.','Los presupuestos cubren solo las categorías configuradas; su límite no es dinero separado.','Con pocos registros no se pueden inferir hábitos ni tendencias; los registros no prueban que estén todas las finanzas.'],
   };
 }
 async function readSummaryRows(client, table, columns, userId, today) {
@@ -165,12 +174,13 @@ async function readSummaryRows(client, table, columns, userId, today) {
 }
 export async function loadFinancialPreview(client, userId, now = new Date()) {
   const today=summaryDate(now);
-  const [transactions,cards,goals]=await Promise.all([
+  const [transactions,cards,goals,budgets]=await Promise.all([
     readSummaryRows(client,'transactions','id,type,amount,category,transaction_date,card_id,is_card_payment',userId,today),
     readSummaryRows(client,'card_payments','id,ledger_enabled,opening_balance,paid',userId,today),
     readSummaryRows(client,'goals','id,target_amount,current_amount,status',userId,today),
+    readSummaryRows(client,'budgets','id,category,monthly_limit',userId,today),
   ]);
-  const summary=calculateFinancialSummary(transactions,cards,goals,today);
+  const summary=calculateFinancialSummary(transactions,cards,goals,today,budgets);
   const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(userId+'\n'+JSON.stringify(summary)));
   const summaryDigest=[...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,'0')).join('');
   return {ok:true,financialVersion:1,summary,summaryDigest};
@@ -188,12 +198,42 @@ export async function handleHedaBody(body, ctx, ask, enabled, now = new Date()) 
     if (typeof body.summaryDigest !== 'string' || !/^[a-f0-9]{64}$/.test(body.summaryDigest)) return {status:400,body:{ok:false,message:'Revisa y autoriza el resumen antes de compartirlo.'}};
     const preview=await loadFinancialPreview(ctx.supabase,ctx.userClaims.id,now);
     if (preview.summaryDigest!==body.summaryDigest) return {status:409,body:{ok:false,error:'SUMMARY_CHANGED',message:'Tus registros cambiaron. Revisa y autoriza el resumen actualizado antes de continuar.'}};
+    if (!preview.summary.monthly.transactionCount) return {status:422,body:{ok:false,error:'SUMMARY_NO_DATA',message:'Todavía no tienes movimientos de este mes para analizar. Registra tus ingresos o gastos, o consulta una duda general sin compartir el resumen.'}};
     financialSummary=preview.summary;
   } else if (body.summaryDigest !== undefined) {
     return {status:400,body:{ok:false,message:'Falta autorizar el resumen financiero.'}};
   }
   const result=await ask(message,body.history,financialSummary);
   return {status:200,body:{...result,financialVersion:1,financialSummaryUsed:!!financialSummary}};
+}
+
+export async function reserveAIQuota(client,kind){
+  const {data,error}=await client.rpc('heda_take_ai_quota',{p_kind:kind});
+  if(error || typeof data?.allowed!=='boolean')throw new Error('AI_LIMITS_UNAVAILABLE');
+  if(!data.allowed){
+    const codes={AI_GLOBAL_LIMIT:'Se alcanzó el límite diario compartido de HEDA IA. Tus registros siguen disponibles; prueba mañana.',AI_USER_DAILY_LIMIT:'Alcanzaste tu límite diario de HEDA IA. Puedes volver a consultar después del reinicio diario UTC.',AI_USER_MINUTE_LIMIT:'Has consultado varias veces seguidas. Espera un momento antes de volver a intentar.'};
+    const failure=new Error(codes[data.code]||'Se alcanzó el límite de consultas. Inténtalo más tarde.');
+    failure.status=429;failure.code=Object.hasOwn(codes,data.code)?data.code:'AI_RATE_LIMIT';failure.retryAfter=Math.min(86400,Math.max(1,Number(data.retryAfter)||60));throw failure;
+  }
+  return data;
+}
+export async function readHedaRequest(req,maxBytes=65536){
+  const fail=(status,message)=>{const error=new Error(message);error.status=status;error.code='INVALID_REQUEST';return error;};
+  if(!/^application\/json(?:;|$)/i.test(req.headers.get('content-type')||''))throw fail(415,'Envía una solicitud JSON.');
+  if(Number(req.headers.get('content-length'))>maxBytes)throw fail(413,'La solicitud es demasiado grande. Inicia una conversación nueva.');
+  const reader=req.body?.getReader();if(!reader)throw fail(400,'La solicitud está vacía.');
+  const chunks=[];let size=0;
+  try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>maxBytes){await reader.cancel();throw fail(413,'La solicitud es demasiado grande. Inicia una conversación nueva.');}chunks.push(value);}}finally{reader.releaseLock();}
+  const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+  let body;try{body=JSON.parse(new TextDecoder().decode(bytes));}catch{throw fail(400,'La solicitud no es válida.');}
+  if(!body || typeof body!=='object' || Array.isArray(body))throw fail(400,'La solicitud no es válida.');return body;
+}
+
+export async function assertAIAdult(client){
+ const {data,error}=await client.rpc('heda_ai_age_eligible');
+ if(data===true&&!error)return;
+ const failure=new Error(error?'No pudimos comprobar tu edad. Actualiza HEDA y revisa tu perfil.':data===false?'El asistente de Gemini está disponible a partir de los 18 años. Puedes seguir usando los registros y las herramientas de HEDA.':'Completa tu fecha de nacimiento en Perfil antes de usar el asistente.');
+ failure.status=error?503:403;failure.code=error?'AI_AGE_UNAVAILABLE':data===false?'AI_AGE_RESTRICTED':'AI_AGE_REQUIRED';throw failure;
 }
 
 import { withSupabase } from "npm:@supabase/server@1";
@@ -203,12 +243,17 @@ const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers
 const json = (status: number, body: Record<string, unknown>) => Response.json(body, { status, headers: cors });
 
 const authenticated = withSupabase({ auth: "user" }, async (req, ctx) => {
-  let body;
-  try { body = await req.json(); } catch { return json(400, { ok: false, message: "La pregunta no es válida." }); }
   try {
-    const result = await handleHedaBody(body, ctx, ask, Deno.env.get("HEDA_AI_ENABLED") !== "false");
+    const body=await readHedaRequest(req);
+    await assertAIAdult(ctx.supabase);
+    if(body.action===undefined)validateChatHistory(body.history);
+    if(body.action==='financial_preview' && Deno.env.get('HEDA_AI_ENABLED')!=='false')await reserveAIQuota(ctx.supabase,'preview');
+    const limitedAsk=async(...args: Parameters<typeof ask>)=>{await reserveAIQuota(ctx.supabase,'chat');return ask(...args);};
+    const result = await handleHedaBody(body, ctx, limitedAsk, Deno.env.get("HEDA_AI_ENABLED") !== "false");
     return json(result.status, result.body);
   } catch (error) {
+    const custom=error as {status?:number;code?:string;message?:string;retryAfter?:number};
+    if(custom?.status && custom?.code)return Response.json({ok:false,error:custom.code,message:custom.message,...(custom.retryAfter?{retryAfter:custom.retryAfter}:{})},{status:custom.status,headers:{...cors,...(custom.retryAfter?{'Retry-After':String(custom.retryAfter)}:{})}});
     const failure = geminiError(error);
     return json(failure.status, { ok: false, error: failure.code, message: failure.message });
   }

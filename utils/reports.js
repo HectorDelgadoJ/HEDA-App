@@ -15,8 +15,8 @@ export function reportPeriod(filter, offset = 0, now = new Date()) {
   }
   return {start:key(start),end:key(end),buckets};
 }
-export function reportData(rows, period) {
-  const selected=rows.filter(row=>row.transaction_date>=period.start && row.transaction_date<=period.end);
+export function reportData(rows, period, today = null) {
+  const selected=rows.filter(row=>row.transaction_date>=period.start && row.transaction_date<=period.end && (!today || row.transaction_date<=today));
   const sum=items=>items.reduce((total,row)=>total+cents(row.amount),0)/100;
   const income=sum(selected.filter(row=>row.type==='income'));
   const expenses=sum(selected.filter(isSpending));

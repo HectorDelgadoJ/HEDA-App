@@ -1,0 +1,5 @@
+import {createServer} from 'node:http';
+import {readFile,stat} from 'node:fs/promises';
+import {resolve,extname,sep} from 'node:path';
+const root=resolve('dist'),types={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.json':'application/json','.webmanifest':'application/manifest+json','.png':'image/png','.ttf':'font/ttf'};
+createServer(async(req,res)=>{try{const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname),target=resolve(root,'.'+pathname);if(target!==root&&!target.startsWith(root+sep)){res.writeHead(403);res.end();return;}let file=target;try{if((await stat(file)).isDirectory())file=resolve(file,'index.html');}catch{if(extname(pathname)){res.writeHead(404);res.end();return;}file=resolve(root,'index.html');}const content=await readFile(file);res.writeHead(200,{'Content-Type':types[extname(file)]||'application/octet-stream','Cache-Control':'no-store'});res.end(content);}catch{res.writeHead(404);res.end('No disponible. Ejecuta npm run build:web primero.');}}).listen(4173,'127.0.0.1',()=>console.log('HEDA: http://127.0.0.1:4173'));

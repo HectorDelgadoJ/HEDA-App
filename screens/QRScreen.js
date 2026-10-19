@@ -1,11 +1,13 @@
+import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 
 export default function QRScreen() {
+  const { colors, styles } = useThemeStyles(makeStyles);
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: colors.background }}>
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.container}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={themeStyle({ flex: 1, backgroundColor: colors.background }, colors)}>
+    <ScrollView style={themeStyle({ flex: 1 }, colors)} contentContainerStyle={styles.container}>
 
       <Text style={styles.title}>
         Pagos con Código QR
@@ -67,44 +69,44 @@ export default function QRScreen() {
         </Text>
       </View>
 
-      <TouchableOpacity disabled style={[styles.button, { opacity: 0.5 }]}>
+      <TouchableOpacity disabled style={themeStyle([styles.button, { opacity: 0.5 }], colors)}>
         <Text style={styles.buttonText}>
           Escanear QR
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity disabled style={[styles.secondaryButton, { opacity: 0.5 }]}>
+      <TouchableOpacity disabled style={themeStyle([styles.secondaryButton, { opacity: 0.5 }], colors)}>
         <Text style={styles.secondaryButtonText}>
           Generar QR
         </Text>
       </TouchableOpacity>
 
     </ScrollView>
-    </SafeAreaView>
-  );
+    </SafeAreaView>);
+
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
 
   container: {
     flexGrow: 1,
     backgroundColor: colors.background,
     padding: 20,
     paddingTop: 16,
-    paddingBottom: 28,
+    paddingBottom: 28
   },
 
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.ink,
-    marginBottom: 10,
+    marginBottom: 10
   },
 
   subtitle: {
     fontSize: 16,
     color: '#555',
-    marginBottom: 18,
+    marginBottom: 18
   },
 
   qrCard: {
@@ -117,14 +119,14 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 5,
-    elevation: 3,
+    elevation: 3
   },
 
   qrTitle: {
     fontSize: 19,
     fontWeight: 'bold',
     color: colors.ink,
-    marginBottom: 20,
+    marginBottom: 20
   },
 
   qrPlaceholder: {
@@ -134,25 +136,25 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 20
   },
 
   qrText: {
     fontSize: 40,
     fontWeight: 'bold',
-    color: colors.ink,
+    color: colors.ink
   },
 
   userName: {
     fontSize: 18,
     fontWeight: 'bold',
     color: colors.ink,
-    marginBottom: 5,
+    marginBottom: 5
   },
 
   accountInfo: {
     color: '#666',
-    fontSize: 15,
+    fontSize: 15
   },
 
   sectionCard: {
@@ -164,68 +166,68 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 5,
-    elevation: 3,
+    elevation: 3
   },
 
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: colors.ink,
-    marginBottom: 15,
+    marginBottom: 15
   },
 
   option: {
     fontSize: 16,
     color: '#444',
-    marginBottom: 12,
+    marginBottom: 12
   },
 
   securityCard: {
     backgroundColor: colors.ink,
     borderRadius: 18,
     padding: 18,
-    marginBottom: 18,
+    marginBottom: 18
   },
 
   securityTitle: {
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 10
   },
 
   securityText: {
     color: 'white',
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 22
   },
 
   button: {
     backgroundColor: colors.primary,
     padding: 18,
     borderRadius: 15,
-    marginBottom: 15,
+    marginBottom: 15
   },
 
   buttonText: {
     color: 'white',
     textAlign: 'center',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 16
   },
 
   secondaryButton: {
     backgroundColor: colors.ink,
     padding: 18,
     borderRadius: 15,
-    marginBottom: 40,
+    marginBottom: 40
   },
 
   secondaryButtonText: {
     color: 'white',
     textAlign: 'center',
     fontWeight: 'bold',
-    fontSize: 16,
-  },
+    fontSize: 16
+  }
 
 });

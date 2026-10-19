@@ -3,6 +3,8 @@ export const HEDA_INSTRUCTIONS = "Eres HEDA, un asistente especializado exclusiv
 
 export function geminiError(error) {
   const errors = {
+    AI_LIMITS_UNAVAILABLE: [503, 'El asistente no está disponible mientras se configura su límite de uso. Inténtalo más tarde.'],
+    SUMMARY_INVALID_DATA: [503, 'Hay importes no válidos en tus registros. Revisa tus movimientos antes de analizarlos.'],
     SUMMARY_LOAD_FAILED: [503, 'No pudimos cargar tu resumen completo. Inténtalo de nuevo; no se envió un análisis parcial.'],
     SUMMARY_TOO_LARGE: [413, 'Tu historial supera el tamaño que puede analizar esta versión.'],
     INVALID_HISTORY: [400, 'La conversación no es válida o es demasiado larga. Inicia una nueva conversación.'],
@@ -85,7 +87,7 @@ export function createGeminiClient(env, fetcher = fetch, now = () => new Date())
     if (!/^gemini-[a-zA-Z0-9.-]+$/.test(model)) throw new Error('GEMINI_MODEL_INVALID');
     // New free projects do not include Google Search. Explicit server opt-in only.
     const webEnabled = !financialSummary && env('GEMINI_SEARCH_ENABLED') === 'true';
-    const financialContext = financialSummary ? '\nRESUMEN CALCULADO POR EL SERVIDOR Y AUTORIZADO PARA ESTE CHAT:\n' + JSON.stringify(financialSummary) + '\nUsa estos totales como hechos registrados, indicando el periodo. No tienes los movimientos individuales ni los nombres. No inventes causas, presupuestos o tendencias. No presentes el resultado como ahorro garantizado ni restes dos veces pagos de tarjeta. No uses búsqueda web con este resumen. Si preguntan por otro periodo o detalle no incluido, aclara que el resumen no lo contiene. Esta información agregada es la única excepción a la falta de acceso descrita arriba.' : '';
+    const financialContext = financialSummary ? '\nRESUMEN CALCULADO POR EL SERVIDOR Y AUTORIZADO PARA ESTE CHAT:\n' + JSON.stringify(financialSummary) + '\nUsa estos totales como hechos registrados, indicando el periodo. No tienes los movimientos individuales ni los nombres. Usa budgets únicamente como límites agregados de las categorías configuradas. No inventes causas ni tendencias. Si coverage.sparseMonth es true, señala que hay pocos registros para sacar conclusiones. Explica el periodo y distingue resultado mensual, saldo disponible y deuda. No presentes el resultado como ahorro garantizado ni restes dos veces pagos de tarjeta. No uses búsqueda web con este resumen. Si preguntan por otro periodo o detalle no incluido, aclara que el resumen no lo contiene. Esta información agregada es la única excepción a la falta de acceso descrita arriba.' : '';
     const body = {
       systemInstruction: { parts: [{ text: HEDA_INSTRUCTIONS + `\nFecha UTC de referencia: ${now().toISOString().slice(0,10)}. Búsqueda web ${webEnabled ? 'disponible; úsala solo cuando sea necesaria' : 'NO disponible; no afirmes conocer precios o noticias actuales ni haber buscado en internet'}.` + financialContext }] },
       contents: [...context, { role: 'user', parts: [{ text: message.trim() }] }],

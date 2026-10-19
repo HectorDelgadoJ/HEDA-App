@@ -8,7 +8,7 @@ const tx=(id,type,amount,date='2026-10-10',extra={})=>({id,user_id:'A',type,amou
 const database=()=>({transactions:[tx('1','income',10000),tx('2','expense',100,'2026-10-10',{card_id:'card'}),tx('3','expense',1100,'2026-10-11',{card_id:'card',is_card_payment:true}),tx('4','expense',0.1),tx('5','expense',0.2)],card_payments:[{id:'card',user_id:'A',ledger_enabled:true,opening_balance:1000}],goals:[{id:'goal',user_id:'A',status:'active',target_amount:2000,current_amount:500}]});
 function mockClient(db,pageLimit=1000){
  const calls=[];return {calls,from(table){const call={table};calls.push(call);let columns,userId,start=0,end=0,today;
- const q={select(value){columns=value;call.columns=value;return q;},eq(key,value){assert.equal(key,'user_id');userId=value;call.userId=value;return q;},order(){return q;},range(a,b){start=a;end=b;return q;},lte(key,value){assert.equal(key,'transaction_date');today=value;return q;},async abortSignal(){const all=db[table].filter(row=>row.user_id===userId&&(!today||row.transaction_date<=today));const data=all.slice(start,Math.min(end+1,start+pageLimit)).map(row=>Object.fromEntries(columns.split(',').map(key=>[key,row[key]])));return {data,count:all.length,error:null};}};return q;}};
+ const q={select(value){columns=value;call.columns=value;return q;},eq(key,value){assert.equal(key,'user_id');userId=value;call.userId=value;return q;},order(){return q;},range(a,b){start=a;end=b;return q;},lte(key,value){assert.equal(key,'transaction_date');today=value;return q;},async abortSignal(){const all=(db[table] || []).filter(row=>row.user_id===userId&&(!today||row.transaction_date<=today));const data=all.slice(start,Math.min(end+1,start+pageLimit)).map(row=>Object.fromEntries(columns.split(',').map(key=>[key,row[key]])));return {data,count:all.length,error:null};}};return q;}};
 }
 test('summary distinguishes income, credit spending, payments, debt and exact cents',()=>{
  const db=database();const s=calculateFinancialSummary(db.transactions,db.card_payments,db.goals,'2026-10-15');
@@ -45,4 +45,25 @@ test('unauthenticated or disabled requests cannot read the database or call the 
 test('database errors stop the preview instead of generating a partial analysis',async()=>{
  const client={from(){const q={select(){return q;},eq(){return q;},order(){return q;},range(){return q;},lte(){return q;},abortSignal:async()=>({data:null,count:null,error:{message:'failed'}})};return q;}};
  await assert.rejects(loadFinancialPreview(client,'A',now),/SUMMARY_LOAD_FAILED/);
+});
+
+test('budget summary uses actual purchases, exact thresholds and contains no custom category names',()=>{
+ const rows=[tx('1','expense',80,'2026-10-10',{category:' private category '}),tx('2','expense',90,'2026-10-10',{category:'Comida',is_card_payment:true})];
+ const summary=calculateFinancialSummary(rows,[],[],'2026-10-15',[{category:'PRIVATE CATEGORY',monthly_limit:100},{category:'Comida',monthly_limit:50}]);
+ assert.deepEqual(summary.budgets,{configuredCount:2,nearCount:1,reachedCount:0,monthlyLimitTotal:150,spentInBudgetedCategories:80});
+ assert.equal(summary.coverage.sparseMonth,true);assert.ok(!JSON.stringify(summary).includes('private category'));
+});
+test('empty month produces an actionable response without spending API quota',async()=>{
+ const db={transactions:[],card_payments:[],goals:[],budgets:[]};const client=mockClient(db);const preview=await loadFinancialPreview(client,'A',now);let calls=0;
+ const response=await handleHedaBody({message:'Analiza',financialConsent:true,summaryDigest:preview.summaryDigest},{userClaims:{id:'A'},supabase:client},async()=>calls++,true,now);
+ assert.equal(response.status,422);assert.equal(response.body.error,'SUMMARY_NO_DATA');assert.equal(calls,0);
+});
+test('different owners cannot reuse a consent digest even when their recorded totals match',async()=>{
+ const db=database();const a=await loadFinancialPreview(mockClient(db),'A',now);
+ const bdb=Object.fromEntries(Object.entries(db).map(([table,rows])=>[table,rows.map(row=>({...row,user_id:'B'}))]));
+ let calls=0;const response=await handleHedaBody({message:'Analiza',financialConsent:true,summaryDigest:a.summaryDigest},{userClaims:{id:'B'},supabase:mockClient(bdb)},async()=>calls++,true,now);
+ assert.equal(response.status,409);assert.equal(calls,0);
+});
+test('invalid money cannot silently become a false financial summary',()=>{
+ assert.throws(()=>calculateFinancialSummary([tx('bad','income','NaN')],[],[],'2026-10-15'),/SUMMARY_INVALID_DATA/);
 });

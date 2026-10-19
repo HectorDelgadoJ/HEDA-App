@@ -222,7 +222,7 @@ npm test
 
 Las pruebas de cálculos no necesitan Supabase. La prueba local de PostgreSQL es opcional y se omite si no se configura `PGLITE_TEST_MODULE`.
 
-- Expo: **57.0.28**.
+- Expo: **57.0.30**.
 - React: **19.2.3**.
 - React Native: **0.86.3**.
 - Dependencias exactas y requisitos de Node/npm: `package.json`.
@@ -242,3 +242,56 @@ Analizar mis finanzas prepara un resumen del mes hasta hoy, tarjetas con seguimi
 ## Alertas y presupuestos mensuales
 
 Para activar los límites por categoría, ejecuta una vez en SQL Editor la migración `supabase/migrations/202610150006_budgets.sql`, después de las migraciones anteriores. Consulta [GUIA_ALERTAS_PRESUPUESTOS.md](GUIA_ALERTAS_PRESUPUESTOS.md) para el comando de copia y las pruebas. Los avisos funcionan dentro de la app; no son notificaciones push.
+
+
+## Vistas simple y completa
+
+HEDA permite elegir una prioridad y la cantidad de información visible, con personalización en Perfil. Las preferencias se guardan en la cuenta de Supabase Auth; esta actualización no requiere SQL ni Secrets nuevos. Consulta [GUIA_VISTAS_HEDA.md](GUIA_VISTAS_HEDA.md) para funcionamiento y pruebas de aceptación.
+
+
+### Apariencia
+
+Perfil → Personalizar HEDA permite Claro/Oscuro, vista previa y ajustes desplegables de Inicio y Pagos. Guarda para conservarlo en tu cuenta. Se añadió expo-system-ui: en otra computadora utiliza npm ci y reinicia Metro tras actualizar las dependencias. Consulta GUIA_VISTAS_HEDA.md para pruebas.
+
+
+### Recordatorios y fiabilidad financiera
+
+En Alertas puedes activar Recordarme en este teléfono y usar Probar aviso. Son avisos locales para próximas fechas; requieren permiso y abrir HEDA para renovar la programación después de cambios. No confirman ni pagan automáticamente y no están disponibles en web. Consulta GUIA_ALERTAS_PRESUPUESTOS.md para límites y validación.
+
+La actualización del 17 de octubre requiere ejecutar manualmente `supabase/migrations/202610170007_card_payment_dates.sql` y volver a desplegar `supabase/heda-ai-dashboard.ts`. Si todavía no existe budgets, ejecutar primero la migración 006 una sola vez. No cambian los Secrets. Tras descargar estos cambios en otra computadora ejecutar `npm ci`. Reiniciar Metro; una app nativa instalada necesita reconstrucción por la nueva dependencia expo-notifications.
+
+
+### Inicio de sesión y registro
+
+El registro solicita datos de acceso y ofrece una personalización opcional de prioridad/vista. No requiere SQL nuevo. Para uso público, activar Confirm email en Supabase → Authentication → Sign In / Providers → Email; Google ofrece otra vía de acceso. El archivo local no cambia esta configuración remota. Consulta GUIA_ACCESO_HEDA.md para el flujo y las pruebas.
+
+
+### Google y seguridad
+
+Consultar GUIA_SEGURIDAD_GOOGLE.md: SQL 008 antes del nuevo despliegue de heda-ai, configuración de Google en Supabase, esquema nativo heda, sesiones nativas en SecureStore, CAPTCHA opcional con verificación de servidor y revisión RLS. Google necesita una app nativa instalada/de desarrollo o web; Expo Go mantiene correo y contraseña. Hay alertas de dependencias pendientes documentadas; no se afirma que la app esté libre de vulnerabilidades.
+
+
+## Registro compacto (17 octubre 2026)
+Sin banner ni Google repetido al crear cuenta; nombre, edad declarada y @usuario obligatorios. Comprobación al continuar e índice único en Supabase, también para cambios de perfil. Ejecutar migración 202610170009; pasos en [GUIA_REGISTRO_HEDA.md](GUIA_REGISTRO_HEDA.md). Google conserva su acceso anterior, sin edad declarada.
+
+
+## Recuperar contraseña (18 octubre 2026)
+Login incluye **¿Olvidaste tu contraseña?**, código de correo y contraseña nueva. Cliente de recuperación aislado, sin persistencia, con validación de identidad, reenvío, CAPTCHA cuando esté configurado y tratamiento de límites/códigos vencidos. Requiere actualizar manualmente la plantilla **Reset Password** en Supabase con `supabase/templates/recovery.html`; pasos en [GUIA_RECUPERAR_CONTRASENA.md](GUIA_RECUPERAR_CONTRASENA.md). No requiere SQL. Entrega real del correo y prueba en teléfono pendientes de esa configuración. También se corrigió el acceso a los colores del indicador de carga en AuthButton.
+
+
+## Eliminar cuenta (18 octubre 2026)
+Perfil incorpora eliminación definitiva con código de correo y confirmación ELIMINAR. El servidor verifica sesión e identidad; ignora cualquier intento de elegir otra cuenta y usa la API administrativa solo en el servidor. Se eliminan datos activos por cascada y se limpian preferencias/avisos propios del dispositivo. Requiere publicar **delete-account** y configurar **Magic link or OTP** con la plantilla dedicada; pasos en [GUIA_ELIMINAR_CUENTA.md](GUIA_ELIMINAR_CUENTA.md). Sin nueva migración SQL sobre el esquema 001–009. Ninguna cuenta real se borró durante las pruebas. Pendiente prueba remota con cuenta desechable tras el despliegue. Logo en correos sigue pendiente.
+
+
+## Web y Agregar a inicio (18 octubre 2026)
+HEDA se exporta con `npm run build:web` a **dist**, preparada para Netlify Drop y Vercel. Tutorial de instalación por plataforma en login y Perfil, manifiesto standalone e iconos del logo HEDA. Las confirmaciones tienen diálogos web propios; almacenamiento y tema están adaptados al navegador. Sin caché offline ni recordatorios locales web. Pasos para publicar y configurar redirects en [GUIA_WEB_HEDA.md](GUIA_WEB_HEDA.md). No se ha publicado un enlace: falta subir dist a la cuenta de Netlify del usuario. Pruebas en navegador con datos simulados; instalación real en Safari y servicios remotos por comprobar tras publicar.
+
+
+### Piloto público y Google (18/10/2026)
+
+La exportación incluye `/privacidad/` y `/condiciones/`, accesibles sin sesión y enlazadas desde acceso y Perfil. Las cuentas de Google incompletas deben indicar nombre, edad y @usuario único antes de la bienvenida. Aplica primero `supabase/migrations/202610180010_complete_google_profile.sql` en SQL Editor; después publica `dist` en el mismo sitio. No requiere desplegar Edge Functions. Consulta [GUIA_WEB_HEDA.md](GUIA_WEB_HEDA.md) para las URL de Google, revocación del secreto anterior y pruebas con amigos. Publicación en Google y pruebas físicas siguen a cargo del responsable. No ofrecer el piloto con Gemini a menores sin resolver las restricciones de edad del proveedor.
+
+
+### Fecha de nacimiento (18/10/2026)
+
+Registro y perfil solicitan una fecha privada y calculan la edad al usarla. Las cuentas existentes completan los datos faltantes una vez; no se infiere la fecha desde el campo legado `age`. Aplica el SQL **011** después de 010 y actualiza la Edge Function **heda-ai** con `supabase/heda-ai-dashboard.ts` antes de subir dist. El servidor comprueba la edad para Gemini sin enviar la fecha al modelo; menores conservan el resto de herramientas. Consulta el orden exacto y las pruebas en GUIA_WEB_HEDA.md.

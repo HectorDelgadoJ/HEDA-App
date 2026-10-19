@@ -16,15 +16,18 @@ async function invokeHeda(body, { signal } = {}) {
       if (error.context?.status === 404) throw new Error('Falta publicar la función heda-ai en Supabase.');
       if (error.context?.status === 401) throw new Error('Tu sesión venció. Vuelve a iniciar sesión.');
       const failure = new Error(backend?.message || 'No pudimos conectar con HEDA IA. Revisa tu conexión e inténtalo de nuevo.');
-      failure.code = error.context?.status === 429 ? 'AI_RATE_LIMIT' : backend?.error || 'AI_CONNECTION_ERROR';
+      failure.code = backend?.error || (error.context?.status === 429 ? 'AI_RATE_LIMIT' : 'AI_CONNECTION_ERROR');
+      failure.retryAfter=backend?.retryAfter;
       failure.status = error.context?.status;
       throw failure;
     }
-    if (!data?.ok) throw new Error(data?.message || 'El asistente no devolvió una respuesta válida.');
+    if (!data?.ok) {const failure=new Error(data?.message || 'El asistente no devolvió una respuesta válida.');failure.code=data?.error || 'AI_INVALID_RESPONSE';throw failure;}
+    const {data:{session:currentSession},error:currentError}=await supabase.auth.getSession();
+    if(currentError || currentSession?.user?.id!==session.user.id){const changed=new Error('Tu sesión cambió. Vuelve a abrir el asistente.');changed.code='AI_SESSION_CHANGED';throw changed;}
     return data;
   } catch (error) {
     if (signal?.aborted) { const cancelled = new Error('Consulta cancelada'); cancelled.name = 'AbortError'; throw cancelled; }
-    if (controller.signal.aborted) throw new Error('La respuesta tardó demasiado. Inténtalo de nuevo.');
+    if (controller.signal.aborted) {const timeoutError=new Error('La respuesta tardó demasiado. Tu pregunta se conserva para reintentar.');timeoutError.code='AI_TIMEOUT';throw timeoutError;}
     throw error;
   } finally { clearTimeout(timeout); signal?.removeEventListener('abort', abort); }
 }

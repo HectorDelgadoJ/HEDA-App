@@ -91,6 +91,35 @@ Flujo:
 6. La búsqueda web se desactiva en las conversaciones con resumen aunque GEMINI_SEARCH_ENABLED sea true. El resumen no se envía a Bing, Google Search ni otra herramienta de búsqueda. Google Gemini sí procesa los importes con las condiciones del nivel del proyecto.
 7. Nueva conversación, cerrar sesión o cambiar de usuario elimina el contexto local. No elimina logs o registros que el proveedor conserve. Para dejar de reenviar las cifras, inicia una nueva conversación; no basta con ocultar una tarjeta o cambiar a Herramientas.
 
-El hash detecta cambios entre la vista previa y el recálculo; no es una transacción de lectura atómica entre tablas. Los datos son un resumen de registros, no el saldo de un banco. Los préstamos externos, gastos sin registrar y presupuestos no están incluidos. No se interpreta el resultado del mes como ahorro garantizado. Los cálculos se hacen en centavos en código, no se delegan al modelo; sus explicaciones deben revisarse.
+El hash detecta cambios entre la vista previa y el recálculo; no es una transacción de lectura atómica entre tablas. Los datos son un resumen de registros, no el saldo de un banco. Los préstamos externos y gastos sin registrar no están incluidos. El resumen incluye ahora los presupuestos agregados de las categorías configuradas. No se interpreta el resultado del mes como ahorro garantizado. Los cálculos se hacen en centavos en código, no se delegan al modelo; sus explicaciones deben revisarse.
 
 Prueba antes de la demo: cancelar la vista previa; compartirla y preguntar qué categoría concentra más gasto; preguntar por pagos de tarjetas para comprobar que no se dupliquen; crear otro movimiento desde Movimientos y verificar que el siguiente seguimiento requiera revisar el resumen cambiado; iniciar Nueva conversación y comprobar que HEDA ya no conoce esos importes. Las pruebas automatizadas usan un cliente simulado: verifican filtros del usuario y ausencia de campos privados, pero no reemplazan la prueba real de RLS en Supabase.
+
+
+## Interfaz simplificada del asistente
+
+Encabezado Asistente HEDA sin barras de acciones. El botón + junto al campo de mensaje abre Nueva conversación, Analizar mis finanzas y Aprender y explorar. Las herramientas tienen una vista independiente dentro de IA y una flecha para volver al chat conservando la conversación. La bienvenida muestra tres sugerencias y un acceso a herramientas, que desaparecen al comenzar el chat. La información de privacidad sigue disponible en el icono azul inferior.
+
+Prueba en iPhone: abrir y cerrar +, elegir una sugerencia y enviarla, hacer seguimiento, abrir herramientas desde + y regresar al chat, cancelar Nueva conversación, confirmar Nueva conversación y verificar que el contexto se limpie. Analizar mis finanzas debe seguir mostrando el resumen y pedir Compartir y analizar antes de enviar importes a Gemini. Esta modificación de interfaz no requiere volver a desplegar la función ni cambiar Secrets.
+
+
+## Revisión de fiabilidad del 17 de octubre
+
+Volver a publicar `supabase/heda-ai-dashboard.ts` en la función heda-ai. No cambian los Secrets.
+
+```powershell
+Get-Content -Raw -Encoding utf8 .\supabase\heda-ai-dashboard.ts | Set-Clipboard
+```
+
+El resumen consulta además la tabla budgets (requiere la migración 006 si aún no se ejecutó). Solo envía cantidad de presupuestos, límites sumados, gasto en categorías presupuestadas y cantidad cerca/al alcanzar el límite. No envía los nombres de categorías personalizadas. Las categorías estándar de gasto mantienen el desglose anterior.
+
+La vista previa señala meses sin registros o con pocos movimientos. Sin movimientos del mes se impide Compartir y analizar y el servidor no llama al proveedor. Con pocos datos no se presentan tendencias como concluyentes. Se rechazan importes no finitos y cargas parciales. El servidor sigue recalculando y comprobando el hash de consentimiento ligado a la cuenta.
+
+El cliente conserva códigos de error de cuota, proveedor no disponible, falta de datos y cambio de resumen; no hace reintentos automáticos que consuman cuota. Verifica que la sesión siga siendo de la misma cuenta antes de devolver la respuesta. Los importes y cálculos se resuelven en centavos antes de llamar a Gemini.
+
+Pruebas automatizadas: dos propietarios y hash no reutilizable entre ellos, datos faltantes, errores de base, poco historial, sin movimientos, compras con tarjeta y pagos sin doble gasto, umbrales de presupuestos, cancelación, sesión cambiada, cuota 429 y proveedor 503. RLS de presupuestos y tarjetas se verificó adicionalmente en PostgreSQL temporal. Aún se requiere prueba de la función desplegada con las cuentas reales de prueba; no se ha invocado Gemini con credenciales del usuario desde estas herramientas.
+
+
+## Límites persistentes de uso
+
+Antes de publicar la función actual ejecutar `supabase/migrations/202610170008_ai_usage_limits.sql` en SQL Editor; después reemplazar y desplegar `supabase/heda-ai-dashboard.ts` en heda-ai. Si falta el SQL, se bloquean las llamadas a Gemini. No cambian los Secrets actuales. Límites de intentos: 5/minuto y 60/día UTC por usuario, 300/día UTC compartidos; vistas previas tienen límites separados. Las respuestas 429 distinguen cuota propia de HEDA y cuota de Gemini. No se garantiza una factura máxima por limitar solicitudes. Ver GUIA_SEGURIDAD_GOOGLE.md.

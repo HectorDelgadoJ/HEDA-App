@@ -12,3 +12,13 @@ export function cardDebt(card, rows) {
 export function spendingTotal(rows) {
   return rows.filter(isSpending).reduce((sum, row) => sum + cents(row.amount), 0) / 100;
 }
+
+export function recordedRows(rows, today) {
+  return rows.filter(row => !row.transaction_date || row.transaction_date <= today);
+}
+export function financialTotals(rows, today) {
+  const recorded = today ? recordedRows(rows,today) : rows;
+  const incomeCents=recorded.filter(row=>row.type==='income').reduce((sum,row)=>sum+cents(row.amount),0);
+  const expenses=spendingTotal(recorded);
+  return {income:incomeCents/100,expenses,balance:cashBalance(recorded),result:(incomeCents-cents(expenses))/100};
+}

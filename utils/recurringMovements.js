@@ -1,4 +1,4 @@
-import { cashBalance, cardDebt, cents as moneyCents } from './finance';
+import { cashBalance, cardDebt, cents as moneyCents, recordedRows } from './finance';
 export const frequencies = [
   ['monthly', 'Cada mes'], ['weekly', 'Cada semana'],
   ['biweekly', 'Cada 14 días'], ['yearly', 'Cada año'],
@@ -53,7 +53,8 @@ export function balanceForecast(rules, transactions, today, includeOverdue = fal
   const period = forecastPeriod(today);
   const confirmed = new Set(transactions.filter((row) => row.recurring_movement_id && row.recurring_date)
     .map((row) => `${row.recurring_movement_id}:${row.recurring_date}`));
-  const balanceCents = moneyCents(cashBalance(transactions));
+  const recorded = recordedRows(transactions, today);
+  const balanceCents = moneyCents(cashBalance(recorded));
   let incomeCents = 0;
   let expenseCents = 0;
   let overdueCount = 0;
@@ -96,9 +97,19 @@ export function balanceForecast(rules, transactions, today, includeOverdue = fal
       date = next;
     }
   }
+  // Future dated records are projected once, outside the current balance.
+  const future = transactions.filter(row => row.transaction_date > today && row.transaction_date <= period.end);
+  for (const row of future) {
+    if (row.card_id && !row.is_card_payment) { cardChargesCents += moneyCents(row.amount); continue; }
+    if (row.type === 'income') incomeCents += moneyCents(row.amount);
+    else expenseCents += moneyCents(row.amount);
+    if (row.is_card_payment) cardPaymentsCents += moneyCents(row.amount);
+    occurrences.push({ruleId:`transaction:${row.id}`,name:row.is_card_payment?'Pago de tarjeta registrado a futuro':'Movimiento registrado a futuro',type:row.type,amount:Number(row.amount),date:row.transaction_date,overdue:false});
+  }
   for (const card of cards) {
-    const debt = Math.max(0, moneyCents(cardDebt(card, transactions)));
-    if (!debt || card.due_date > period.end) continue;
+    const futurePayments = future.filter(row => row.card_id === card.id && row.is_card_payment).reduce((sum,row)=>sum+moneyCents(row.amount),0);
+    const debt = Math.max(0, moneyCents(cardDebt(card, recorded))-futurePayments);
+    if (!debt || !card.due_date || card.due_date > period.end) continue;
     const overdue = card.due_date < period.start;
     if (overdue) { overdueCount++; overdueExpenseCents += debt; }
     if (!overdue || includeOverdue) {

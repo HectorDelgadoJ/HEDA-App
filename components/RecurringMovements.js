@@ -1,9 +1,14 @@
+import {Alert} from '../services/alerts';
+import { notifyFinanceChange } from '../services/financeEvents';
+import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
+import { useExperience } from './ExperienceProvider';
+import InfoButton from './InfoButton';
 import PaymentSource from './PaymentSource';
 import { accountRows } from '../services/finance';
 import CardPayments from './CardPayments';
 import BalanceForecast from './BalanceForecast';
 import { useCallback, useRef, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Modal, ScrollView, KeyboardAvoidingView, Platform, Alert, StyleSheet, Keyboard } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Modal, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Keyboard, Switch } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +22,20 @@ const blankForm = () => ({ name: '', type: 'Gasto', amount: '', category: 'Hogar
 const displayDate = (value) => new Date(`${value}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
 
 export default function RecurringMovements({ onConfirmed, mode = 'simple', cards = [] }) {
+  const { colors, styles } = useThemeStyles(makeStyles);
+  const { preferences, savePreferences } = useExperience();
+  const [cardsSaving, setCardsSaving] = useState(false);
+  const cardsToggleBusy = useRef(false);
+  const [forecastOpen, setForecastOpen] = useState(false);
+  async function toggleCards(value) {
+    if (cardsToggleBusy.current) return;
+    cardsToggleBusy.current = true;setCardsSaving(true);
+    try {
+      const saved = await savePreferences({ ...preferences, tools: { ...preferences.tools, cardPayments: value } });
+      if (!saved) Alert.alert('No se guardó la preferencia', 'Revisa tu conexión e inténtalo de nuevo. Tus tarjetas se conservan.');
+    } finally {cardsToggleBusy.current = false;setCardsSaving(false);}
+  }
+
   const loadedOnce = useRef(false);
   const [rules, setRules] = useState([]);
   const [forecastTransactions, setForecastTransactions] = useState([]);
@@ -38,9 +57,9 @@ export default function RecurringMovements({ onConfirmed, mode = 'simple', cards
       if (authError || !user) throw new Error('Vuelve a iniciar sesión para ver tus recurrentes.');
       setUserId(user.id);
       const [scheduledResult, transactionResult] = await Promise.all([
-        accountRows('recurring_movements', '*', user.id),
-        accountRows('transactions', '*', user.id),
-      ]);
+      accountRows('recurring_movements', '*', user.id),
+      accountRows('transactions', '*', user.id)]
+      );
       const { data, error } = scheduledResult;
       if (error) {
         if (['PGRST205', '42P01'].includes(error.code)) throw new Error('Los recurrentes aún no están habilitados.');
@@ -50,10 +69,10 @@ export default function RecurringMovements({ onConfirmed, mode = 'simple', cards
       setRules((data || []).sort((a, b) => a.next_date.localeCompare(b.next_date)));
       setForecastTransactions(transactionResult.data || []);
       loadedOnce.current = true;
-    } catch (error) { setLoadError(error.message); }
-    finally { setLoading(false); }
+    } catch (error) {setLoadError(error.message);} finally
+    {setLoading(false);}
   }
-  useFocusEffect(useCallback(() => { loadRules(); }, []));
+  useFocusEffect(useCallback(() => {loadRules();}, []));
 
   function openForm(rule) {
     setErrors({});
@@ -78,9 +97,9 @@ export default function RecurringMovements({ onConfirmed, mode = 'simple', cards
     try {
       if (!userId) throw new Error('Vuelve a iniciar sesión.');
       const payload = recurringPayload({ ...form, cardId: form.type === 'Gasto' ? form.cardId : null, amount: validation.numericAmount, existing: rules.find((rule) => rule.id === editingId) });
-      const query = editingId
-        ? supabase.from('recurring_movements').update(payload).eq('id', editingId).eq('user_id', userId).select('id').single()
-        : supabase.from('recurring_movements').insert({ ...payload, user_id: userId }).select('id').single();
+      const query = editingId ?
+      supabase.from('recurring_movements').update(payload).eq('id', editingId).eq('user_id', userId).select('id').single() :
+      supabase.from('recurring_movements').insert({ ...payload, user_id: userId }).select('id').single();
       const { error } = await query;
       if (error) {
         if (['PGRST204', '42703', '23514'].includes(error.code)) throw new Error('No se pudo guardar esta repetición. Falta habilitar las frecuencias personalizadas.');
@@ -88,13 +107,13 @@ export default function RecurringMovements({ onConfirmed, mode = 'simple', cards
       }
       setVisible(false);
       const following = nextOccurrence(payload.next_date, payload.frequency, payload.anchor_day, payload.anchor_month, payload.interval_count);
-      const firstNotice = payload.next_date <= localDate()
-        ? `Ya está pendiente para confirmar desde el ${displayDate(payload.next_date)}.`
-        : `El ${displayDate(payload.next_date)} aparecerá un aviso aquí para confirmar ${form.type === 'Ingreso' ? 'el cobro' : 'el pago'}.`;
+      const firstNotice = payload.next_date <= localDate() ?
+      `Ya está pendiente para confirmar desde el ${displayDate(payload.next_date)}.` :
+      `El ${displayDate(payload.next_date)} aparecerá un aviso aquí para confirmar ${form.type === 'Ingreso' ? 'el cobro' : 'el pago'}.`;
       setNotice(`${editingId ? 'Programación actualizada' : 'Programación guardada'}: ${payload.name}.\n${firstNotice}\nDespués de confirmarlo, la siguiente fecha será el ${displayDate(following)}.\n${frequencyLabel(payload.frequency, payload.interval_count)}. Los avisos aparecen dentro de HEDA.`);
-      await loadRules();
-    } catch (error) { setErrors((previous) => ({ ...previous, service: error.message })); }
-    finally { setBusy(null); }
+      notifyFinanceChange();await loadRules();
+    } catch (error) {setErrors((previous) => ({ ...previous, service: error.message }));} finally
+    {setBusy(null);}
   }
   async function confirm(rule) {
     if (busy) return;
@@ -105,90 +124,98 @@ export default function RecurringMovements({ onConfirmed, mode = 'simple', cards
       if (error) throw new Error('No pudimos confirmar el movimiento. Actualiza la lista e intenta de nuevo.');
       const following = nextOccurrence(rule.next_date, rule.frequency, rule.anchor_day, rule.anchor_month, rule.interval_count || 1);
       setNotice(`${rule.card_id ? 'Cargo registrado en la tarjeta' : rule.type === 'income' ? 'Ingreso registrado' : 'Gasto registrado'}. Próxima fecha: ${displayDate(following)}. El aviso aparecerá dentro de HEDA.`);
-      await loadRules();
+      notifyFinanceChange();await loadRules();
       await onConfirmed();
-    } catch (error) { setNotice(error.message); await loadRules(); }
-    finally { setBusy(null); }
+    } catch (error) {setNotice(error.message);notifyFinanceChange();await loadRules();} finally
+    {setBusy(null);}
   }
   async function pause(rule) {
     if (busy) return;
     setBusy(rule.id);
     const { error } = await supabase.from('recurring_movements').update({ active: !rule.active }).eq('id', rule.id).eq('user_id', userId).select('id').single();
-    if (error) setNotice('No pudimos cambiar la programación.');
-    else await loadRules();
+    if (error) setNotice('No pudimos cambiar la programación.');else
+    notifyFinanceChange();await loadRules();
     setBusy(null);
   }
   function deleteRule(rule) {
     Alert.alert('Eliminar programación', 'Se dejará de repetir. Los movimientos que ya confirmaste permanecerán en tu historial.', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: async () => {
+    { text: 'Cancelar', style: 'cancel' },
+    { text: 'Eliminar', style: 'destructive', onPress: async () => {
         setBusy(rule.id);
         const { error } = await supabase.from('recurring_movements').delete().eq('id', rule.id).eq('user_id', userId).select('id').single();
-        if (error) setNotice('No pudimos eliminar la programación.');
-        else await loadRules();
+        if (error) setNotice('No pudimos eliminar la programación.');else
+        notifyFinanceChange();await loadRules();
         setBusy(null);
-      } },
-    ]);
+      } }]
+    );
   }
   const today = localDate();
   const previewPayload = recurringPayload({ ...form, amount: 0, existing: rules.find((rule) => rule.id === editingId) });
-  const followingDate = validateIntervalCount(form.intervalCount)
-    ? nextOccurrence(previewPayload.next_date, previewPayload.frequency, previewPayload.anchor_day, previewPayload.anchor_month, previewPayload.interval_count)
-    : null;
+  const followingDate = validateIntervalCount(form.intervalCount) ?
+  nextOccurrence(previewPayload.next_date, previewPayload.frequency, previewPayload.anchor_day, previewPayload.anchor_month, previewPayload.interval_count) :
+  null;
   return <View>
-    <Text style={styles.title}>Pagos e ingresos programados</Text>
-    <Text style={styles.description}>Programa renta, suscripciones o salario. Confirma cada pago o cobro para registrarlo; no se realizan cargos ni cobros.</Text>
+    <View style={styles.menuHeading}><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.menuTitle}>Tus pagos e ingresos</Text><Text style={styles.menuSubtitle}>Organiza lo que se repite</Text></View><InfoButton title="Cómo funcionan los programados" text="Programa renta, suscripciones o salario. Confirma cada pago o cobro para registrarlo; no se realizan cargos ni cobros." /></View>
     {notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text> : null}
-    {loading ? <ActivityIndicator style={{ marginVertical: 20 }} color={colors.primary} /> : loadError ? <View style={styles.card}>
+    {loading ? <ActivityIndicator style={themeStyle({ marginVertical: 20 }, colors)} color={themeColor(colors.primary, colors)} /> : loadError ? <View style={styles.card}>
       <Text style={styles.description}>{loadError}</Text>
       <TouchableOpacity accessibilityRole="button" style={styles.smallAction} onPress={loadRules}><Text style={styles.link}>Intentar de nuevo</Text></TouchableOpacity>
     </View> : <>
       <TouchableOpacity accessibilityRole="button" disabled={!!busy} style={styles.createButton} onPress={() => openForm()}>
-        <Ionicons name="add-circle-outline" size={22} color="#FFFFFF" /><Text style={styles.buttonText}>Programar pago o ingreso</Text>
+        <Ionicons name="add-circle-outline" size={22} color={themeColor("#FFFFFF", colors)} /><Text style={styles.buttonText}>Programar pago o ingreso</Text>
       </TouchableOpacity>
-      <CardPayments mode={mode} transactions={forecastTransactions} onPaid={async () => { await loadRules(); await onConfirmed(); }} />
-      <BalanceForecast rules={rules} transactions={forecastTransactions} cards={cards} today={today} />
+      {rules.length ? <View style={styles.listHeading}><Text style={styles.listTitle}>Mis programaciones</Text><Text style={styles.countBadge}>{rules.length}</Text></View> : null}
       {!rules.length && <View style={styles.card}><Text style={styles.title}>Tu rutina, organizada</Text><Text style={styles.description}>Añade un pago o ingreso y elige cuándo se repite.</Text></View>}
       {rules.map((rule) => {
         const type = rule.type === 'income' ? 'Ingreso' : 'Gasto';
         const palette = movementColors[type];
         const due = rule.active && rule.next_date <= today;
-        return <View key={rule.id} style={[styles.card, { borderColor: rule.type === 'income' ? '#9DD4B4' : '#EFAEB5', borderWidth: 1.5 }]}>
-          <View style={styles.ruleHeader}><View style={{ flex: 1 }}><Text style={styles.ruleName}>{rule.name}</Text><Text style={styles.caption}>{type} · {rule.category}{rule.card_id ? ` · ${cards.find(card => card.id === rule.card_id)?.name || 'Tarjeta'}` : ''}</Text></View>
-            <Text style={[styles.money, { color: palette.foreground }]}>{rule.type === 'income' ? '+' : '−'}${Number(rule.amount).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+        return <View key={rule.id} style={themeStyle([styles.card, { borderColor: rule.type === 'income' ? '#9DD4B4' : '#EFAEB5', borderWidth: 1.5 }], colors)}>
+          <View style={styles.ruleHeader}><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.ruleName}>{rule.name}</Text><Text style={styles.caption}>{type} · {rule.category}{rule.card_id ? ` · ${cards.find((card) => card.id === rule.card_id)?.name || 'Tarjeta'}` : ''}</Text></View>
+            <Text style={themeStyle([styles.money, { color: palette.foreground }], colors)}>{rule.type === 'income' ? '+' : '−'}${Number(rule.amount).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
           </View>
           <Text style={styles.caption}>{frequencyLabel(rule.frequency, rule.interval_count || 1)} · {displayDate(rule.next_date)}</Text>
-          <Text style={[styles.status, { color: due ? palette.foreground : colors.muted }]}>{!rule.active ? 'Pausado' : due ? 'Pendiente de confirmar' : 'Próximo movimiento'}</Text>
-          {due && <TouchableOpacity accessibilityRole="button" disabled={!!busy} style={[styles.confirmButton, { backgroundColor: palette.foreground }]} onPress={() => confirm(rule)}>
-            {busy === rule.id ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>{rule.type === 'income' ? 'Confirmar cobro' : rule.card_id ? 'Confirmar cargo' : 'Confirmar pago'} · {displayDate(rule.next_date)}</Text>}
+          <Text style={themeStyle([styles.status, { color: due ? palette.foreground : colors.muted }], colors)}>{!rule.active ? 'Pausado' : due ? 'Pendiente de confirmar' : 'Próximo movimiento'}</Text>
+          {due && <TouchableOpacity accessibilityRole="button" disabled={!!busy} style={themeStyle([styles.confirmButton, { backgroundColor: palette.foreground }], colors)} onPress={() => confirm(rule)}>
+            {busy === rule.id ? <ActivityIndicator color={themeColor("#FFFFFF", colors)} /> : <Text style={styles.buttonText}>{rule.type === 'income' ? 'Confirmar cobro' : rule.card_id ? 'Confirmar cargo' : 'Confirmar pago'} · {displayDate(rule.next_date)}</Text>}
           </TouchableOpacity>}
           <View style={styles.actions}>
-            <TouchableOpacity disabled={!!busy} accessibilityRole="button" style={[styles.actionButton, styles.editAction, !!busy && styles.actionDisabled]} onPress={() => openForm(rule)}><Ionicons name="create-outline" size={17} color={colors.primary} /><Text style={styles.link}>Editar</Text></TouchableOpacity>
-            <TouchableOpacity disabled={!!busy} accessibilityRole="button" style={[styles.actionButton, styles.pauseAction, !!busy && styles.actionDisabled]} onPress={() => pause(rule)}><Ionicons name={rule.active ? 'pause-outline' : 'play-outline'} size={17} color={colors.ink} /><Text style={[styles.link, { color: colors.ink }]}>{rule.active ? 'Pausar' : 'Reanudar'}</Text></TouchableOpacity>
-            <TouchableOpacity disabled={!!busy} accessibilityRole="button" style={[styles.actionButton, styles.deleteAction, !!busy && styles.actionDisabled]} onPress={() => deleteRule(rule)}><Ionicons name="trash-outline" size={17} color={movementColors.Gasto.foreground} /><Text style={[styles.link, { color: movementColors.Gasto.foreground }]}>Eliminar</Text></TouchableOpacity>
+            <TouchableOpacity disabled={!!busy} accessibilityRole="button" style={themeStyle([styles.actionButton, styles.editAction, !!busy && styles.actionDisabled], colors)} onPress={() => openForm(rule)}><Ionicons name="create-outline" size={17} color={themeColor(colors.primary, colors)} /><Text style={styles.link}>Editar</Text></TouchableOpacity>
+            <TouchableOpacity disabled={!!busy} accessibilityRole="button" style={themeStyle([styles.actionButton, styles.pauseAction, !!busy && styles.actionDisabled], colors)} onPress={() => pause(rule)}><Ionicons name={rule.active ? 'pause-outline' : 'play-outline'} size={17} color={themeColor(colors.ink, colors)} /><Text style={themeStyle([styles.link, { color: colors.ink }], colors)}>{rule.active ? 'Pausar' : 'Reanudar'}</Text></TouchableOpacity>
+            <TouchableOpacity disabled={!!busy} accessibilityRole="button" style={themeStyle([styles.actionButton, styles.deleteAction, !!busy && styles.actionDisabled], colors)} onPress={() => deleteRule(rule)}><Ionicons name="trash-outline" size={17} color={themeColor(movementColors.Gasto.foreground, colors)} /><Text style={themeStyle([styles.link, { color: movementColors.Gasto.foreground }], colors)}>Eliminar</Text></TouchableOpacity>
           </View>
         </View>;
       })}
+      <View style={styles.optionalCard}>
+        <View style={styles.optionalIcon}><Ionicons name="card-outline" size={23} color={themeColor(colors.primary, colors)} /></View>
+        <View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.listTitle}>Tarjetas por pagar</Text><Text style={styles.optionalLabel}>Opcional</Text></View>
+        {cardsSaving ? <ActivityIndicator color={themeColor(colors.primary, colors)} /> : <Switch accessibilityLabel="Mostrar tarjetas por pagar" value={preferences.tools.cardPayments} onValueChange={toggleCards} disabled={!!busy || cardsSaving} trackColor={{true:colors.primary,false:colors.switchOff}} thumbColor={colors.onPrimary} ios_backgroundColor={colors.switchOff} />}
+      </View>
+      {preferences.tools.cardPayments ? <CardPayments mode={mode} transactions={forecastTransactions} onPaid={async () => {notifyFinanceChange();await loadRules();await onConfirmed();}} /> : null}
+      <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: forecastOpen }} onPress={() => setForecastOpen(!forecastOpen)} style={styles.optionalCard}>
+        <View style={styles.optionalIcon}><Ionicons name="calendar-outline" size={23} color={themeColor(colors.primary, colors)} /></View><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.listTitle}>Saldo estimado</Text><Text style={styles.optionalLabel}>Hasta el cierre del próximo mes</Text></View><Ionicons name={forecastOpen ? 'chevron-up' : 'chevron-down'} size={20} color={themeColor(colors.primary, colors)} />
+      </TouchableOpacity>
+      {forecastOpen ? <BalanceForecast rules={rules} transactions={forecastTransactions} cards={cards} today={today} /> : null}
     </>}
-    <Modal visible={visible} presentationStyle="pageSheet" animationType="slide" onRequestClose={() => { if (!busy) setVisible(false); }}>
+    <Modal visible={visible} presentationStyle="pageSheet" animationType="slide" onRequestClose={() => {if (!busy) setVisible(false);}}>
       <SafeAreaProvider>
-      <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={{ flex: 1, backgroundColor: colors.background }}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={themeStyle({ flex: 1, backgroundColor: colors.background }, colors)}>
+        <KeyboardAvoidingView style={themeStyle({ flex: 1 }, colors)} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{editingId ? 'Editar programación' : 'Nueva programación'}</Text>
             <TouchableOpacity accessibilityLabel="Cerrar formulario" accessibilityRole="button" disabled={!!busy}
-              style={styles.closeButton} hitSlop={8} onPress={() => { Keyboard.dismiss(); setVisible(false); }}>
-              <Ionicons name="close" size={22} color={colors.ink} /><Text style={styles.closeText}>Cerrar</Text>
+              style={styles.closeButton} hitSlop={8} onPress={() => {Keyboard.dismiss();setVisible(false);}}>
+              <Ionicons name="close" size={22} color={themeColor(colors.ink, colors)} /><Text style={styles.closeText}>Cerrar</Text>
             </TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={{ padding: 18 }} keyboardShouldPersistTaps="handled">
-            <MovementType value={form.type} disabled={!!busy} onChange={(value) => { setForm((previous) => ({ ...previous, type: value, category: value === 'Ingreso' ? 'Salario' : 'Hogar', cardId: value === 'Ingreso' ? null : previous.cardId })); setErrors({}); }} />
-            {(mode === 'cards' || form.cardId) && form.type === 'Gasto' && <PaymentSource cards={cards} value={form.cardId} onChange={value => change('cardId', value)} disabled={!!busy} />}
+            <MovementType value={form.type} disabled={!!busy} onChange={(value) => {setForm((previous) => ({ ...previous, type: value, category: value === 'Ingreso' ? 'Salario' : 'Hogar', cardId: value === 'Ingreso' ? null : previous.cardId }));setErrors({});}} />
+            {(mode === 'cards' || form.cardId) && form.type === 'Gasto' && <PaymentSource cards={cards} value={form.cardId} onChange={(value) => change('cardId', value)} disabled={!!busy} />}
             <Text style={styles.label}>Nombre</Text>
-            <TextInput style={styles.input} accessibilityLabel="Nombre del recurrente" placeholder="Ej. Renta, Netflix o salario" placeholderTextColor={colors.muted} maxLength={80} value={form.name} editable={!busy} onChangeText={(value) => change('name', value)} />
+            <TextInput selectionColor={colors.link} cursorColor={colors.link} style={styles.input} accessibilityLabel="Nombre del recurrente" placeholder="Ej. Renta, Netflix o salario" placeholderTextColor={colors.placeholder} maxLength={80} value={form.name} editable={!busy} onChangeText={(value) => change('name', value)} keyboardAppearance={colors.dark ? "dark" : "light"} />
             {errors.name && <Text style={styles.error}>{errors.name}</Text>}
             <Text style={styles.label}>Monto en MXN</Text>
-            <TextInput style={[styles.input, { color: movementColors[form.type].foreground }]} accessibilityLabel="Monto del recurrente" placeholder="0.00" placeholderTextColor={colors.muted} keyboardType="decimal-pad" value={form.amount} editable={!busy} onChangeText={(value) => change('amount', value)} />
+            <TextInput selectionColor={colors.link} cursorColor={colors.link} style={themeStyle([styles.input, { color: movementColors[form.type].foreground }], colors)} accessibilityLabel="Monto del recurrente" placeholder="0.00" placeholderTextColor={colors.placeholder} keyboardType="decimal-pad" value={form.amount} editable={!busy} onChangeText={(value) => change('amount', value)} keyboardAppearance={colors.dark ? "dark" : "light"} />
             {errors.amount && <Text style={styles.error}>{errors.amount}</Text>}
             <Text style={styles.label}>Categoría</Text>
             <CategoryPicker type={form.type} value={form.category} disabled={!!busy} error={errors.category} onChange={(value) => change('category', value)} />
@@ -196,26 +223,26 @@ export default function RecurringMovements({ onConfirmed, mode = 'simple', cards
             <View style={styles.frequencyRow}>
               {frequencies.map(([value, label]) => <TouchableOpacity key={value} disabled={!!busy} accessibilityRole="radio"
                 accessibilityState={{ checked: !form.custom && form.frequency === value }}
-                onPress={() => { setForm((previous) => ({ ...previous, frequency: value, intervalCount: '1', custom: false })); change('intervalCount', '1'); }}
-                style={[styles.frequency, !form.custom && form.frequency === value && styles.frequencyActive]}>
-                <Text style={{ color: !form.custom && form.frequency === value ? '#FFFFFF' : colors.ink }}>{label}</Text>
+                onPress={() => {setForm((previous) => ({ ...previous, frequency: value, intervalCount: '1', custom: false }));change('intervalCount', '1');}}
+                style={themeStyle([styles.frequency, !form.custom && form.frequency === value && styles.frequencyActive], colors)}>
+                <Text style={themeStyle({ color: !form.custom && form.frequency === value ? '#FFFFFF' : colors.ink }, colors)}>{label}</Text>
               </TouchableOpacity>)}
               <TouchableOpacity disabled={!!busy} accessibilityRole="radio" accessibilityState={{ checked: form.custom }}
-                onPress={() => { setForm((previous) => ({ ...previous, custom: true, frequency: previous.frequency === 'biweekly' ? 'weekly' : previous.frequency, intervalCount: previous.frequency === 'biweekly' ? '2' : previous.intervalCount })); setErrors((previous) => ({ ...previous, intervalCount: undefined })); }}
-                style={[styles.frequency, form.custom && styles.frequencyActive]}>
-                <Text style={{ color: form.custom ? '#FFFFFF' : colors.ink }}>Elegir cada cuánto</Text>
+                onPress={() => {setForm((previous) => ({ ...previous, custom: true, frequency: previous.frequency === 'biweekly' ? 'weekly' : previous.frequency, intervalCount: previous.frequency === 'biweekly' ? '2' : previous.intervalCount }));setErrors((previous) => ({ ...previous, intervalCount: undefined }));}}
+                style={themeStyle([styles.frequency, form.custom && styles.frequencyActive], colors)}>
+                <Text style={themeStyle({ color: form.custom ? '#FFFFFF' : colors.ink }, colors)}>Elegir cada cuánto</Text>
               </TouchableOpacity>
             </View>
             {form.custom && <View style={styles.customSchedule}>
               <View style={styles.intervalRow}>
                 <Text style={styles.label}>Cada</Text>
-                <TextInput accessibilityLabel="Cantidad para repetir" style={styles.intervalInput} keyboardType="number-pad"
-                  maxLength={3} editable={!busy} value={form.intervalCount} onChangeText={(value) => change('intervalCount', value)} />
+                <TextInput selectionColor={colors.link} cursorColor={colors.link} accessibilityLabel="Cantidad para repetir" style={styles.intervalInput} keyboardType="number-pad"
+                  maxLength={3} editable={!busy} value={form.intervalCount} onChangeText={(value) => change('intervalCount', value)} keyboardAppearance={colors.dark ? "dark" : "light"} />
               </View>
               <View style={styles.frequencyRow}>{intervalUnits.map(([value, label]) => <TouchableOpacity key={value} disabled={!!busy}
-                accessibilityRole="radio" accessibilityState={{ checked: form.frequency === value }} onPress={() => change('frequency', value)}
-                style={[styles.frequency, form.frequency === value && styles.frequencyActive]}>
-                <Text style={{ color: form.frequency === value ? '#FFFFFF' : colors.ink }}>{label}</Text>
+                  accessibilityRole="radio" accessibilityState={{ checked: form.frequency === value }} onPress={() => change('frequency', value)}
+                  style={themeStyle([styles.frequency, form.frequency === value && styles.frequencyActive], colors)}>
+                <Text style={themeStyle({ color: form.frequency === value ? '#FFFFFF' : colors.ink }, colors)}>{label}</Text>
               </TouchableOpacity>)}</View>
               {errors.intervalCount && <Text accessibilityLiveRegion="polite" style={styles.error}>{errors.intervalCount}</Text>}
             </View>}
@@ -226,12 +253,12 @@ export default function RecurringMovements({ onConfirmed, mode = 'simple', cards
               <Text style={styles.caption}>Primer aviso dentro de HEDA: {displayDate(form.date)}.</Text>
               <Text style={styles.caption}>Después de confirmar: {displayDate(followingDate)}.</Text>
             </View>}
-            {['monthly', 'yearly'].includes(form.frequency) && <Text style={styles.caption}>Si eliges el día 29, 30 o 31, los meses más cortos usarán su último día. Después se retomará el día elegido.</Text>}
+            {['monthly', 'yearly'].includes(form.frequency) && <InfoButton title={"Repeticiones en meses cortos"} text={"Si eliges el día 29, 30 o 31, los meses más cortos usarán su último día. Después se retomará el día elegido."} />}
             <Text style={styles.label}>Nota (opcional)</Text>
-            <TextInput style={styles.input} accessibilityLabel="Nota del recurrente" value={form.description} placeholder="Detalles del pago o cobro" placeholderTextColor={colors.muted} editable={!busy} onChangeText={(value) => change('description', value)} />
+            <TextInput selectionColor={colors.link} cursorColor={colors.link} style={styles.input} accessibilityLabel="Nota del recurrente" value={form.description} placeholder="Detalles del pago o cobro" placeholderTextColor={colors.placeholder} editable={!busy} onChangeText={(value) => change('description', value)} keyboardAppearance={colors.dark ? "dark" : "light"} />
             {errors.service && <Text accessibilityLiveRegion="polite" style={styles.error}>{errors.service}</Text>}
           </ScrollView>
-          <View style={styles.footer}>{Object.values(errors).some(Boolean) && <Text accessibilityLiveRegion="polite" style={styles.error}>Revisa los campos señalados antes de guardar.</Text>}<TouchableOpacity disabled={!!busy} accessibilityRole="button" style={[styles.createButton, { marginBottom: 0 }]} onPress={saveRule}>{busy === 'form' ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>Guardar programación</Text>}</TouchableOpacity></View>
+          <View style={styles.footer}>{Object.values(errors).some(Boolean) && <Text accessibilityLiveRegion="polite" style={styles.error}>Revisa los campos señalados antes de guardar.</Text>}<TouchableOpacity disabled={!!busy} accessibilityRole="button" style={themeStyle([styles.createButton, { marginBottom: 0 }], colors)} onPress={saveRule}>{busy === 'form' ? <ActivityIndicator color={themeColor("#FFFFFF", colors)} /> : <Text style={styles.buttonText}>Guardar programación</Text>}</TouchableOpacity></View>
         </KeyboardAvoidingView>
       </SafeAreaView>
       </SafeAreaProvider>
@@ -239,7 +266,16 @@ export default function RecurringMovements({ onConfirmed, mode = 'simple', cards
   </View>;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
+  menuHeading: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
+  menuTitle: { color: colors.ink, fontSize: 21, fontWeight: '700', marginBottom: 4 },
+  menuSubtitle: { color: colors.muted, fontSize: 13 },
+  listHeading: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12, marginTop: 3 },
+  listTitle: { color: colors.ink, fontSize: 15, fontWeight: '700' },
+  countBadge: { color: colors.primary, backgroundColor: colors.softBlue, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 10, fontWeight: '700', fontSize: 12 },
+  optionalCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, minHeight: 70, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 17, marginBottom: 12 },
+  optionalIcon: { width: 39, height: 39, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: colors.softBlue },
+  optionalLabel: { color: colors.muted, fontSize: 12, marginTop: 4 },
   title: { color: colors.ink, fontSize: 18, fontWeight: '700', marginBottom: 8 },
   description: { color: colors.muted, fontSize: 14, lineHeight: 21, marginBottom: 16 },
   card: { backgroundColor: '#FFFFFF', padding: 16, borderRadius: 18, borderWidth: 1, borderColor: colors.border, marginBottom: 12 },
@@ -270,9 +306,9 @@ const styles = StyleSheet.create({
   intervalInput: { width: 80, minHeight: 48, padding: 12, borderWidth: 1, borderColor: colors.border, borderRadius: 12, backgroundColor: '#FFFFFF', color: colors.ink, fontSize: 18, textAlign: 'center' },
   preview: { padding: 12, backgroundColor: colors.softBlue, borderRadius: 14, marginBottom: 12 },
   label: { color: colors.ink, fontSize: 14, fontWeight: '600', marginBottom: 8, marginTop: 10 },
-  input: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, minHeight: 50, fontSize: 16, color: colors.ink, marginBottom: 8 },
+  input: { backgroundColor: colors.input, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 12, padding: 14, minHeight: 50, fontSize: 16, color: colors.ink, marginBottom: 8 },
   error: { color: movementColors.Gasto.foreground, fontSize: 13, marginBottom: 8 },
   frequencyRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
   frequency: { padding: 12, minHeight: 44, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: '#FFFFFF' },
-  footer: { backgroundColor: '#FFFFFF', padding: 14, borderTopWidth: 1, borderTopColor: colors.border },
+  footer: { backgroundColor: '#FFFFFF', padding: 14, borderTopWidth: 1, borderTopColor: colors.border }
 });

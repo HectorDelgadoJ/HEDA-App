@@ -1,3 +1,7 @@
+import {Alert} from '../services/alerts';
+import { notifyFinanceChange } from '../services/financeEvents';
+import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
+import InfoButton from '../components/InfoButton';
 import ScreenHeader from '../components/ScreenHeader';
 import { layout } from '../theme/layout';
 import { MovementDate } from '../components/MovementFields';
@@ -9,23 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import React, { useCallback, useMemo, useState } from 'react';
 
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Modal,
-  Alert,
-  ActivityIndicator,
-  RefreshControl,
-  Keyboard,
-  KeyboardAvoidingView,
-  TouchableWithoutFeedback,
-  Platform,
-  InputAccessoryView,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator, RefreshControl, Keyboard, KeyboardAvoidingView, TouchableWithoutFeedback, Platform, InputAccessoryView } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -35,6 +23,7 @@ import { supabase } from '../services/supabase';
 const AMOUNT_ACCESSORY_ID = 'amountKeyboardAccessory';
 
 export default function GoalsScreen() {
+  const { colors, styles } = useThemeStyles(makeStyles);
   const [transactions, setTransactions] = useState([]);
   const [goals, setGoals] = useState([]);
 
@@ -49,7 +38,7 @@ export default function GoalsScreen() {
 
   const [goalModalVisible, setGoalModalVisible] = useState(false);
   const [contributionModalVisible, setContributionModalVisible] =
-    useState(false);
+  useState(false);
 
   const [goalName, setGoalName] = useState('');
   const [goalTarget, setGoalTarget] = useState('');
@@ -77,57 +66,45 @@ export default function GoalsScreen() {
 
       const {
         data: { user },
-        error: userError,
+        error: userError
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
         setLoadError(true);
-        console.log(
-          'Error obteniendo usuario:',
-          userError?.message
-        );
+
         return;
       }
 
       const [transactionsResult, goalsResult] = await Promise.all([
-        transactionRows(user.id),
+      transactionRows(user.id),
 
-        supabase
-          .from('goals')
-          .select(
-            'id, name, target_amount, current_amount, target_date, status, created_at'
-          )
-          .eq('user_id', user.id)
-          .eq('status', 'active')
-          .order('created_at', {
-            ascending: true,
-          }),
-      ]);
+      supabase.
+      from('goals').
+      select(
+        'id, name, target_amount, current_amount, target_date, status, created_at'
+      ).
+      eq('user_id', user.id).
+      eq('status', 'active').
+      order('created_at', {
+        ascending: true
+      })]
+      );
 
       setLoadError(!!transactionsResult.error || !!goalsResult.error);
       if (transactionsResult.error) {
-        console.log(
-          'Error cargando movimientos:',
-          transactionsResult.error.message
-        );
+
       } else {
         setTransactions(transactionsResult.data || []);
       }
 
       if (goalsResult.error) {
-        console.log(
-          'Error cargando metas:',
-          goalsResult.error.message
-        );
+
       } else {
         setGoals(goalsResult.data || []);
       }
     } catch (error) {
       setLoadError(true);
-      console.log(
-        'Error cargando reportes:',
-        error
-      );
+
     } finally {
       setLoading(false);
     }
@@ -153,9 +130,9 @@ export default function GoalsScreen() {
 
   function confirmDeleteGoal(goal) {
     Alert.alert('Eliminar meta', `¿Quieres eliminar “${goal.name}”? Se borrará su progreso registrado. Esto no cambia tus movimientos ni tu saldo disponible.`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: () => deleteGoal(goal) },
-    ]);
+    { text: 'Cancelar', style: 'cancel' },
+    { text: 'Eliminar', style: 'destructive', onPress: () => deleteGoal(goal) }]
+    );
   }
 
   async function deleteGoal(goal) {
@@ -166,8 +143,8 @@ export default function GoalsScreen() {
       if (authError || !user) throw new Error('Sesión no disponible');
       const { data, error } = await supabase.from('goals').delete().eq('id', goal.id).eq('user_id', user.id).select('id');
       if (error || !data?.length) throw error || new Error('No se pudo eliminar la meta');
-      setGoals(current => current.filter(item => item.id !== goal.id));
-      if (selectedGoalId === goal.id) { setSelectedGoalId(null); setContributionModalVisible(false); }
+      notifyFinanceChange();setGoals((current) => current.filter((item) => item.id !== goal.id));
+      if (selectedGoalId === goal.id) {setSelectedGoalId(null);setContributionModalVisible(false);}
     } catch (error) {
       Alert.alert('No se pudo eliminar', 'Tu meta sigue guardada. Revisa tu conexión e inténtalo de nuevo.');
     } finally {
@@ -193,9 +170,9 @@ export default function GoalsScreen() {
     }
 
     if (
-      !Number.isFinite(numericTarget) ||
-      numericTarget <= 0
-    ) {
+    !Number.isFinite(numericTarget) ||
+    numericTarget <= 0)
+    {
       Alert.alert(
         'Monto inválido',
         'Ingresa un monto objetivo mayor a cero.'
@@ -216,17 +193,17 @@ export default function GoalsScreen() {
         return;
       }
 
-      const [year, month, day] = goalDate
-        .trim()
-        .split('-')
-        .map(Number);
+      const [year, month, day] = goalDate.
+      trim().
+      split('-').
+      map(Number);
 
       const parsedDate = new Date(year, month - 1, day);
 
       const isValidDate =
-        parsedDate.getFullYear() === year &&
-        parsedDate.getMonth() === month - 1 &&
-        parsedDate.getDate() === day;
+      parsedDate.getFullYear() === year &&
+      parsedDate.getMonth() === month - 1 &&
+      parsedDate.getDate() === day;
 
       if (!isValidDate) {
         Alert.alert(
@@ -244,7 +221,7 @@ export default function GoalsScreen() {
 
       const {
         data: { user },
-        error: userError,
+        error: userError
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
@@ -255,22 +232,19 @@ export default function GoalsScreen() {
         return;
       }
 
-      const { error } = await supabase
-        .from('goals')
-        .insert({
-          user_id: user.id,
-          name: cleanName,
-          target_amount: numericTarget,
-          current_amount: 0,
-          target_date: targetDate,
-          status: 'active',
-        });
+      const { error } = await supabase.
+      from('goals').
+      insert({
+        user_id: user.id,
+        name: cleanName,
+        target_amount: numericTarget,
+        current_amount: 0,
+        target_date: targetDate,
+        status: 'active'
+      });
 
       if (error) {
-        console.log(
-          'Error creando meta:',
-          error.message
-        );
+
 
         Alert.alert(
           'Error',
@@ -288,17 +262,14 @@ export default function GoalsScreen() {
       Keyboard.dismiss();
       setGoalModalVisible(false);
 
-      await loadData();
+      notifyFinanceChange();await loadData();
 
       Alert.alert(
         'Meta creada',
         'Tu nueva meta de ahorro fue registrada correctamente.'
       );
     } catch (error) {
-      console.log(
-        'Error inesperado creando meta:',
-        error
-      );
+
 
       Alert.alert(
         'Error',
@@ -316,7 +287,7 @@ export default function GoalsScreen() {
   async function addContribution() {
     Keyboard.dismiss();
 
-    const mainGoal = goals.find(goal => goal.id === selectedGoalId);
+    const mainGoal = goals.find((goal) => goal.id === selectedGoalId);
 
     if (!mainGoal) {
       Alert.alert(
@@ -327,15 +298,15 @@ export default function GoalsScreen() {
     }
 
     const numericAmount = Number(
-      contributionAmount
-        .trim()
-        .replace(',', '.')
+      contributionAmount.
+      trim().
+      replace(',', '.')
     );
 
     if (
-      !Number.isFinite(numericAmount) ||
-      numericAmount <= 0
-    ) {
+    !Number.isFinite(numericAmount) ||
+    numericAmount <= 0)
+    {
       Alert.alert(
         'Monto inválido',
         'Ingresa una cantidad mayor a cero.'
@@ -344,32 +315,29 @@ export default function GoalsScreen() {
     }
 
     const newAmount =
-      Number(mainGoal.current_amount) +
-      numericAmount;
+    Number(mainGoal.current_amount) +
+    numericAmount;
 
     const completed =
-      newAmount >=
-      Number(mainGoal.target_amount);
+    newAmount >=
+    Number(mainGoal.target_amount);
 
     try {
       setSavingContribution(true);
 
-      const { error } = await supabase
-        .from('goals')
-        .update({
-          current_amount: newAmount,
-          status: completed
-            ? 'completed'
-            : 'active',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', mainGoal.id);
+      const { error } = await supabase.
+      from('goals').
+      update({
+        current_amount: newAmount,
+        status: completed ?
+        'completed' :
+        'active',
+        updated_at: new Date().toISOString()
+      }).
+      eq('id', mainGoal.id);
 
       if (error) {
-        console.log(
-          'Error actualizando meta:',
-          error.message
-        );
+
 
         Alert.alert(
           'Error',
@@ -384,7 +352,7 @@ export default function GoalsScreen() {
       Keyboard.dismiss();
       setContributionModalVisible(false);
 
-      await loadData();
+      notifyFinanceChange();await loadData();
 
       if (completed) {
         Alert.alert(
@@ -398,10 +366,7 @@ export default function GoalsScreen() {
         );
       }
     } catch (error) {
-      console.log(
-        'Error aportando a meta:',
-        error
-      );
+
 
       Alert.alert(
         'Error',
@@ -417,12 +382,12 @@ export default function GoalsScreen() {
   // =====================================================
 
   const period = reportPeriod(filter, periodOffset);
-  const report = reportData(transactions, period);
+  const report = reportData(transactions, period, localDate());
   const filteredTransactions = report.rows;
   const totalIncome = report.income;
   const totalExpenses = report.expenses;
   const balance = report.result;
-  const periodText = `${new Date(`${period.start}T12:00:00`).toLocaleDateString('es-MX', {day:'numeric',month:'short',year:'numeric'})} – ${new Date(`${period.end}T12:00:00`).toLocaleDateString('es-MX', {day:'numeric',month:'short',year:'numeric'})}`;
+  const periodText = `${new Date(`${period.start}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })} – ${new Date(`${period.end}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
   // =====================================================
   // CATEGORÍAS
@@ -431,23 +396,23 @@ export default function GoalsScreen() {
   const categoryData = useMemo(() => {
     const categories = {};
 
-    filteredTransactions
-      .filter(
-        (transaction) =>
-          isSpending(transaction)
-      )
-      .forEach((transaction) => {
-        const category =
-          transaction.category || 'Otros';
+    filteredTransactions.
+    filter(
+      (transaction) =>
+      isSpending(transaction)
+    ).
+    forEach((transaction) => {
+      const category =
+      transaction.category || 'Otros';
 
-        if (!categories[category]) {
-          categories[category] = 0;
-        }
+      if (!categories[category]) {
+        categories[category] = 0;
+      }
 
-        categories[category] += Number(
-          transaction.amount
-        );
-      });
+      categories[category] += Number(
+        transaction.amount
+      );
+    });
 
     return Object.entries(categories).sort(
       (a, b) => b[1] - a[1]
@@ -462,10 +427,10 @@ export default function GoalsScreen() {
 
   const maxChartAmount = Math.max(
     ...monthlyData.map((month) =>
-      Math.max(
-        month.income,
-        month.expenses
-      )
+    Math.max(
+      month.income,
+      month.expenses
+    )
     ),
     1
   );
@@ -474,7 +439,7 @@ export default function GoalsScreen() {
   // META PRINCIPAL
   // =====================================================
 
-  const mainGoal = goals.find(goal => goal.id === selectedGoalId);
+  const mainGoal = goals.find((goal) => goal.id === selectedGoalId);
 
   // =====================================================
   // ANÁLISIS FINANCIERO
@@ -482,26 +447,26 @@ export default function GoalsScreen() {
 
   function getAnalysis() {
     if (
-      filteredTransactions.length === 0
-    ) {
+    filteredTransactions.length === 0)
+    {
       return 'Aún no hay suficientes movimientos en este periodo para generar un análisis financiero.';
     }
 
     if (
-      totalExpenses === 0 &&
-      totalIncome > 0
-    ) {
+    totalExpenses === 0 &&
+    totalIncome > 0)
+    {
       return 'Has registrado ingresos pero ningún gasto durante este periodo.';
     }
 
     if (categoryData.length > 0) {
       const [largestCategory, amount] =
-        categoryData[0];
+      categoryData[0];
 
       const percentage =
-        totalExpenses > 0
-          ? (amount / totalExpenses) * 100
-          : 0;
+      totalExpenses > 0 ?
+      amount / totalExpenses * 100 :
+      0;
 
       return `${largestCategory} es actualmente tu categoría con mayor gasto y representa aproximadamente ${percentage.toFixed(
         0
@@ -520,7 +485,7 @@ export default function GoalsScreen() {
       'es-MX',
       {
         minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
+        maximumFractionDigits: 2
       }
     );
   }
@@ -531,13 +496,13 @@ export default function GoalsScreen() {
       Compras: 'bag-outline',
       Transporte: 'car-outline',
       Hogar: 'home-outline',
-      Ocio: 'game-controller-outline',
+      Ocio: 'game-controller-outline'
     };
 
     return (
       icons[category] ||
-      'wallet-outline'
-    );
+      'wallet-outline');
+
   }
 
   // =====================================================
@@ -551,17 +516,17 @@ export default function GoalsScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} tintColor={colors.primary} />}
-      >
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} tintColor={themeColor(colors.primary, colors)} />}>
+
         {/* HEADER */}
 
         <ScreenHeader title="Reportes" subtitle="Entiende cómo se mueve tu dinero" icon="bar-chart-outline" />
 
         {loadError && <View style={styles.notice}><Text style={styles.cardText}>No pudimos actualizar todos los datos. Desliza hacia abajo para reintentar.</Text></View>}
         <View style={styles.periodNav}>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Periodo anterior" style={styles.periodButton} onPress={() => { setPeriodOffset(value => value - 1); setSelectedBar(null); }}><Ionicons name="chevron-back" size={22} color={colors.ink} /></TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Periodo anterior" style={styles.periodButton} onPress={() => {setPeriodOffset((value) => value - 1);setSelectedBar(null);}}><Ionicons name="chevron-back" size={22} color={themeColor(colors.ink, colors)} /></TouchableOpacity>
           <Text style={styles.periodText}>{periodText}</Text>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Periodo siguiente" disabled={periodOffset === 0} style={[styles.periodButton, periodOffset === 0 && {opacity:0.3}]} onPress={() => { setPeriodOffset(value => Math.min(value + 1, 0)); setSelectedBar(null); }}><Ionicons name="chevron-forward" size={22} color={colors.ink} /></TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Periodo siguiente" disabled={periodOffset === 0} style={themeStyle([styles.periodButton, periodOffset === 0 && { opacity: 0.3 }], colors)} onPress={() => {setPeriodOffset((value) => Math.min(value + 1, 0));setSelectedBar(null);}}><Ionicons name="chevron-forward" size={22} color={themeColor(colors.ink, colors)} /></TouchableOpacity>
         </View>
         {/* RESUMEN */}
 
@@ -570,29 +535,29 @@ export default function GoalsScreen() {
             Resultado del periodo
           </Text>
 
-          {loading ? (
-            <ActivityIndicator
-              color="#FFFFFF"
-              size="large"
-              style={{
-                alignSelf: 'flex-start',
-                marginVertical: 15,
-              }}
-            />
-          ) : (
-            <Text
-              style={styles.summaryAmount} numberOfLines={1} adjustsFontSizeToFit
-            >
+          {loading ?
+          <ActivityIndicator
+            color={themeColor("#FFFFFF", colors)}
+            size="large"
+            style={themeStyle({
+              alignSelf: 'flex-start',
+              marginVertical: 15
+            }, colors)} /> :
+
+
+          <Text
+            style={styles.summaryAmount} numberOfLines={1} adjustsFontSizeToFit>
+
               ${formatCurrency(balance)} MXN
             </Text>
-          )}
+          }
 
           <Text style={styles.summaryHint}>Ingresos menos gastos · No es tu saldo disponible</Text>
           <View style={styles.summaryRow}>
-            <View style={[styles.summaryItem, styles.incomeTile]}>
+            <View style={themeStyle([styles.summaryItem, styles.incomeTile], colors)}>
               <Text
-                style={[styles.smallLabel, { color: '#157347' }]}
-              >
+                style={themeStyle([styles.smallLabel, { color: '#157347' }], colors)}>
+
                 Ingresos
               </Text>
 
@@ -606,10 +571,10 @@ export default function GoalsScreen() {
 
 
 
-            <View style={[styles.summaryItem, styles.expenseTile]}>
+            <View style={themeStyle([styles.summaryItem, styles.expenseTile], colors)}>
               <Text
-                style={[styles.smallLabel, { color: '#B42332' }]}
-              >
+                style={themeStyle([styles.smallLabel, { color: '#B42332' }], colors)}>
+
                 Gastos
               </Text>
 
@@ -623,12 +588,12 @@ export default function GoalsScreen() {
           </View>
         </View>
 
-        {transactions.some(row => row.card_id) && <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18, marginBottom: 14 }}>Los gastos incluyen compras con tarjeta. Pagar la tarjeta no cuenta como un nuevo gasto.</Text>}
+        {transactions.some((row) => row.card_id) && <InfoButton title={"Cómo contamos tus gastos"} text={"Los gastos incluyen compras con tarjeta. Pagar la tarjeta no cuenta como un nuevo gasto."} />}
         {/* META */}
 
         <View
-          style={styles.goalSectionHeader}
-        >
+          style={styles.goalSectionHeader}>
+
           <Text style={styles.sectionTitle}>
             Mis metas
           </Text>
@@ -638,123 +603,123 @@ export default function GoalsScreen() {
             accessibilityLabel="Crear nueva meta de ahorro"
             style={styles.newGoalButton}
             onPress={() =>
-              setGoalModalVisible(true)
-            }
-          >
-            <Ionicons name="add" size={20} color="#FFFFFF" />
+            setGoalModalVisible(true)
+            }>
+
+            <Ionicons name="add" size={20} color={themeColor("#FFFFFF", colors)} />
             <Text style={styles.newGoalButtonText}>Nueva meta</Text>
           </TouchableOpacity>
         </View>
 
-        {goals.length > 0 ? goals.map(mainGoal => {
+        {goals.length > 0 ? goals.map((mainGoal) => {
           const goalPercentage = Number(mainGoal.target_amount) > 0 ? Math.min(100, Number(mainGoal.current_amount) / Number(mainGoal.target_amount) * 100) : 0;
           return (
-          <View key={mainGoal.id} style={styles.goalCard}>
+            <View key={mainGoal.id} style={styles.goalCard}>
             <View style={styles.goalHeader}>
               <View style={styles.goalIcon}>
                 <Ionicons
-                  name="flag-outline"
-                  size={24}
-                  color={colors.primary}
-                />
+                    name="flag-outline"
+                    size={24}
+                    color={themeColor(colors.primary, colors)} />
+
               </View>
 
-              <View style={{ flex: 1 }}>
+              <View style={themeStyle({ flex: 1 }, colors)}>
                 <Text
-                  style={styles.cardTitle}
-                >
+                    style={styles.cardTitle}>
+
                   Meta de ahorro
                 </Text>
 
                 <Text
-                  style={styles.cardText}
-                >
+                    style={styles.cardText}>
+
                   {mainGoal.name}
                 </Text>
               </View>
 
               <Text
-                style={styles.goalPercent}
-              >
+                  style={styles.goalPercent}>
+
                 {goalPercentage.toFixed(0)}%
               </Text>
             </View>
 
             <View
-              style={
+                style={
                 styles.progressBackground
-              }
-            >
+                }>
+
               <View
-                style={[
+                  style={themeStyle([
                   styles.progressFill,
                   {
-                    width: `${goalPercentage}%`,
-                  },
-                ]}
-              />
+                    width: `${goalPercentage}%`
+                  }], colors)
+                  } />
+
             </View>
 
             <View style={styles.goalFooter}>
               <Text style={styles.goalText}>
                 $
                 {formatCurrency(
-                  mainGoal.current_amount
-                )}{' '}
+                    mainGoal.current_amount
+                  )}{' '}
                 acumulado
               </Text>
 
               <Text style={styles.goalText}>
                 Meta: $
                 {formatCurrency(
-                  mainGoal.target_amount
-                )}
+                    mainGoal.target_amount
+                  )}
               </Text>
             </View>
 
-            {mainGoal.target_date && (
+            {mainGoal.target_date &&
               <Text style={styles.goalDate}>
                 Fecha objetivo:{' '}
-                {new Date(`${mainGoal.target_date}T12:00:00`).toLocaleDateString('es-MX', {day:'numeric',month:'long',year:'numeric'})}
+                {new Date(`${mainGoal.target_date}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
               </Text>
-            )}
+              }
 
             <TouchableOpacity
-              style={
+                style={
                 styles.contributionButton
-              }
-              onPress={() => { setSelectedGoalId(mainGoal.id); setContributionAmount(''); setContributionModalVisible(true); }}
-            >
+                }
+                onPress={() => {setSelectedGoalId(mainGoal.id);setContributionAmount('');setContributionModalVisible(true);}}>
+
               <Ionicons
-                name="add-circle-outline"
-                size={20}
-                color="#FFFFFF"
-              />
+                  name="add-circle-outline"
+                  size={20}
+                  color={themeColor("#FFFFFF", colors)} />
+
 
               <Text
-                style={
+                  style={
                   styles.contributionButtonText
-                }
-              >
+                  }>
+
                 Agregar ahorro
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Eliminar meta ${mainGoal.name}`} disabled={!!deletingGoalId} onPress={() => confirmDeleteGoal(mainGoal)} style={[styles.deleteGoalButton, deletingGoalId && { opacity: 0.5 }]}>
-              {deletingGoalId === mainGoal.id ? <ActivityIndicator color="#B42332" /> : <><Ionicons name="trash-outline" size={17} color="#B42332" /><Text style={styles.deleteGoalText}>Eliminar meta</Text></>}
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Eliminar meta ${mainGoal.name}`} disabled={!!deletingGoalId} onPress={() => confirmDeleteGoal(mainGoal)} style={themeStyle([styles.deleteGoalButton, deletingGoalId && { opacity: 0.5 }], colors)}>
+              {deletingGoalId === mainGoal.id ? <ActivityIndicator color={themeColor("#B42332", colors)} /> : <><Ionicons name="trash-outline" size={17} color={themeColor("#B42332", colors)} /><Text style={styles.deleteGoalText}>Eliminar meta</Text></>}
             </TouchableOpacity>
-          </View>
-        ); }) : (
-          <TouchableOpacity
-            style={styles.emptyGoalCard}
-            onPress={() =>
-              setGoalModalVisible(true)
-            }
-          >
+          </View>);
+        }) :
+        <TouchableOpacity
+          style={styles.emptyGoalCard}
+          onPress={() =>
+          setGoalModalVisible(true)
+          }>
+
             <Ionicons
-              name="flag-outline"
-              size={34}
-              color={colors.primary}
-            />
+            name="flag-outline"
+            size={34}
+            color={themeColor(colors.primary, colors)} />
+
 
             <Text style={styles.emptyGoalTitle}>
               Crea tu primera meta
@@ -765,7 +730,7 @@ export default function GoalsScreen() {
               registra tu progreso.
             </Text>
           </TouchableOpacity>
-        )}
+        }
 
         {/* FILTROS */}
 
@@ -773,32 +738,32 @@ export default function GoalsScreen() {
           <FilterButton
             label="Mensual"
             active={
-              filter === 'monthly'
+            filter === 'monthly'
             }
             onPress={() =>
-              { setFilter('monthly'); setPeriodOffset(0); setSelectedBar(null); }
-            }
-          />
+            {setFilter('monthly');setPeriodOffset(0);setSelectedBar(null);}
+            } />
+
 
           <FilterButton
             label="Semanal"
             active={
-              filter === 'weekly'
+            filter === 'weekly'
             }
             onPress={() =>
-              { setFilter('weekly'); setPeriodOffset(0); setSelectedBar(null); }
-            }
-          />
+            {setFilter('weekly');setPeriodOffset(0);setSelectedBar(null);}
+            } />
+
 
           <FilterButton
             label="Anual"
             active={
-              filter === 'yearly'
+            filter === 'yearly'
             }
             onPress={() =>
-              { setFilter('yearly'); setPeriodOffset(0); setSelectedBar(null); }
-            }
-          />
+            {setFilter('yearly');setPeriodOffset(0);setSelectedBar(null);}
+            } />
+
         </View>
 
         {/* GRÁFICA */}
@@ -806,14 +771,14 @@ export default function GoalsScreen() {
         <View style={styles.chartCard}>
           <View style={styles.sectionHeader}>
             <Text
-              style={styles.sectionTitle}
-            >
+              style={styles.sectionTitle}>
+
               Actividad financiera
             </Text>
 
             <Text
-              style={styles.sectionLink}
-            >
+              style={styles.sectionLink}>
+
               {filter === 'weekly' ? 'Por día' : filter === 'yearly' ? 'Por mes' : 'Por semana'}
             </Text>
           </View>
@@ -821,30 +786,30 @@ export default function GoalsScreen() {
           <View style={styles.legendRow}>
             <View style={styles.legendItem}>
               <View
-                style={[
-                  styles.legendDot,
-                  styles.incomeDot,
-                ]}
-              />
+                style={themeStyle([
+                styles.legendDot,
+                styles.incomeDot], colors)
+                } />
+
 
               <Text
-                style={styles.legendText}
-              >
+                style={styles.legendText}>
+
                 Ingresos
               </Text>
             </View>
 
             <View style={styles.legendItem}>
               <View
-                style={[
-                  styles.legendDot,
-                  styles.expenseDot,
-                ]}
-              />
+                style={themeStyle([
+                styles.legendDot,
+                styles.expenseDot], colors)
+                } />
+
 
               <Text
-                style={styles.legendText}
-              >
+                style={styles.legendText}>
+
                 Gastos
               </Text>
             </View>
@@ -854,37 +819,37 @@ export default function GoalsScreen() {
           {selectedBar && <View style={styles.notice}><Text style={styles.cardText}>{selectedBar.label}: ingresos ${formatCurrency(selectedBar.income)} · gastos ${formatCurrency(selectedBar.expenses)}</Text></View>}
           {totalIncome === 0 && totalExpenses === 0 && <Text style={styles.chartHint}>Sin ingresos ni gastos en este periodo.</Text>}
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={[styles.chart, { minWidth: filter === 'yearly' ? 560 : 280, flex: 1 }]}>
+          <View style={themeStyle([styles.chart, { minWidth: filter === 'yearly' ? 560 : 280, flex: 1 }], colors)}>
             {monthlyData.map(
-              (month, index) => (
+                (month, index) =>
                 <DoubleBar
                   key={`${month.label}-${index}`}
                   label={month.label}
                   onPress={() => setSelectedBar(month)}
                   description={`${month.label}: ingresos ${formatCurrency(month.income)}, gastos ${formatCurrency(month.expenses)}`}
                   incomeHeight={
-                    month.income > 0
-                      ? Math.max(
-                          8,
-                          (month.income /
-                            maxChartAmount) *
-                            110
-                        )
-                      : 0
+                  month.income > 0 ?
+                  Math.max(
+                    8,
+                    month.income /
+                    maxChartAmount *
+                    110
+                  ) :
+                  0
                   }
                   expenseHeight={
-                    month.expenses > 0
-                      ? Math.max(
-                          8,
-                          (month.expenses /
-                            maxChartAmount) *
-                            110
-                        )
-                      : 0
-                  }
-                />
-              )
-            )}
+                  month.expenses > 0 ?
+                  Math.max(
+                    8,
+                    month.expenses /
+                    maxChartAmount *
+                    110
+                  ) :
+                  0
+                  } />
+
+
+              )}
           </View>
           </ScrollView>
           {report.cardPayments > 0 && <Text style={styles.chartHint}>Pagaste ${formatCurrency(report.cardPayments)} a tarjetas. Estos pagos reducen tu dinero disponible y no vuelven a contar como gastos.</Text>}
@@ -898,13 +863,13 @@ export default function GoalsScreen() {
           </Text>
         </View>
 
-        {categoryData.length === 0 ? (
-          <View style={styles.emptyCard}>
+        {categoryData.length === 0 ?
+        <View style={styles.emptyCard}>
             <Ionicons
-              name="pie-chart-outline"
-              size={30}
-              color="#9CA3AF"
-            />
+            name="pie-chart-outline"
+            size={30}
+            color={themeColor("#9CA3AF", colors)} />
+
 
             <Text style={styles.emptyTitle}>
               Sin gastos
@@ -914,39 +879,39 @@ export default function GoalsScreen() {
               No hay gastos registrados
               durante este periodo.
             </Text>
-          </View>
-        ) : (
-          categoryData.map(
-            ([category, amount]) => {
-              const percent =
-                totalExpenses > 0
-                  ? (amount /
-                      totalExpenses) *
-                    100
-                  : 0;
+          </View> :
 
-              return (
-                <CategoryBar
-                  key={category}
-                  icon={getCategoryIcon(
-                    category
-                  )}
-                  title={category}
-                  amount={`$${formatCurrency(
-                    amount
-                  )}`}
-                  percent={`${percent.toFixed(
-                    0
-                  )}%`}
-                  width={`${Math.min(
-                    percent,
-                    100
-                  )}%`}
-                />
-              );
-            }
-          )
-        )}
+        categoryData.map(
+          ([category, amount]) => {
+            const percent =
+            totalExpenses > 0 ?
+            amount /
+            totalExpenses *
+            100 :
+            0;
+
+            return (
+              <CategoryBar
+                key={category}
+                icon={getCategoryIcon(
+                  category
+                )}
+                title={category}
+                amount={`$${formatCurrency(
+                  amount
+                )}`}
+                percent={`${percent.toFixed(
+                  0
+                )}%`}
+                width={`${Math.min(
+                  percent,
+                  100
+                )}%`} />);
+
+
+          }
+        )
+        }
 
         {/* ANÁLISIS */}
 
@@ -955,11 +920,11 @@ export default function GoalsScreen() {
             <Ionicons
               name="sparkles"
               size={21}
-              color={colors.primary}
-            />
+              color={themeColor(colors.primary, colors)} />
+
           </View>
 
-          <View style={{ flex: 1 }}>
+          <View style={themeStyle({ flex: 1 }, colors)}>
             <Text style={styles.cardTitle}>
               Análisis financiero
             </Text>
@@ -979,118 +944,118 @@ export default function GoalsScreen() {
         visible={goalModalVisible}
         transparent
         animationType="slide"
-        onRequestClose={closeGoalModal}
-      >
+        onRequestClose={closeGoalModal}>
+
         <KeyboardAvoidingView
           style={styles.modalKeyboardContainer}
           behavior={
-            Platform.OS === 'ios'
-              ? 'padding'
-              : 'height'
-          }
-        >
+          Platform.OS === 'ios' ?
+          'padding' :
+          'height'
+          }>
+
           <TouchableWithoutFeedback
             onPress={Keyboard.dismiss}
-            accessible={false}
-          >
+            accessible={false}>
+
             <View style={styles.modalOverlay}>
               <View style={styles.modalCard}>
                 <View
-                  style={styles.modalHeader}
-                >
+                  style={styles.modalHeader}>
+
                   <Text
-                    style={styles.modalTitle}
-                  >
+                    style={styles.modalTitle}>
+
                     Nueva meta
                   </Text>
 
                   <TouchableOpacity
-                    onPress={closeGoalModal}
-                  >
+                    onPress={closeGoalModal}>
+
                     <Ionicons
                       name="close"
                       size={25}
-                      color={colors.ink}
-                    />
+                      color={themeColor(colors.ink, colors)} />
+
                   </TouchableOpacity>
                 </View>
 
                 <ScrollView
                   showsVerticalScrollIndicator={
-                    false
+                  false
                   }
                   keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} tintColor={colors.primary} />}
-                >
+                  refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} tintColor={themeColor(colors.primary, colors)} />}>
+
                   <Text
-                    style={styles.inputLabel}
-                  >
+                    style={styles.inputLabel}>
+
                     Nombre
                   </Text>
 
-                  <TextInput
+                  <TextInput selectionColor={colors.link} cursorColor={colors.link}
                     value={goalName}
                     onChangeText={setGoalName}
                     placeholder="Ej. Laptop nueva"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.placeholder}
                     style={styles.input}
-                    returnKeyType="next"
-                  />
+                    returnKeyType="next" keyboardAppearance={colors.dark ? "dark" : "light"} />
+
 
                   <Text
-                    style={styles.inputLabel}
-                  >
+                    style={styles.inputLabel}>
+
                     Cantidad objetivo
                   </Text>
 
-                  <TextInput
+                  <TextInput selectionColor={colors.link} cursorColor={colors.link}
                     value={goalTarget}
                     onChangeText={setGoalTarget}
                     placeholder="10000"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.placeholder}
                     keyboardType="decimal-pad"
                     inputAccessoryViewID={
-                      Platform.OS === 'ios'
-                        ? AMOUNT_ACCESSORY_ID
-                        : undefined
+                    Platform.OS === 'ios' ?
+                    AMOUNT_ACCESSORY_ID :
+                    undefined
                     }
-                    style={styles.input}
-                  />
+                    style={styles.input} keyboardAppearance={colors.dark ? "dark" : "light"} />
+
 
                   <Text
-                    style={styles.inputLabel}
-                  >
+                    style={styles.inputLabel}>
+
                     Fecha objetivo (opcional)
                   </Text>
 
                   {chooseGoalDate ? <>
                     <MovementDate title="Fecha meta" value={goalDate || localDate()} onChange={setGoalDate} initiallyOpen />
-                    <TouchableOpacity accessibilityRole="button" style={styles.optionalDateButton} onPress={() => { setGoalDate(''); setChooseGoalDate(false); }}><Text style={styles.sectionLink}>Quitar fecha · Sin fecha límite</Text></TouchableOpacity>
-                  </> : <TouchableOpacity accessibilityRole="button" style={styles.optionalDateButton} onPress={() => { Keyboard.dismiss(); setGoalDate(localDate()); setChooseGoalDate(true); }}><Ionicons name="calendar-outline" size={20} color={colors.primary} /><Text style={styles.sectionLink}>Elegir fecha</Text></TouchableOpacity>}
+                    <TouchableOpacity accessibilityRole="button" style={styles.optionalDateButton} onPress={() => {setGoalDate('');setChooseGoalDate(false);}}><Text style={styles.sectionLink}>Quitar fecha · Sin fecha límite</Text></TouchableOpacity>
+                  </> : <TouchableOpacity accessibilityRole="button" style={styles.optionalDateButton} onPress={() => {Keyboard.dismiss();setGoalDate(localDate());setChooseGoalDate(true);}}><Ionicons name="calendar-outline" size={20} color={themeColor(colors.primary, colors)} /><Text style={styles.sectionLink}>Elegir fecha</Text></TouchableOpacity>}
                   <Text style={styles.chartHint}>Puedes crear la meta sin fecha límite.</Text>
 
                   <TouchableOpacity
-                    style={[
-                      styles.saveButton,
-                      savingGoal &&
-                        styles.disabledButton,
-                    ]}
+                    style={themeStyle([
+                    styles.saveButton,
+                    savingGoal &&
+                    styles.disabledButton], colors)
+                    }
                     onPress={createGoal}
-                    disabled={savingGoal}
-                  >
-                    {savingGoal ? (
-                      <ActivityIndicator
-                        color="#FFFFFF"
-                      />
-                    ) : (
-                      <Text
-                        style={
-                          styles.saveButtonText
-                        }
-                      >
+                    disabled={savingGoal}>
+
+                    {savingGoal ?
+                    <ActivityIndicator
+                      color={themeColor("#FFFFFF", colors)} /> :
+
+
+                    <Text
+                      style={
+                      styles.saveButtonText
+                      }>
+
                         Crear meta
                       </Text>
-                    )}
+                    }
                   </TouchableOpacity>
                 </ScrollView>
               </View>
@@ -1105,106 +1070,106 @@ export default function GoalsScreen() {
 
       <Modal
         visible={
-          contributionModalVisible
+        contributionModalVisible
         }
         transparent
         animationType="slide"
         onRequestClose={
-          closeContributionModal
-        }
-      >
+        closeContributionModal
+        }>
+
         <KeyboardAvoidingView
           style={styles.modalKeyboardContainer}
           behavior={
-            Platform.OS === 'ios'
-              ? 'padding'
-              : 'height'
-          }
-        >
+          Platform.OS === 'ios' ?
+          'padding' :
+          'height'
+          }>
+
           <TouchableWithoutFeedback
             onPress={Keyboard.dismiss}
-            accessible={false}
-          >
+            accessible={false}>
+
             <View style={styles.modalOverlay}>
               <View style={styles.modalCard}>
                 <View
-                  style={styles.modalHeader}
-                >
+                  style={styles.modalHeader}>
+
                   <Text
-                    style={styles.modalTitle}
-                  >
+                    style={styles.modalTitle}>
+
                     Agregar ahorro
                   </Text>
 
                   <TouchableOpacity
                     onPress={
-                      closeContributionModal
-                    }
-                  >
+                    closeContributionModal
+                    }>
+
                     <Ionicons
                       name="close"
                       size={25}
-                      color={colors.ink}
-                    />
+                      color={themeColor(colors.ink, colors)} />
+
                   </TouchableOpacity>
                 </View>
 
-                {mainGoal && (
-                  <Text
-                    style={
-                      styles.modalDescription
-                    }
-                  >
+                {mainGoal &&
+                <Text
+                  style={
+                  styles.modalDescription
+                  }>
+
                     Meta: {mainGoal.name}
                   </Text>
-                )}
+                }
 
                 <Text
-                  style={styles.inputLabel}
-                >
+                  style={styles.inputLabel}>
+
                   Cantidad
                 </Text>
 
-                <TextInput
+                <TextInput selectionColor={colors.link} cursorColor={colors.link}
                   value={contributionAmount}
                   onChangeText={
-                    setContributionAmount
+                  setContributionAmount
                   }
                   placeholder="500"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.placeholder}
                   keyboardType="decimal-pad"
                   inputAccessoryViewID={
-                    Platform.OS === 'ios'
-                      ? AMOUNT_ACCESSORY_ID
-                      : undefined
+                  Platform.OS === 'ios' ?
+                  AMOUNT_ACCESSORY_ID :
+                  undefined
                   }
-                  style={styles.input}
-                />
+                  style={styles.input} keyboardAppearance={colors.dark ? "dark" : "light"} />
+
 
                 <TouchableOpacity
-                  style={[
-                    styles.saveButton,
-                    savingContribution &&
-                      styles.disabledButton,
-                  ]}
+                  style={themeStyle([
+                  styles.saveButton,
+                  savingContribution &&
+                  styles.disabledButton], colors)
+                  }
                   onPress={addContribution}
                   disabled={
-                    savingContribution
-                  }
-                >
-                  {savingContribution ? (
-                    <ActivityIndicator
-                      color="#FFFFFF"
-                    />
-                  ) : (
-                    <Text
-                      style={
-                        styles.saveButtonText
-                      }
-                    >
+                  savingContribution
+                  }>
+
+                  {savingContribution ?
+                  <ActivityIndicator
+                    color={themeColor("#FFFFFF", colors)} /> :
+
+
+                  <Text
+                    style={
+                    styles.saveButtonText
+                    }>
+
                       Registrar ahorro
                     </Text>
-                  )}
+                  }
                 </TouchableOpacity>
               </View>
             </View>
@@ -1216,36 +1181,36 @@ export default function GoalsScreen() {
       {/* BOTÓN LISTO SOBRE TECLADO iOS */}
       {/* ================================================= */}
 
-      {Platform.OS === 'ios' && (
-        <InputAccessoryView
-          nativeID={
-            AMOUNT_ACCESSORY_ID
-          }
-        >
+      {Platform.OS === 'ios' &&
+      <InputAccessoryView
+        nativeID={
+        AMOUNT_ACCESSORY_ID
+        }>
+
           <View
-            style={
-              styles.keyboardAccessory
-            }
-          >
+          style={
+          styles.keyboardAccessory
+          }>
+
             <TouchableOpacity
-              onPress={Keyboard.dismiss}
-              style={
-                styles.keyboardDoneButton
-              }
-            >
+            onPress={Keyboard.dismiss}
+            style={
+            styles.keyboardDoneButton
+            }>
+
               <Text
-                style={
-                  styles.keyboardDoneText
-                }
-              >
+              style={
+              styles.keyboardDoneText
+              }>
+
                 Listo
               </Text>
             </TouchableOpacity>
           </View>
         </InputAccessoryView>
-      )}
-    </SafeAreaView>
-  );
+      }
+    </SafeAreaView>);
+
 }
 
 
@@ -1256,28 +1221,29 @@ export default function GoalsScreen() {
 function FilterButton({
   label,
   active,
-  onPress,
+  onPress
 }) {
+  const { colors, styles } = useThemeStyles(makeStyles);
   return (
     <TouchableOpacity
-      style={
-        active
-          ? styles.filterActive
-          : styles.filterButton
+      style={themeStyle(
+        active ?
+        styles.filterActive :
+        styles.filterButton, colors)
       }
-      onPress={onPress}
-    >
+      onPress={onPress}>
+
       <Text
-        style={
-          active
-            ? styles.filterActiveText
-            : styles.filterText
-        }
-      >
+        style={themeStyle(
+          active ?
+          styles.filterActiveText :
+          styles.filterText, colors)
+        }>
+
         {label}
       </Text>
-    </TouchableOpacity>
-  );
+    </TouchableOpacity>);
+
 }
 
 
@@ -1290,37 +1256,38 @@ function DoubleBar({
   expenseHeight,
   label,
   onPress,
-  description,
+  description
 }) {
+  const { colors, styles } = useThemeStyles(makeStyles);
   return (
     <TouchableOpacity accessibilityRole="button" accessibilityLabel={description} onPress={onPress} style={styles.barContainer}>
       <View style={styles.doubleBar}>
         <View
-          style={[
-            styles.bar,
-            styles.incomeBar,
-            {
-              height: incomeHeight,
-            },
-          ]}
-        />
+          style={themeStyle([
+          styles.bar,
+          styles.incomeBar,
+          {
+            height: incomeHeight
+          }], colors)
+          } />
+
 
         <View
-          style={[
-            styles.bar,
-            styles.expenseBar,
-            {
-              height: expenseHeight,
-            },
-          ]}
-        />
+          style={themeStyle([
+          styles.bar,
+          styles.expenseBar,
+          {
+            height: expenseHeight
+          }], colors)
+          } />
+
       </View>
 
       <Text style={styles.barLabel}>
         {label}
       </Text>
-    </TouchableOpacity>
-  );
+    </TouchableOpacity>);
+
 }
 
 
@@ -1334,7 +1301,7 @@ function categoryPalette(title) {
     Transporte: ['#2463B5', '#EAF2FF'], Hogar: ['#7951B0', '#F2ECFC'],
     Servicios: ['#167B83', '#E5F5F5'], Salud: ['#B94454', '#FDECF0'],
     Educación: ['#397547', '#EAF5EB'], Entretenimiento: ['#88631E', '#FFF5D9'],
-    Ocio: ['#88631E', '#FFF5D9'],
+    Ocio: ['#88631E', '#FFF5D9']
   };
   return palettes[title] || ['#59677C', '#EDF1F6'];
 }
@@ -1344,55 +1311,56 @@ function CategoryBar({
   title,
   amount,
   percent,
-  width,
+  width
 }) {
+  const { colors, styles } = useThemeStyles(makeStyles);
   const [accent, background] = categoryPalette(title);
   return (
-    <View style={[styles.categoryCard, { borderLeftWidth: 4, borderLeftColor: accent }]}>
+    <View style={themeStyle([styles.categoryCard, { borderLeftWidth: 4, borderLeftColor: accent }], colors)}>
       <View style={styles.categoryHeader}>
         <View style={styles.categoryLeft}>
-          <View style={[styles.categoryIcon, {backgroundColor: background}]}>
+          <View style={themeStyle([styles.categoryIcon, { backgroundColor: background }], colors)}>
             <Ionicons
               name={icon}
               size={21}
-              color={accent}
-            />
+              color={themeColor(accent, colors)} />
+
           </View>
 
           <View>
             <Text
-              style={styles.categoryTitle}
-            >
+              style={styles.categoryTitle}>
+
               {title}
             </Text>
 
             <Text
-              style={styles.categoryAmount}
-            >
+              style={styles.categoryAmount}>
+
               {amount}
             </Text>
           </View>
         </View>
 
         <Text
-          style={[styles.categoryPercent, {color: accent}]}
-        >
+          style={themeStyle([styles.categoryPercent, { color: accent }], colors)}>
+
           {percent}
         </Text>
       </View>
 
       <View
-        style={[styles.categoryProgress, {backgroundColor: background}]}
-      >
+        style={themeStyle([styles.categoryProgress, { backgroundColor: background }], colors)}>
+
         <View
-          style={[
-            styles.categoryProgressFill,
-            { width, backgroundColor: accent },
-          ]}
-        />
+          style={themeStyle([
+          styles.categoryProgressFill,
+          { width, backgroundColor: accent }], colors)
+          } />
+
       </View>
-    </View>
-  );
+    </View>);
+
 }
 
 
@@ -1400,37 +1368,37 @@ function CategoryBar({
 // ESTILOS
 // =====================================================
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   newGoalButton: { minHeight: 44, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 13, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
   newGoalButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
 
   deleteGoalButton: { marginTop: 10, minHeight: 44, borderRadius: 12, borderWidth: 1, borderColor: '#F2C4C9', backgroundColor: '#FFF0F0', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   deleteGoalText: { color: '#B42332', fontSize: 13, fontWeight: '600' },
 
-  optionalDateButton: { flexDirection:'row', gap:10, alignItems:'center', padding:14, borderRadius:14, backgroundColor:colors.softBlue, minHeight:48, marginBottom:8 },
+  optionalDateButton: { flexDirection: 'row', gap: 10, alignItems: 'center', padding: 14, borderRadius: 14, backgroundColor: colors.softBlue, minHeight: 48, marginBottom: 8 },
 
   notice: { padding: 12, borderRadius: 12, backgroundColor: '#EDF4FF', marginBottom: 12 },
-  periodNav: { flexDirection:'row', alignItems:'center', gap:8, marginBottom:14 },
-  periodButton: { width:44, height:44, borderRadius:14, backgroundColor:'#FFFFFF', alignItems:'center', justifyContent:'center' },
-  periodText: { flex:1, color:colors.ink, fontSize:12, fontWeight:'600', textAlign:'center' },
-  chartHint: { fontSize:12, color:colors.muted, lineHeight:18, marginTop:10, marginBottom:8 },
-  summaryHint: { color:'#E0ECFF', fontSize:12, lineHeight:18, marginBottom:14 },
-  incomeTile: { backgroundColor:'#EAF7EF', borderWidth:1, borderColor:'#B9E1C9' },
-  expenseTile: { backgroundColor:'#FFF0F0', borderWidth:1, borderColor:'#F2C4C9' },
+  periodNav: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  periodButton: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  periodText: { flex: 1, color: colors.ink, fontSize: 12, fontWeight: '600', textAlign: 'center' },
+  chartHint: { fontSize: 12, color: colors.muted, lineHeight: 18, marginTop: 10, marginBottom: 8 },
+  summaryHint: { color: '#E0ECFF', fontSize: 12, lineHeight: 18, marginBottom: 14 },
+  incomeTile: { backgroundColor: '#EAF7EF', borderWidth: 1, borderColor: '#B9E1C9' },
+  expenseTile: { backgroundColor: '#FFF0F0', borderWidth: 1, borderColor: '#F2C4C9' },
 
   safe: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.background
   },
 
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.background
   },
 
   content: {
     padding: layout.screenPadding,
-    paddingBottom: 28,
+    paddingBottom: 28
   },
 
 
@@ -1441,33 +1409,33 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: 18,
     padding: 18,
-    marginBottom: 20,
+    marginBottom: 20
   },
 
   summaryLabel: {
     fontSize: 15,
     color: '#DCEEFF',
-    marginBottom: 8,
+    marginBottom: 8
   },
 
   summaryAmount: {
     fontSize: 30,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 18,
+    marginBottom: 18
   },
 
-  summaryRow: { flexDirection:'row', gap:10 },
-  summaryItem: { flex:1, minWidth:0, padding:12, borderRadius:15 },
-  smallLabel: { fontSize:12, fontWeight:'600', marginBottom:8 },
-  income: { color:'#157347', fontSize:16, fontWeight:'700' },
-  expense: { color:'#B42332', fontSize:16, fontWeight:'700' },
+  summaryRow: { flexDirection: 'row', gap: 10 },
+  summaryItem: { flex: 1, minWidth: 0, padding: 12, borderRadius: 15 },
+  smallLabel: { fontSize: 12, fontWeight: '600', marginBottom: 8 },
+  income: { color: '#157347', fontSize: 16, fontWeight: '700' },
+  expense: { color: '#B42332', fontSize: 16, fontWeight: '700' },
 
   separator: {
     width: 1,
     backgroundColor:
-      'rgba(255,255,255,0.25)',
-    marginHorizontal: 12,
+    'rgba(255,255,255,0.25)',
+    marginHorizontal: 12
   },
 
   filterRow: {
@@ -1475,14 +1443,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#EAF1F8',
     borderRadius: 18,
     padding: 5,
-    marginBottom: 20,
+    marginBottom: 20
   },
 
   filterButton: {
     flex: 1,
     paddingVertical: 13,
     alignItems: 'center',
-    borderRadius: 14,
+    borderRadius: 14
   },
 
   filterActive: {
@@ -1491,17 +1459,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 14,
     backgroundColor: '#FFFFFF',
-    elevation: 2,
+    elevation: 2
   },
 
   filterText: {
     color: colors.muted,
-    fontWeight: '600',
+    fontWeight: '600'
   },
 
   filterActiveText: {
     color: colors.ink,
-    fontWeight: '700',
+    fontWeight: '700'
   },
 
   chartCard: {
@@ -1509,7 +1477,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 20,
     marginBottom: 18,
-    elevation: 2,
+    elevation: 2
   },
 
   sectionHeader: {
@@ -1517,7 +1485,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'center'
   },
 
   goalSectionHeader: {
@@ -1525,51 +1493,51 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'center'
   },
 
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.ink,
+    color: colors.ink
   },
 
   sectionLink: {
     fontSize: 12,
     fontWeight: '700',
     color: colors.primary,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase'
   },
 
   legendRow: {
     flexDirection: 'row',
-    gap: 18,
+    gap: 18
   },
 
   legendItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
 
   legendDot: {
     width: 9,
     height: 9,
     borderRadius: 10,
-    marginRight: 6,
+    marginRight: 6
   },
 
   incomeDot: {
-    backgroundColor: '#157347',
+    backgroundColor: '#157347'
   },
 
   expenseDot: {
-    backgroundColor: '#D86666',
+    backgroundColor: '#D86666'
   },
 
   legendText: {
     fontSize: 11,
     color: colors.muted,
-    fontWeight: '700',
+    fontWeight: '700'
   },
 
   chart: {
@@ -1577,34 +1545,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    paddingTop: 20,
+    paddingTop: 20
   },
 
   barContainer: {
     minWidth: 38,
     minHeight: 44,
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-end'
   },
 
   doubleBar: {
     height: 120,
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 3,
+    gap: 3
   },
 
   bar: {
     width: 13,
-    borderRadius: 6,
+    borderRadius: 6
   },
 
   incomeBar: {
-    backgroundColor: '#157347',
+    backgroundColor: '#157347'
   },
 
   expenseBar: {
-    backgroundColor: '#D86666',
+    backgroundColor: '#D86666'
   },
 
   barLabel: {
@@ -1612,7 +1580,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.muted,
     fontWeight: '700',
-    textTransform: 'capitalize',
+    textTransform: 'capitalize'
   },
 
   categoryCard: {
@@ -1620,21 +1588,21 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 18,
     marginBottom: 14,
-    elevation: 2,
+    elevation: 2
   },
 
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 14
   },
 
   categoryLeft: {
     flex: 1,
     marginRight: 10,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
 
   categoryIcon: {
@@ -1644,39 +1612,39 @@ const styles = StyleSheet.create({
     backgroundColor: colors.softBlue,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 14
   },
 
   categoryTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.ink,
+    color: colors.ink
   },
 
   categoryAmount: {
     marginTop: 4,
     fontSize: 13,
     color: colors.muted,
-    fontWeight: '700',
+    fontWeight: '700'
   },
 
   categoryPercent: {
     fontSize: 16,
     color: colors.primary,
-    fontWeight: '700',
+    fontWeight: '700'
   },
 
   categoryProgress: {
     height: 8,
     backgroundColor: '#EAF1F8',
     borderRadius: 18,
-    overflow: 'hidden',
+    overflow: 'hidden'
   },
 
   categoryProgressFill: {
     height: '100%',
     backgroundColor: colors.primary,
-    borderRadius: 18,
+    borderRadius: 18
   },
 
   goalCard: {
@@ -1684,13 +1652,13 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 20,
     marginBottom: 18,
-    elevation: 2,
+    elevation: 2
   },
 
   goalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 18,
+    marginBottom: 18
   },
 
   goalIcon: {
@@ -1700,26 +1668,26 @@ const styles = StyleSheet.create({
     backgroundColor: colors.softBlue,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 14
   },
 
   cardTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.ink,
-    marginBottom: 4,
+    marginBottom: 4
   },
 
   cardText: {
     fontSize: 14,
     color: '#4B5563',
-    lineHeight: 20,
+    lineHeight: 20
   },
 
   goalPercent: {
     color: colors.primary,
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '700'
   },
 
   progressBackground: {
@@ -1727,30 +1695,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#DDEBFA',
     borderRadius: 18,
     overflow: 'hidden',
-    marginBottom: 12,
+    marginBottom: 12
   },
 
   progressFill: {
     height: '100%',
     backgroundColor: colors.ink,
-    borderRadius: 18,
+    borderRadius: 18
   },
 
   goalFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-between'
   },
 
   goalText: {
     fontSize: 12,
     color: colors.muted,
-    fontWeight: '700',
+    fontWeight: '700'
   },
 
   goalDate: {
     marginTop: 10,
     fontSize: 12,
-    color: colors.muted,
+    color: colors.muted
   },
 
   contributionButton: {
@@ -1761,13 +1729,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 7,
+    gap: 7
   },
 
   contributionButtonText: {
     color: '#FFFFFF',
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 14
   },
 
   emptyGoalCard: {
@@ -1776,21 +1744,21 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 18,
     alignItems: 'center',
-    elevation: 2,
+    elevation: 2
   },
 
   emptyGoalTitle: {
     marginTop: 10,
     fontSize: 17,
     fontWeight: '700',
-    color: colors.ink,
+    color: colors.ink
   },
 
   emptyGoalText: {
     marginTop: 5,
     fontSize: 13,
     color: colors.muted,
-    textAlign: 'center',
+    textAlign: 'center'
   },
 
   emptyCard: {
@@ -1799,21 +1767,21 @@ const styles = StyleSheet.create({
     padding: 18,
     alignItems: 'center',
     marginBottom: 18,
-    elevation: 2,
+    elevation: 2
   },
 
   emptyTitle: {
     marginTop: 8,
     fontSize: 16,
     fontWeight: '700',
-    color: colors.ink,
+    color: colors.ink
   },
 
   emptyText: {
     marginTop: 5,
     color: colors.muted,
     fontSize: 13,
-    textAlign: 'center',
+    textAlign: 'center'
   },
 
   aiCard: {
@@ -1823,7 +1791,7 @@ const styles = StyleSheet.create({
     padding: 18,
     marginTop: 4,
     borderWidth: 1,
-    borderColor: '#D7EAFE',
+    borderColor: '#D7EAFE'
   },
 
   aiIcon: {
@@ -1833,7 +1801,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 14
   },
 
   // =====================================================
@@ -1841,14 +1809,14 @@ const styles = StyleSheet.create({
   // =====================================================
 
   modalKeyboardContainer: {
-    flex: 1,
+    flex: 1
   },
 
   modalOverlay: {
     flex: 1,
     backgroundColor:
-      'rgba(0,0,0,0.35)',
-    justifyContent: 'flex-end',
+    colors.overlay,
+    justifyContent: 'flex-end'
   },
 
   modalCard: {
@@ -1857,26 +1825,26 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     padding: 18,
     paddingBottom: 40,
-    maxHeight: '85%',
+    maxHeight: '85%'
   },
 
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 18,
+    marginBottom: 18
   },
 
   modalTitle: {
     fontSize: 19,
     fontWeight: '700',
-    color: colors.ink,
+    color: colors.ink
   },
 
   modalDescription: {
     fontSize: 15,
     color: colors.muted,
-    marginBottom: 18,
+    marginBottom: 18
   },
 
   inputLabel: {
@@ -1884,7 +1852,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: colors.muted,
     fontWeight: '700',
-    marginBottom: 7,
+    marginBottom: 7
   },
 
   input: {
@@ -1894,7 +1862,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     color: colors.ink,
     fontSize: 16,
-    marginBottom: 18,
+    marginBottom: 18
   },
 
   saveButton: {
@@ -1902,17 +1870,17 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 4
   },
 
   disabledButton: {
-    opacity: 0.65,
+    opacity: 0.65
   },
 
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '700'
   },
 
   // =====================================================
@@ -1925,17 +1893,17 @@ const styles = StyleSheet.create({
     borderTopColor: '#D1D5DB',
     paddingHorizontal: 16,
     paddingVertical: 9,
-    alignItems: 'flex-end',
+    alignItems: 'flex-end'
   },
 
   keyboardDoneButton: {
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 5
   },
 
   keyboardDoneText: {
     color: colors.primary,
     fontSize: 16,
-    fontWeight: '700',
-  },
+    fontWeight: '700'
+  }
 });

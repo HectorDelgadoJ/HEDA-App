@@ -1,12 +1,14 @@
+import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
 import SwipeBackToIA from '../components/SwipeBackToIA';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 
 export default function EthereumScreen({ navigation }) {
+  const { colors, styles } = useThemeStyles(makeStyles);
   return (
-    <SwipeBackToIA navigation={navigation}><SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: colors.background }}>
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.container}>
+    <SwipeBackToIA navigation={navigation}><SafeAreaView edges={['top', 'left', 'right']} style={themeStyle({ flex: 1, backgroundColor: colors.background }, colors)}>
+    <ScrollView style={themeStyle({ flex: 1 }, colors)} contentContainerStyle={styles.container}>
 
       <Text style={styles.title}>
         Ethereum
@@ -88,56 +90,56 @@ export default function EthereumScreen({ navigation }) {
 
 
     </ScrollView>
-    </SafeAreaView></SwipeBackToIA>
-  );
+    </SafeAreaView></SwipeBackToIA>);
+
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
 
   container: {
     flexGrow: 1,
     backgroundColor: colors.background,
     padding: 20,
     paddingTop: 16,
-    paddingBottom: 28,
+    paddingBottom: 28
   },
 
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.ink,
-    marginBottom: 10,
+    marginBottom: 10
   },
 
   subtitle: {
     fontSize: 16,
     color: '#555',
-    marginBottom: 18,
+    marginBottom: 18
   },
 
   priceCard: {
     backgroundColor: colors.primary,
     borderRadius: 18,
     padding: 18,
-    marginBottom: 20,
+    marginBottom: 20
   },
 
   priceLabel: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 16
   },
 
   price: {
     color: 'white',
     fontSize: 32,
     fontWeight: 'bold',
-    marginTop: 10,
+    marginTop: 10
   },
 
   change: {
     color: '#D9F6FF',
     marginTop: 10,
-    fontSize: 16,
+    fontSize: 16
   },
 
   predictionCard: {
@@ -149,33 +151,33 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 5,
-    elevation: 3,
+    elevation: 3
   },
 
   predictionTitle: {
     fontSize: 19,
     fontWeight: 'bold',
     color: colors.ink,
-    marginBottom: 12,
+    marginBottom: 12
   },
 
   predictionText: {
     fontSize: 15,
     color: '#444',
     lineHeight: 22,
-    marginBottom: 20,
+    marginBottom: 20
   },
 
   predictionValue: {
     color: '#666',
-    fontSize: 15,
+    fontSize: 15
   },
 
   futurePrice: {
     fontSize: 30,
     fontWeight: 'bold',
     color: colors.primary,
-    marginTop: 8,
+    marginTop: 8
   },
 
   analysisCard: {
@@ -187,54 +189,54 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 5,
-    elevation: 3,
+    elevation: 3
   },
 
   analysisTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: colors.ink,
-    marginBottom: 15,
+    marginBottom: 15
   },
 
   analysisItem: {
     fontSize: 16,
     color: '#444',
-    marginBottom: 10,
+    marginBottom: 10
   },
 
   riskCard: {
     backgroundColor: colors.ink,
     borderRadius: 18,
     padding: 18,
-    marginBottom: 18,
+    marginBottom: 18
   },
 
   riskTitle: {
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 10
   },
 
   riskText: {
     color: 'white',
     lineHeight: 22,
-    fontSize: 15,
+    fontSize: 15
   },
 
   button: {
     backgroundColor: colors.primary,
     padding: 18,
     borderRadius: 15,
-    marginBottom: 40,
+    marginBottom: 40
   },
 
   buttonText: {
     color: 'white',
     textAlign: 'center',
     fontWeight: 'bold',
-    fontSize: 16,
-  },
+    fontSize: 16
+  }
 
 });

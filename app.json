@@ -1,31 +1,43 @@
 {
   "expo": {
-    "name": "ProyectoHEDA",
+    "name": "HEDA",
     "slug": "ProyectoHEDA",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/heda-logo.png",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/heda-logo.png",
+        "backgroundColor": "#092C56"
       },
       "package": "com.masterchentee.ProyectoHEDA"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/heda-logo.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "HEDA",
+      "shortName": "HEDA",
+      "lang": "es",
+      "description": "Organiza tu dinero, aprende y avanza a tu ritmo.",
+      "themeColor": "#092C56"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-system-ui",
+      "expo-notifications",
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {
         "projectId": "1bc3c653-7ae2-4d93-ba46-86952a92041a"
       }
-    }
+    },
+    "scheme": "heda"
   }
 }
