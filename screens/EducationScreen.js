@@ -1,3 +1,4 @@
+import AppActionCard from '../components/AppActionCard';
 import {Alert} from '../services/alerts';
 import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
 import InfoButton from '../components/InfoButton';
@@ -20,6 +21,7 @@ export default function EducationScreen({ navigation }) {
   const [messages, setMessages] = useState([]);
   const [loadingAI, setLoadingAI] = useState(false);
   const [failure, setFailure] = useState(null);
+  const [appConsent,setAppConsent]=useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [financialContext, setFinancialContext] = useState(null);
@@ -41,7 +43,7 @@ export default function EducationScreen({ navigation }) {
     requestRef.current = null;
     setActionsOpen(false);setToolsOpen(false);
     commit([]);setQuestion('');setFailure(null);setLoadingAI(false);
-    setFinancialContext(null);setFinancialPreview(null);setSummaryLoading(false);
+    setAppConsent(false);setFinancialContext(null);setFinancialPreview(null);setSummaryLoading(false);
   }
 
   useEffect(() => {
@@ -81,7 +83,11 @@ export default function EducationScreen({ navigation }) {
     send('Analiza el resumen de mis registros de este mes. Explica mis principales gastos, cómo afectan mis tarjetas al saldo y qué pasos de ahorro podría considerar sin asumir gastos o ingresos que no registré.', approved);
   }
 
-  async function send(overrideText, approvedSummary = financialContext) {
+  function authorizeAppData(retryText){
+    Alert.alert('Consultar mis datos en este chat','Gemini podrá recibir tu nombre y @usuario, edad calculada, ocupación, preferencias básicas, importes, categorías, fechas, nombres de tarjetas y metas, presupuestos y recurrentes de esta cuenta. No se envían correo, fecha de nacimiento ni notas de movimientos. La cuota gratuita puede usar el contenido para mejorar productos. No se consultará internet. Cada cambio requiere Confirmar y guardar. Nueva conversación deja de compartir los datos.',[{text:'Cancelar',style:'cancel'},{text:'Permitir en este chat',onPress:()=>{setAppConsent(true);setFinancialContext(null);if(retryText)void send(retryText,null,true);}}]);
+  }
+
+  async function send(overrideText, approvedSummary = financialContext, consentOverride = appConsent) {
     setActionsOpen(false);
     const text = typeof overrideText === 'string' ? overrideText : question.trim();
     if (!text || requestRef.current) return;
@@ -94,11 +100,12 @@ export default function EducationScreen({ navigation }) {
     commit(beginChatTurn(messagesRef.current, text, userId));
     setQuestion(text);setFailure(null);setLoadingAI(true);Keyboard.dismiss();scrollToLatest.current = true;
     try {
-      const result = await sendMessageToHedaAI(text, history, { signal: controller.signal, summaryDigest: approvedSummary?.summaryDigest });
+      const result = await sendMessageToHedaAI(text, history, { signal: controller.signal, summaryDigest: approvedSummary?.summaryDigest, appConsent:consentOverride });
       if (generation.current !== requestGeneration) return;
       commit([...messagesRef.current.map((item) => item.id === userId ? { ...item, status: 'complete' } : item), {
         id: `assistant-${turn}`, role: 'assistant', status: 'complete', text: result.message,
         sources: Array.isArray(result.sources) ? result.sources.filter((item) => typeof item.url === 'string' && item.url.startsWith('https://')) : [],
+        proposals: Array.isArray(result.proposals)?result.proposals:[], appDataUsed:result.appDataUsed===true, needsAppConsent:result.needsAppConsent===true, originalQuestion:text, ownerId:ownerRef.current,
         searchHtml: typeof result.searchHtml === 'string' ? result.searchHtml : '', webEnabled: result.webEnabled === true, financialSummaryUsed: result.financialSummaryUsed === true
       }]);
       setQuestion('');scrollToLatest.current = true;
@@ -123,6 +130,7 @@ export default function EducationScreen({ navigation }) {
         <View style={styles.grid}>
           <ToolCard icon="school-outline" title="Educación" text="Aprende finanzas paso a paso con ejemplos sencillos." accent="#2463B5" tint="#EAF2FF" onPress={() => navigation.navigate('EducacionFinanciera')} />
           <ToolCard icon="analytics-outline" title="Hábitos" text="Descubre patrones en tus ingresos y gastos registrados." accent="#7951B0" tint="#F2ECFC" onPress={() => navigation.navigate('Habitos')} />
+          <ToolCard icon="qr-code-outline" title="Compartir por QR" text="Comparte un movimiento o importa uno después de revisarlo." accent="#18785D" tint="#E6F6EF" onPress={()=>navigation.navigate('QR')}/>
           <ToolCard icon="notifications-outline" title="Alertas" text="Revisa pagos pendientes y configura presupuestos mensuales." accent="#A65B16" tint="#FFF1E3" onPress={() => navigation.navigate('Alertas')} />
           <ToolCard icon="trending-up-outline" title="Ethereum" text="Consulta el módulo informativo de criptomonedas." accent="#167B83" tint="#E5F5F5" onPress={() => navigation.navigate('Ethereum')} />
         </View>
@@ -139,6 +147,9 @@ export default function EducationScreen({ navigation }) {
         {messages.map((item) => <View key={item.id} style={themeStyle([styles.chatBubble, item.role === 'user' ? styles.userBubble : styles.assistantBubble], colors)}>
           <Text style={themeStyle([styles.bubbleAuthor, item.role === 'user' && { color: '#E2EDFF' }], colors)}>{item.role === 'user' ? 'Tú' : 'HEDA'}</Text>
           <Text selectable style={themeStyle([styles.bubbleText, item.role === 'user' && { color: '#FFFFFF' }], colors)}>{item.text}</Text>
+          {item.role==='assistant'&&item.appDataUsed&&<Text style={styles.composerHint}>Consultó tus datos autorizados · Sin internet</Text>}
+          {item.role==='assistant'&&item.needsAppConsent&&<TouchableOpacity accessibilityRole="button" style={styles.retryButton} disabled={loadingAI} onPress={()=>authorizeAppData(item.originalQuestion)}><Text style={styles.suggestionText}>Permitir consultar mis datos</Text></TouchableOpacity>}
+          {item.role==='assistant'&&(item.proposals||[]).map(proposal=><AppActionCard key={proposal.id} proposal={proposal} ownerId={item.ownerId}/>)}
           {item.status === 'failed' && <Text style={styles.outgoingStatus}>Sin respuesta · Puedes editar y reintentar abajo</Text>}
           {item.role === 'assistant' && <>
             {item.financialSummaryUsed ? <InfoButton title={"Contexto de esta respuesta"} text={"Basado en el resumen autorizado. No consulta internet. Inicia una conversación nueva para dejar de compartir el resumen."} /> : item.webEnabled === false && <InfoButton title={"Fuentes de esta respuesta"} text={"Sin búsqueda web. Esta respuesta no verifica cotizaciones, tasas o noticias actuales."} />}
@@ -156,6 +167,7 @@ export default function EducationScreen({ navigation }) {
       <View style={styles.composer}>
         {summaryLoading ? <View accessibilityLiveRegion="polite" style={styles.thinkingRow}><ActivityIndicator size="small" color={themeColor(colors.primary, colors)} /><Text style={styles.cardText}>Preparando tu resumen para revisar…</Text></View> : null}
         {actionsOpen ? <View style={styles.actionMenu}>
+          <TouchableOpacity accessibilityRole="button" style={styles.menuAction} disabled={loadingAI||summaryLoading} onPress={()=>{setActionsOpen(false);authorizeAppData();}}><Ionicons name="shield-checkmark-outline" size={22} color={colors.link}/><Text style={styles.menuText}>{appConsent?'Datos autorizados en este chat':'Consultar mis datos'}</Text></TouchableOpacity>
           <TouchableOpacity accessibilityRole="button" style={styles.menuAction} onPress={() => {setActionsOpen(false);newConversation();}}><Ionicons name="add-circle-outline" size={22} color={themeColor(colors.primary, colors)} /><Text style={styles.menuText}>Nueva conversación</Text></TouchableOpacity>
           <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: loadingAI || summaryLoading }} disabled={loadingAI || summaryLoading} style={themeStyle([styles.menuAction, (loadingAI || summaryLoading) && { opacity: 0.45 }], colors)} onPress={() => {setActionsOpen(false);void openFinancialPreview();}}><Ionicons name="pie-chart-outline" size={22} color={themeColor(colors.primary, colors)} /><Text style={styles.menuText}>Analizar mis finanzas</Text></TouchableOpacity>
           <TouchableOpacity accessibilityRole="button" style={themeStyle([styles.menuAction, styles.exploreMenuAction], colors)} onPress={() => {Keyboard.dismiss();setActionsOpen(false);setToolsOpen(true);}}><Ionicons name="book-outline" size={22} color={themeColor("#6D28D9", colors)} /><Text style={themeStyle([styles.menuText, { color: '#6D28D9' }], colors)}>Aprender y explorar</Text><Ionicons name="arrow-forward" size={19} color={themeColor("#6D28D9", colors)} /></TouchableOpacity>
@@ -165,7 +177,7 @@ export default function EducationScreen({ navigation }) {
           <TextInput selectionColor={colors.link} cursorColor={colors.link} ref={inputRef} value={question} onChangeText={setQuestion} placeholder={messages.length ? 'Pregunta algo más…' : 'Escribe tu pregunta…'} placeholderTextColor={colors.placeholder} multiline maxLength={2000} editable={!loadingAI && !summaryLoading} accessibilityLabel="Mensaje para HEDA" onFocus={() => setActionsOpen(false)} style={styles.composerInput} keyboardAppearance={colors.dark ? "dark" : "light"} />
           <TouchableOpacity accessibilityRole="button" accessibilityLabel={failure ? 'Reintentar mensaje' : 'Enviar mensaje'} disabled={loadingAI || summaryLoading || !question.trim()} onPress={send} style={themeStyle([styles.sendChatButton, (loadingAI || !question.trim()) && { opacity: 0.45 }], colors)}>{loadingAI || summaryLoading ? <ActivityIndicator color={themeColor("#FFFFFF", colors)} size="small" /> : <Ionicons name="arrow-up" size={23} color={themeColor("#FFFFFF", colors)} />}</TouchableOpacity>
         </View>
-        <View style={styles.composerFooter}><Text style={styles.composerHint}>{question.length}/2000</Text><InfoButton title={"Privacidad, contexto y límites de IA"} text={"Se envían tu pregunta y mensajes recientes de este chat a Google Gemini; el nivel gratuito puede usar el contenido para mejorar productos. No compartas datos sensibles. El chat se conserva solo en memoria mientras usas la app y se limpia al cerrar sesión o iniciar uno nuevo. Solo se comparte un resumen calculado de tus registros si lo revisas y autorizas con Analizar mis finanzas. Nueva conversación deja de compartirlo. El uso tiene límites compartidos del proyecto; HEDA informa si se alcanza uno, pero no conoce la cuota restante en tiempo real."} style={themeStyle({ width: 44, height: 44 }, colors)} /></View>
+        <View style={styles.composerFooter}><Text style={styles.composerHint}>{question.length}/2000</Text><InfoButton title={"Privacidad, contexto y límites de IA"} text={"Se envían tu pregunta y mensajes recientes de este chat a Google Gemini; el nivel gratuito puede usar el contenido para mejorar productos. No compartas datos sensibles. El chat se conserva solo en memoria mientras usas la app y se limpia al cerrar sesión o iniciar uno nuevo. Consultar mis datos permite compartir registros de esta cuenta durante el chat, sin correo, fecha de nacimiento ni notas. Analizar mis finanzas comparte solo el resumen que revisas. Las propuestas se guardan únicamente al confirmar. Nueva conversación deja de compartirlo. El uso tiene límites compartidos del proyecto; HEDA informa si se alcanza uno, pero no conoce la cuota restante en tiempo real."} style={themeStyle({ width: 44, height: 44 }, colors)} /></View>
       </View>
       </View>
       <Modal visible={!!financialPreview} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setFinancialPreview(null)}>
@@ -174,7 +186,7 @@ export default function EducationScreen({ navigation }) {
           <ScrollView contentContainerStyle={{ padding: 18, paddingTop: 0 }}>
             {financialPreview && <FinancialSummaryPreview summary={financialPreview.summary} />}
             <Text style={styles.consentExplanation}>Al continuar enviarás estos importes a Google Gemini y comenzarás un chat nuevo. Los seguimientos usarán el mismo resumen mientras esté activo. En el nivel gratuito, Google puede usar el contenido para mejorar productos.</Text>
-            <Text style={styles.consentExplanation}>No se envían nombres, correos, notas, identificadores ni nombres de tarjetas o metas. La búsqueda web estará desactivada en este chat. No se harán cambios ni pagos.</Text>
+            <Text style={styles.consentExplanation}>No se envían nombres, correos, notas, identificadores ni nombres de tarjetas o metas. La búsqueda web estará desactivada en este chat. No se harán pagos. Cualquier propuesta para guardar datos requerirá una confirmación adicional.</Text>
           </ScrollView>
           <View style={styles.consentFooter}><TouchableOpacity accessibilityRole="button" style={[styles.consentPrimary, financialPreview?.summary.monthly.transactionCount === 0 && {opacity:0.45}]} disabled={!financialPreview?.summary.monthly.transactionCount} onPress={approveFinancialPreview}><Text style={styles.analyzeButtonText}>Compartir y analizar</Text><Ionicons name="arrow-forward" size={18} color={themeColor("#FFFFFF", colors)} /></TouchableOpacity><TouchableOpacity accessibilityRole="button" style={styles.summaryCancel} onPress={() => setFinancialPreview(null)}><Text style={styles.suggestionText}>Cancelar · No compartir</Text></TouchableOpacity></View>
         </SafeAreaView></SafeAreaProvider>

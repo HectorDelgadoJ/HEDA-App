@@ -25,7 +25,7 @@ const version = require('../package.json').version;
 const information = {
   privacy: { title: 'Privacidad y datos', sections: [
     ['Tus registros', 'Los movimientos, tarjetas, programaciones, metas y presupuestos se guardan en Supabase asociados a tu cuenta. Las funciones de HEDA utilizan los registros que tú proporcionas; no se conectan a tu banco.'],
-    ['Cuando usas IA', 'Tu pregunta y mensajes recientes del chat se envían a Google Gemini. Los importes de tus registros solo se comparten mediante Analizar mis finanzas, después de revisar el resumen y autorizarlo. En el nivel gratuito, Google puede usar el contenido para mejorar productos.'],
+    ['Cuando usas IA', 'Tu pregunta y mensajes recientes del chat se envían a Google Gemini. Consultar mis datos permite compartir registros propios y datos básicos de perfil durante el chat, previa autorización; no se envían correo, fecha de nacimiento ni notas. Analizar mis finanzas comparte solo el resumen revisado. Las propuestas requieren confirmación para guardarse. En el nivel gratuito, Google puede usar el contenido para mejorar productos.'],
     ['Qué se conserva en el teléfono', 'El avance educativo y las alertas leídas se guardan por cuenta en este dispositivo. La conversación con IA se mantiene en memoria y se limpia al cerrar sesión o iniciar una nueva. Esto no elimina registros que conserven los proveedores.'],
     ['Fecha de nacimiento', 'Tu fecha queda privada y se usa para calcular la edad actual y comprobar la disponibilidad de Gemini. Puedes corregirla en Editar perfil; no se envía al modelo.'],
     ['Tus preferencias', 'La vista y la personalización se guardan en tu cuenta de Supabase Auth. Ocultar un bloque no elimina sus datos ni cambia tus cálculos.']]

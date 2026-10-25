@@ -40,11 +40,13 @@ test('safety blocks, incomplete output and empty responses cannot appear as succ
  assert.throws(()=>parseGeminiResponse({candidates:[{finishReason:'STOP',content:{parts:[{thought:true,text:'hidden'}]}}]}),/AI_EMPTY_RESPONSE/);
 });
 test('dashboard bundle matches the authenticated production source and contains no Azure calls',()=>{
+ const actions=readFileSync(new URL('../supabase/functions/heda-ai/actions.js',import.meta.url),'utf8').replace(/\r\n/g,'\n');
+ const agent=readFileSync(new URL('../supabase/functions/heda-ai/agent.js',import.meta.url),'utf8').replace(/\r\n/g,'\n').replace(/import[^\n]+\n/g,'');
  const index=readFileSync(new URL('../supabase/functions/heda-ai/index.ts',import.meta.url),'utf8').replace(/\r\n/g, '\n');
  const bundled=readFileSync(new URL('../supabase/heda-ai-dashboard.ts',import.meta.url),'utf8').replace(/\r\n/g, '\n');
  const security=readFileSync(new URL('../supabase/functions/heda-ai/security.js',import.meta.url),'utf8').replace(/\r\n/g,'\n');
  const summary=readFileSync(new URL('../supabase/functions/heda-ai/financial-summary.js',import.meta.url),'utf8').replace(/\r\n/g,'\n');
- assert.equal(bundled,'// Generated from functions/heda-ai/index.ts and gemini.js. Copy this whole file into the Supabase Edge Function editor.\n'+source+'\n'+summary+'\n'+security+'\n'+index.replace('import { createGeminiClient, geminiError, validateChatHistory } from "./gemini.js";\n','').replace('import { handleHedaBody } from "./financial-summary.js";\n','').replace('import { reserveAIQuota, readHedaRequest, assertAIAdult } from "./security.js";\n',''));
+ assert.equal(bundled,'// Generated from functions/heda-ai/index.ts and gemini.js. Copy this whole file into the Supabase Edge Function editor.\n'+source+'\n'+summary+'\n'+security+'\n'+actions+'\n'+agent+'\n'+index.replace('import { createAgentClient, handleAgentBody } from "./agent.js";\n','').replace('import { createGeminiClient, geminiError, validateChatHistory } from "./gemini.js";\n','').replace('import { handleHedaBody } from "./financial-summary.js";\n','').replace('import { reserveAIQuota, readHedaRequest, assertAIAdult } from "./security.js";\n',''));
  assert.match(index,/auth: "user"/);assert.match(bundled,/ctx\.userClaims\?\.id/);assert.ok(!bundled.includes('login.microsoftonline.com'));assert.ok(!bundled.includes('from "./gemini.js"'));assert.ok(!bundled.includes('from "./financial-summary.js"'));
 });
 

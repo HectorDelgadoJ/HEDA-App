@@ -32,10 +32,11 @@ async function invokeHeda(body, { signal } = {}) {
   } finally { clearTimeout(timeout); signal?.removeEventListener('abort', abort); }
 }
 
-export async function sendMessageToHedaAI(message, history = [], { signal, summaryDigest } = {}) {
+export async function sendMessageToHedaAI(message, history = [], { signal, summaryDigest, appConsent=false } = {}) {
   const cleanMessage=typeof message==='string'?message.trim():'';
   if (!cleanMessage || cleanMessage.length>2000) throw new Error('Escribe una pregunta de hasta 2000 caracteres.');
-  const data=await invokeHeda({message:cleanMessage,...(history.length?{history}:{}),...(summaryDigest?{financialConsent:true,summaryDigest}:{})},{signal});
+  const data=await invokeHeda({message:cleanMessage,...(history.length?{history}:{}),action:'assistant',appConsent:appConsent===true,...(summaryDigest?{financialConsent:true,summaryDigest}:{})},{signal});
+  if(data.agentVersion!==1)throw new Error('Actualiza heda-ai en Supabase para activar consultas y propuestas del asistente.');
   if (typeof data.message!=='string' || !data.message.trim()) throw new Error('El asistente no devolvió una respuesta válida.');
   if (data.agent?.version==='0.1.0') throw new Error('Supabase todavía tiene la función de prueba. Actualiza heda-ai para activar el asistente.');
   if (history.length && data.chatVersion!==1) throw new Error('Publica la versión de conversación de heda-ai en Supabase para usar preguntas de seguimiento.');

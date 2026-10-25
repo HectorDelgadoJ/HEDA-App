@@ -194,3 +194,12 @@ HEDA se exporta con `npm run build:web` a **dist**, preparada para Netlify Drop 
 - SQL 011: birth_date privada, validación de fechas futuras/imposibles/rango, RPC limitada a auth.uid, compatibilidad con registros antiguos y elegibilidad Gemini por cumpleaños en servidor. Columna age anterior conservada como instantánea, nunca usada para habilitar IA.
 - heda-ai comprueba elegibilidad antes de contactar al proveedor y de reservar cuota. Actualización remota pendiente de realizar por el responsable. Gemini para mayores de 18; demás herramientas disponibles a menores.
 - Privacidad y condiciones actualizadas; guía con orden SQL → Edge Function → dist. Pruebas automatizadas de cumpleaños/bisiestos, registro, edición, permisos, compatibilidad y aislamiento.
+
+
+## 25/10/2026 · Asistente conectado y QR
+
+- Lectura autorizada de registros y perfil básicos, acotada a la cuenta y sin fecha de nacimiento exacta, correo o notas. Hasta 500 detalles por sección y totales calculados por separado; sin búsquedas web con datos privados.
+- Gemini function calling prepara hasta tres propuestas por mensaje: movimientos, metas, presupuestos nuevos y recurrentes. Confirmación humana, validación en cliente/servidor y SQL 012 con comprobantes idempotentes ligados a auth.uid. Sin pagos, transferencias o borrados por modelo.
+- QR real en Herramientas: generar, compartir texto, cámara nativa/web, lectura de imagen web y pegado de código. Revisión antes de importar a Mi saldo, sin identidad ni credenciales. Reintentos de un QR no duplican en la misma cuenta.
+- Permiso de cámara específico sin micrófono. Dependencias fijadas; Expo y notificaciones alineados con los parches requeridos por Expo. No se aplicó npm audit fix --force.
+- Privacidad/condiciones y guía actualizadas. SQL, Edge Function y publicación remotos pendientes del responsable; pruebas físicas de cámara y respuestas Gemini reales pendientes.

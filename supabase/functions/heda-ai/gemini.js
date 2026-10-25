@@ -7,6 +7,8 @@ export function geminiError(error) {
     SUMMARY_INVALID_DATA: [503, 'Hay importes no válidos en tus registros. Revisa tus movimientos antes de analizarlos.'],
     SUMMARY_LOAD_FAILED: [503, 'No pudimos cargar tu resumen completo. Inténtalo de nuevo; no se envió un análisis parcial.'],
     SUMMARY_TOO_LARGE: [413, 'Tu historial supera el tamaño que puede analizar esta versión.'],
+    ACTION_INVALID: [422, 'La propuesta no contiene datos válidos. Indica tipo, monto, categoría y fecha, o nombre y objetivo de la meta.'],
+    INVALID_MESSAGE: [400, 'Escribe un mensaje de hasta 2000 caracteres.'],
     INVALID_HISTORY: [400, 'La conversación no es válida o es demasiado larga. Inicia una nueva conversación.'],
     GEMINI_NOT_CONFIGURED: [503, 'Falta GEMINI_API_KEY en los Secrets de Supabase.'],
     GEMINI_MODEL_INVALID: [503, 'Revisa GEMINI_MODEL en Supabase.'],

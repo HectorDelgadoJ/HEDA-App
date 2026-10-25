@@ -1,0 +1,5 @@
+import React from 'react';
+import {View,Text,TouchableOpacity} from 'react-native';
+import {CameraView,useCameraPermissions} from 'expo-camera';
+import {useThemeStyles} from '../theme/ThemeProvider';
+export default function QRScanner({onCode}){const [permission,request]=useCameraPermissions(),{colors}=useThemeStyles();if(!permission?.granted)return <View><Text style={{color:colors.ink,lineHeight:22}}>Permite usar la cámara para escanear. Solo se interpreta el código en tu dispositivo.</Text><TouchableOpacity accessibilityRole="button" onPress={request} style={{padding:14,backgroundColor:colors.primary,borderRadius:12,marginTop:12}}><Text style={{color:colors.onPrimary}}>Permitir cámara</Text></TouchableOpacity>{permission?.canAskAgain===false&&<Text style={{color:colors.muted}}>Puedes habilitarla desde Ajustes del teléfono o pegar el código.</Text>}</View>;return <CameraView style={{height:320,width:'100%',borderRadius:18}} facing="back" barcodeScannerSettings={{barcodeTypes:['qr']}} onBarcodeScanned={({data})=>onCode(data)}/>;}
