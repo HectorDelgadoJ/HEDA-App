@@ -41,7 +41,7 @@ test('safety blocks, incomplete output and empty responses cannot appear as succ
 });
 test('dashboard bundle matches the authenticated production source and contains no Azure calls',()=>{
  const actions=readFileSync(new URL('../supabase/functions/heda-ai/actions.js',import.meta.url),'utf8').replace(/\r\n/g,'\n');
- const agent=readFileSync(new URL('../supabase/functions/heda-ai/agent.js',import.meta.url),'utf8').replace(/\r\n/g,'\n').replace(/import[^\n]+\n/g,'');
+ const agent=readFileSync(new URL('../supabase/functions/heda-ai/agent.js',import.meta.url),'utf8').replace(/\r\n/g,'\n').replace(/^import[^\n]+\n/gm,'');
  const index=readFileSync(new URL('../supabase/functions/heda-ai/index.ts',import.meta.url),'utf8').replace(/\r\n/g, '\n');
  const bundled=readFileSync(new URL('../supabase/heda-ai-dashboard.ts',import.meta.url),'utf8').replace(/\r\n/g, '\n');
  const security=readFileSync(new URL('../supabase/functions/heda-ai/security.js',import.meta.url),'utf8').replace(/\r\n/g,'\n');
@@ -64,4 +64,15 @@ test('authorized server summary is provided as context and suppresses web search
  let body;const ask=createGeminiClient(env({GEMINI_SEARCH_ENABLED:'true'}),async(url,init)=>{body=JSON.parse(init.body);return answer();});
  const summary={currency:'MXN',monthly:{income:1000,expenses:300}};const result=await ask('Analiza',[],summary);
  assert.equal(result.webEnabled,false);assert.equal(body.tools,undefined);assert.ok(body.systemInstruction.parts[0].text.includes(JSON.stringify(summary)));assert.deepEqual(body.contents,[{role:'user',parts:[{text:'Analiza'}]}]);
+});
+
+
+test('generated dashboard is valid TypeScript and preserves instructions containing importes',async()=>{
+ const ts=await import('typescript');
+ const text=readFileSync(new URL('../supabase/heda-ai-dashboard.ts',import.meta.url),'utf8');
+ const result=ts.transpileModule(text,{fileName:'index.ts',reportDiagnostics:true,compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}});
+ const errors=(result.diagnostics||[]).filter(d=>d.category===ts.DiagnosticCategory.Error);
+ assert.deepEqual(errors.map(d=>ts.flattenDiagnosticMessageText(d.messageText,' ')),[]);
+ assert.ok(text.includes('Calcula importes con precisión'));
+ assert.ok(!/^import .*from '\.\//m.test(text));
 });
