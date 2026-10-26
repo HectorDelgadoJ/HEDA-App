@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { layout } from '../theme/layout';
 
-export default function ScreenHeader({ title, subtitle, icon, actionIcon, actionLabel, onAction }) {
+export default function ScreenHeader({ title, subtitle, icon, actionIcon, actionLabel, onAction, actionContent }) {
   const { colors, styles } = useThemeStyles(makeStyles);
   return <View style={styles.header}>
     <View style={styles.identity}>
@@ -14,9 +14,9 @@ export default function ScreenHeader({ title, subtitle, icon, actionIcon, action
       <Text accessibilityRole="header" style={styles.title}>{title}</Text>
       <Text style={styles.subtitle}>{subtitle}</Text>
     </View>
-    {onAction ? <TouchableOpacity accessibilityRole="button" accessibilityLabel={actionLabel} onPress={onAction} style={styles.icon}>
+    {actionContent || (onAction ? <TouchableOpacity accessibilityRole="button" accessibilityLabel={actionLabel} onPress={onAction} style={styles.icon}>
       <Ionicons name={actionIcon} size={24} color={themeColor(colors.primary, colors)} />
-    </TouchableOpacity> : <View style={styles.icon}><Ionicons name={icon} size={24} color={themeColor(colors.primary, colors)} /></View>}
+    </TouchableOpacity> : <View style={styles.icon}><Ionicons name={icon} size={24} color={themeColor(colors.primary, colors)} /></View>)}
   </View>;
 }
 

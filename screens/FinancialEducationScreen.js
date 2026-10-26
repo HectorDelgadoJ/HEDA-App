@@ -1,9 +1,14 @@
+import {useFocusEffect} from '@react-navigation/native';
+import {educationPlan} from '../utils/educationPlan';
+import {lessonCatalog} from '../services/tt';
+import {useExperience} from '../components/ExperienceProvider';
+import {accountRows} from '../services/finance';
 import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
 import InfoButton from '../components/InfoButton';
 import SwipeBackToIA from '../components/SwipeBackToIA';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ScreenHeader from '../components/ScreenHeader';
 import { supabase } from '../services/supabase';
@@ -102,7 +107,10 @@ const quizzes = {
 
 export default function FinancialEducationScreen({ navigation }) {
   const { colors, styles } = useThemeStyles(makeStyles);
-  const [selectedLesson, setSelectedLesson] = useState(lessons[0]);
+  const {preferences}=useExperience();
+  const priorityRef=useRef(preferences.priority);priorityRef.current=preferences.priority;
+  const [catalog,setCatalog]=useState(lessons);
+  const [selectedLesson, setSelectedLesson] = useState(catalog[0]);
   const [learnedIds, setLearnedIds] = useState([]);
   const [answer, setAnswer] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -115,12 +123,12 @@ export default function FinancialEducationScreen({ navigation }) {
   const scroll = useRef(null);
   const lessonY = useRef(0);
   const reload = useRef(() => {});
-  const progress = Math.round(learnedIds.length / lessons.length * 100);
-  const quiz = quizzes[selectedLesson.id];
+  const progress = catalog.length?Math.round(learnedIds.length / catalog.length * 100):0;
+  const quiz = selectedLesson.quiz || quizzes[selectedLesson.id];
   const completed = learnedIds.includes(selectedLesson.id);
   const correct = answer === quiz.correct;
-  const nextLesson = lessons.find((lesson) => lesson.id > selectedLesson.id && !learnedIds.includes(lesson.id)) ||
-  lessons.find((lesson) => !learnedIds.includes(lesson.id));
+  const nextLesson = catalog.find((lesson) => lesson.id > selectedLesson.id && !learnedIds.includes(lesson.id)) ||
+  catalog.find((lesson) => !learnedIds.includes(lesson.id));
 
   useEffect(() => {
     let active = true;
@@ -130,19 +138,22 @@ export default function FinancialEducationScreen({ navigation }) {
       if (!active || !force && owner.current === key) return;
       owner.current = key;
       const version = ++generation.current;
-      setLearnedIds([]);setAnswer(null);setSelectedLesson(lessons[0]);
+      setLearnedIds([]);setAnswer(null);setSelectedLesson(catalog[0]||lessons[0]);
       setReady(false);setLoading(true);setNotice('');setSaving(false);
       if (!key) {
         setLoading(false);setNotice('Inicia sesión para guardar tu progreso.');return;
       }
       try {
+        let available=lessons,remoteProgress=[];let catalogWarning='';
+        try{const [remote,p,tx,learning]=await Promise.all([lessonCatalog(),supabase.from('profiles').select('financial_level').eq('id',userId).single(),accountRows('transactions','type,amount,transaction_date,is_card_payment,card_id',userId),supabase.from('heda_learning').select('lesson_id').eq('user_id',userId)]);if(p.error||tx.error||learning.error)throw new Error('Contexto incompleto');available=educationPlan(remote,{profile:p.data,rows:tx.data,priority:priorityRef.current});remoteProgress=learning.data.map(x=>x.lesson_id);}catch{catalogWarning='No pudimos sincronizar contenido y progreso. Mostramos el material integrado; reintenta para ver las recomendaciones actualizadas.';}
+        if(!active||generation.current!==version)return;setCatalog(available);setNotice(catalogWarning);
         const raw = await AsyncStorage.getItem(key);
         const parsed = raw === null ? [] : JSON.parse(raw);
         if (!Array.isArray(parsed)) throw new Error('Invalid progress');
-        const ids = [...new Set(parsed.filter((id) => lessons.some((lesson) => lesson.id === id)))];
+        const ids = [...new Set([...parsed,...remoteProgress].filter(id=>available.some(lesson=>lesson.id===id)))];
         if (!active || generation.current !== version) return;
         setLearnedIds(ids);
-        setSelectedLesson(lessons.find((lesson) => !ids.includes(lesson.id)) || lessons[0]);
+        setSelectedLesson(available.find((lesson) => !ids.includes(lesson.id)) || available[0]||lessons[0]);
         setReady(true);
       } catch {
         if (active && generation.current === version) setNotice('No pudimos leer tu progreso. Reintenta antes de continuar.');
@@ -163,6 +174,8 @@ export default function FinancialEducationScreen({ navigation }) {
     return () => {active = false;generation.current += 1;subscription.unsubscribe();};
   }, []);
 
+  useFocusEffect(useCallback(()=>{if(owner.current&&!busy.current)reload.current();},[]));
+
   function selectLesson(lesson, moveToLesson = false) {
     setSelectedLesson(lesson);setAnswer(null);
     if (moveToLesson) requestAnimationFrame(() => scroll.current?.scrollTo({ y: lessonY.current, animated: true }));
@@ -174,6 +187,10 @@ export default function FinancialEducationScreen({ navigation }) {
     const version = generation.current;
     const ids = [...new Set([...learnedIds, selectedLesson.id])];
     try {
+      const userId=owner.current.replace('heda:education:v1:','');
+      const {data:{session}}=await supabase.auth.getSession();if(session?.user?.id!==userId)throw new Error('Tu sesión cambió.');
+      const {error}=await supabase.from('heda_learning').upsert({user_id:userId,lesson_id:selectedLesson.id},{onConflict:'user_id,lesson_id',ignoreDuplicates:true});
+      if(error)throw new Error('No se pudo sincronizar. Revisa la conexión y SQL 013.');
       await AsyncStorage.setItem(owner.current, JSON.stringify(ids));
       if (generation.current === version) setLearnedIds(ids);
     } catch {
@@ -184,12 +201,13 @@ export default function FinancialEducationScreen({ navigation }) {
     }
   }
 
+  if(!loading&&!catalog.length)return <SafeAreaView style={{flex:1,backgroundColor:colors.background,padding:20}}><ScreenHeader title="Educación" subtitle="No hay lecciones disponibles por ahora." actionIcon="arrow-back" actionLabel="Volver a herramientas de IA" onAction={()=>navigation.navigate('IA')}/><TouchableOpacity accessibilityRole="button" onPress={()=>reload.current()} style={{padding:16,backgroundColor:colors.softBlue,borderRadius:14}}><Text style={{color:colors.link}}>Actualizar catálogo</Text></TouchableOpacity></SafeAreaView>;
   return <SwipeBackToIA navigation={navigation}><SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
     <ScrollView ref={scroll} style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <ScreenHeader title="Educación" subtitle="Entiende tu dinero, un tema a la vez." actionIcon="arrow-back" actionLabel="Volver a herramientas de IA" onAction={() => navigation.navigate('IA')} />
       <View style={styles.progressCard}>
         <View style={styles.progressHeader}>
-          <View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.cardTitle}>{progress === 100 ? '¡Completaste tu ruta!' : 'Tu ruta de aprendizaje'}</Text><Text style={styles.cardText}>{loading ? 'Cargando tu progreso…' : `${learnedIds.length} de ${lessons.length} lecciones completadas`}</Text></View>
+          <View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.cardTitle}>{progress === 100 ? '¡Completaste tu ruta!' : 'Tu ruta de aprendizaje'}</Text><Text style={styles.cardText}>{loading ? 'Cargando tu progreso…' : `${learnedIds.length} de ${catalog.length} lecciones completadas`}</Text></View>
           <View style={styles.progressBadge}><Ionicons name={progress === 100 ? 'trophy-outline' : 'school-outline'} size={23} color={themeColor(colors.primary, colors)} /><Text style={styles.progressPercent}>{progress}%</Text></View>
         </View>
         <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: progress }} style={styles.progressBackground}><View style={themeStyle([styles.progressFill, { width: `${progress}%` }], colors)} /></View>
@@ -197,18 +215,18 @@ export default function FinancialEducationScreen({ navigation }) {
       </View>
       {notice ? <View accessibilityLiveRegion="polite" style={styles.notice}><Text style={styles.cardText}>{notice}</Text>{!ready && owner.current ? <TouchableOpacity accessibilityRole="button" style={styles.retry} onPress={() => reload.current()} disabled={loading}><Text style={styles.linkText}>Reintentar</Text></TouchableOpacity> : null}</View> : null}
       <Text style={styles.sectionTitle}>Elige qué aprender</Text>
-      <View style={styles.topicGrid}>{lessons.map((lesson) => {
+      <View style={styles.topicGrid}>{catalog.map((lesson) => {
             const selected = selectedLesson.id === lesson.id;
             const learned = learnedIds.includes(lesson.id);
             return <TouchableOpacity key={lesson.id} accessibilityRole="button" accessibilityState={{ selected, disabled: saving }} accessibilityLabel={`${lesson.title}. ${learned ? 'Completada' : 'Pendiente'}`} disabled={saving} style={themeStyle([styles.topic, selected && styles.topicSelected], colors)} onPress={() => selectLesson(lesson, true)}>
-          <View style={styles.topicTop}><Ionicons name={lesson.icon} size={22} color={themeColor(selected ? '#FFFFFF' : colors.primary, colors)} /><Ionicons name={learned ? 'checkmark-circle' : 'chevron-forward'} size={19} color={themeColor(learned ? selected ? '#FFFFFF' : '#15803D' : selected ? '#FFFFFF' : colors.muted, colors)} /></View>
+          <View style={styles.topicTop}><Ionicons name={lesson.icon||'book-outline'} size={22} color={themeColor(selected ? '#FFFFFF' : colors.primary, colors)} /><Ionicons name={learned ? 'checkmark-circle' : 'chevron-forward'} size={19} color={themeColor(learned ? selected ? '#FFFFFF' : '#15803D' : selected ? '#FFFFFF' : colors.muted, colors)} /></View>
           <Text style={themeStyle([styles.topicTitle, selected && styles.white], colors)}>{lesson.title}</Text>
           <Text style={themeStyle([styles.topicMeta, selected && styles.white], colors)}>{learned ? 'Completada' : `${lesson.level} · Lectura breve`}</Text>
         </TouchableOpacity>;
           })}</View>
       <View onLayout={(event) => {lessonY.current = event.nativeEvent.layout.y;}} style={styles.lessonCard}>
-        <View style={styles.lessonHeader}><View style={styles.lessonIcon}><Ionicons name={selectedLesson.icon} size={28} color={themeColor(colors.primary, colors)} /></View><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.topicMeta}>LECCIÓN {selectedLesson.id} DE {lessons.length}</Text><Text accessibilityRole="header" style={styles.lessonTitle}>{selectedLesson.title}</Text><Text style={styles.level}>{completed ? 'Completada ✓' : selectedLesson.level}</Text></View></View>
-        <Text style={styles.lessonSubtitle}>¿Qué significa?</Text><Text style={styles.lessonText}>{selectedLesson.description}</Text>
+        <View style={styles.lessonHeader}><View style={styles.lessonIcon}><Ionicons name={selectedLesson.icon||'book-outline'} size={28} color={themeColor(colors.primary, colors)} /></View><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.topicMeta}>LECCIÓN {catalog.findIndex(l=>l.id===selectedLesson.id)+1} DE {catalog.length}</Text><Text accessibilityRole="header" style={styles.lessonTitle}>{selectedLesson.title}</Text><Text style={styles.level}>{completed ? 'Completada ✓' : selectedLesson.level}</Text></View></View>
+        {selectedLesson.recommendation&&<Text style={styles.lessonText}>Para ti: {selectedLesson.recommendation}</Text>}<Text style={styles.lessonSubtitle}>¿Qué significa?</Text><Text style={styles.lessonText}>{selectedLesson.description}</Text>
         <View style={styles.exampleBox}><View style={styles.exampleHeader}><Ionicons name="bulb-outline" size={20} color={themeColor(colors.primary, colors)} /><Text style={styles.exampleTitle}>Ejemplo sencillo</Text></View><Text style={styles.exampleText}>{selectedLesson.example}</Text></View>
         <View style={styles.tipBox}><View style={styles.exampleHeader}><Ionicons name="sparkles-outline" size={20} color={themeColor("#B7791F", colors)} /><Text style={styles.tipTitle}>Quédate con esta idea</Text></View><Text style={styles.tipText}>{selectedLesson.tip}</Text></View>
         <View style={styles.quizHeader}><View style={styles.quizIcon}><Ionicons name="help-circle-outline" size={24} color={themeColor(colors.primary, colors)} /></View><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.cardTitle}>Ponlo en práctica</Text><Text style={styles.cardText}>{quiz.question}</Text></View></View>
@@ -219,7 +237,7 @@ export default function FinancialEducationScreen({ navigation }) {
         {answer !== null ? <Text accessibilityLiveRegion="polite" style={themeStyle([styles.feedback, { color: correct ? '#15803D' : '#B91C1C' }], colors)}>{correct ? `¡Correcto! ${quiz.explanation}` : 'Todavía no. Revisa la idea principal y prueba la otra respuesta.'}</Text> : <Text style={styles.localNote}>Elige una respuesta para completar la lección.</Text>}
         {completed ? <View><Text accessibilityLiveRegion="polite" style={styles.savedText}>✓ Lección completada y guardada</Text><TouchableOpacity accessibilityRole="button" style={styles.primaryButton} onPress={() => nextLesson ? selectLesson(nextLesson, true) : navigation.navigate('IA')}><Text style={styles.primaryButtonText}>{nextLesson ? 'Siguiente lección →' : 'Volver a herramientas'}</Text></TouchableOpacity></View> : <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: !correct || !ready || saving }} disabled={!correct || !ready || saving} style={themeStyle([styles.primaryButton, (!correct || !ready || saving) && styles.disabled], colors)} onPress={completeLesson}><Text style={styles.primaryButtonText}>{saving ? 'Guardando…' : 'Completar lección'}</Text></TouchableOpacity>}
       </View>
-      <InfoButton title={"Sobre las lecciones"} text={"Contenido educativo. Tu avance se conserva al cerrar la app, pero no se sincroniza entre dispositivos. HEDA no toma decisiones financieras por ti."} />
+      <InfoButton title={"Sobre las lecciones"} text={"Contenido educativo. Tu avance se conserva al cerrar la app, pero se sincroniza entre dispositivos cuando hay conexión. HEDA no toma decisiones financieras por ti."} />
     </ScrollView>
   </SafeAreaView></SwipeBackToIA>;
 }

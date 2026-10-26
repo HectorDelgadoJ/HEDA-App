@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {financialAlerts} from '../utils/alerts';
 import { Platform } from 'react-native';
 import { reminderPlan } from '../utils/reminders';
 // Lazy import keeps browsers and Expo Go Android (remote push unavailable) from registering push tokens.
@@ -66,4 +68,10 @@ export function cancelAccountReminders(userId){
   for(const item of await api.getPresentedNotificationsAsync())if(item.request.content.data?.hedaReminder&&item.request.content.data.owner===userId)await api.dismissNotificationAsync(item.request.identifier);
  };
  const next=queue.then(run,run);queue=next.catch(()=>{});return next;
+}
+
+export async function notifyPatternAlerts(userId,data,current=()=>true){
+ if(Platform.OS==='web'||!current())return;const api=await notifications(),permission=await api.getPermissionsAsync();if(!permission.granted&&permission.ios?.status!==api.IosAuthorizationStatus.PROVISIONAL)return;
+ const alerts=financialAlerts(data).filter(a=>['Presupuestos','Hábitos','Recomendaciones','Ethereum'].includes(a.type)),key=`heda:noticed:v1:${userId}`,raw=await AsyncStorage.getItem(key),sent=new Set(raw?JSON.parse(raw):[]);let count=0;
+ for(const a of alerts){if(sent.has(a.id)||!current())continue;if(count>=3)break;await api.scheduleNotificationAsync({identifier:`heda-pattern:${userId}:${a.id}`,content:{title:'HEDA · Revisa tus alertas',body:'Hay una actualización sobre tus registros. Abre HEDA para revisarla.',data:{hedaReminder:true,owner:userId,key:a.id,kind:'pattern'}},trigger:null});sent.add(a.id);count++;await AsyncStorage.setItem(key,JSON.stringify([...sent].slice(-1000)));}
 }

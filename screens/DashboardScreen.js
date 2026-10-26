@@ -1,7 +1,9 @@
+import HomeAdviceCard from '../components/HomeAdviceCard';
+import NotificationBell from '../components/NotificationBell';
 import { isCustomizedExperience } from '../utils/experience';
 import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
 import { useExperience } from '../components/ExperienceProvider';
-import { budgetProgress } from '../utils/alerts';
+import { budgetProgress, financialAlerts } from '../utils/alerts';
 import { localDate } from '../utils/movementForm';
 import ScreenHeader from '../components/ScreenHeader';
 import { layout } from '../theme/layout';
@@ -89,7 +91,7 @@ export default function DashboardScreen({ navigation }) {
       maybeSingle(),
       accountRows('card_payments', '*', user.id),
       accountRows('recurring_movements', '*', user.id),
-      accountRows('budgets', 'id,category,monthly_limit', user.id)]
+      accountRows('budgets', 'id,category,monthly_limit,starts_on,ends_on', user.id)]
       );
 
       setRules(rulesResult.data || []);setBudgets(budgetsResult.data || []);
@@ -350,15 +352,16 @@ export default function DashboardScreen({ navigation }) {
   ...cards.filter((card) => card.reminder && (card.ledger_enabled || !card.paid) && cardDebt(card, validTransactions) > 0).map((card) => ({ id: `c:${card.id}`, name: card.name, date: card.due_date, amount: cardDebt(card, validTransactions), income: false }))].
   filter((item) => item.date).sort((a, b) => a.date.localeCompare(b.date));
   const next = pending[0];
-  const progressBudgets = budgetProgress(budgets, validTransactions);
+  const progressBudgets = budgetProgress(budgets, validTransactions).filter(b=>b.status!=='inactive');
   const goRegister = (type) => navigation.navigate('Movimientos', { openSection: 'Nuevo', movementType: type });
   const widgets = preferences.widgets;
   return <SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
     <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={loading} onRefresh={loadDashboard} tintColor={themeColor(colors.primary, colors)} />}>
-      <ScreenHeader title="Inicio" subtitle={simple ? 'Lo importante, sin complicaciones' : 'Tu dinero, de un vistazo'} actionIcon="notifications-outline" actionLabel="Abrir alertas" onAction={() => navigation.navigate('Alertas')} />
+      <ScreenHeader title="Inicio" subtitle={simple ? 'Lo importante, sin complicaciones' : 'Tu dinero, de un vistazo'} actionContent={<NotificationBell alerts={financialAlerts({rows:loadError?null:transactions,budgets,rules,cards:cardError?null:cards,goals:mainGoal?[mainGoal]:[]})} onPress={() => navigation.navigate('Alertas')}/> } />
       {loadError ? <View style={styles.errorCard}><Text style={styles.cardText}>No pudimos actualizar toda tu información. Los datos pueden estar desactualizados; desliza hacia abajo para reintentar.</Text></View> : null}
       <View style={styles.balanceCard}><Text style={styles.balanceLabel}>Saldo disponible</Text>{loading ? <ActivityIndicator color={themeColor("#FFFFFF", colors)} style={themeStyle({ padding: 18 }, colors)} /> : <Text style={styles.balanceAmount} numberOfLines={1} adjustsFontSizeToFit>${formatCurrency(balance)}</Text>}<Text style={styles.balanceHint}>MXN · Según tus movimientos registrados hasta hoy</Text></View>
       <View style={styles.mainActions}>{[['Gasto', 'Registrar gasto', 'arrow-up-circle-outline', '#B42332', '#FFF0F1'], ['Ingreso', 'Registrar ingreso', 'arrow-down-circle-outline', '#157347', '#EAF7EF']].map(([type, label, icon, color, background]) => <TouchableOpacity key={type} accessibilityRole="button" style={themeStyle([styles.mainAction, { borderColor: color, backgroundColor: background }], colors)} onPress={() => goRegister(type)}><Ionicons name={icon} size={26} color={themeColor(color, colors)} /><Text style={themeStyle({ color, fontWeight: '700', fontSize: 15, textAlign: 'center' }, colors)}>{label}</Text></TouchableOpacity>)}</View>
+      {!loading && !loadError && <HomeAdviceCard observation={getFinancialSummary()} navigation={navigation}/>}
       {widgets.payments && !loading && (!simple || next || preferences.priority === 'payments' || optionalErrors.includes('No pudimos actualizar tus programaciones.') || cardError) ? <HomeCard title={next ? next.date < today ? 'Un compromiso pendiente' : 'Tu próximo compromiso' : 'Tus próximos pagos'} icon="calendar-outline" onPress={() => navigation.navigate('Movimientos', { openSection: 'Recurrentes' })} action="Ver pagos y programaciones"><Text style={styles.recentTitle}>{next ? next.name : 'Sin compromisos registrados'}</Text><Text style={styles.cardText}>{next ? `${next.income ? 'Ingreso previsto' : 'Pago registrado'}: $${formatCurrency(next.amount)} · ${new Date(`${next.date}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}` : 'Puedes programar un pago o ingreso cuando lo necesites.'}</Text>{next ? <Text style={styles.homeNote}>Revisa el detalle y confirma solo si ya ocurrió.</Text> : null}{optionalErrors.includes('No pudimos actualizar tus programaciones.') || cardError ? <Text style={styles.homeNote}>No se pudieron actualizar todos tus compromisos. Revisa Programados.</Text> : null}</HomeCard> : null}
       {widgets.goals ? <HomeCard title="Mi meta" icon="flag-outline" action={mainGoal ? 'Ver avance y aportar' : 'Crear mi primera meta'} onPress={() => navigation.navigate('Reportes')}><Text style={styles.recentTitle}>{mainGoal?.name || 'Algo por lo que quieres ahorrar'}</Text>{mainGoal ? <><Text style={styles.cardText}>${formatCurrency(mainGoal.current_amount)} de ${formatCurrency(mainGoal.target_amount)}</Text><View style={styles.progressBackground}><View style={themeStyle([styles.progressFill, { width: `${goalPercentage}%` }], colors)} /></View></> : <Text style={styles.cardText}>Elige un objetivo y avanza a tu ritmo.</Text>}</HomeCard> : null}
       {widgets.cards && !loading ? <HomeCard title="Mis tarjetas" icon="card-outline" action="Administrar tarjetas" onPress={() => navigation.navigate('Movimientos', { openSection: 'Recurrentes' })}>{cardError ? <Text style={styles.cardText}>No pudimos actualizar las tarjetas.</Text> : cards.length ? cards.slice(0, simple ? 2 : cards.length).map((card) => <View key={card.id} style={styles.homeListRow}><Text style={styles.recentTitle}>{card.name}</Text><Text style={styles.cardText}>{cardDebt(card, validTransactions) < 0 ? 'A favor' : 'Deuda registrada'}: ${formatCurrency(Math.abs(cardDebt(card, validTransactions)))}</Text></View>) : <Text style={styles.cardText}>Todavía no has agregado tarjetas.</Text>}</HomeCard> : null}

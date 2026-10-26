@@ -17,9 +17,9 @@ export default function GoogleProfileGate({user,children,onReady}){
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
  useEffect(()=>{let current=true;if(!google){setLoaded(true);onReady(true);return()=>{current=false;};}
  setLoaded(false);setError('');onReady(false);
- supabase.from('profiles').select('id,full_name,username,birth_date').eq('id',user.id).single().then(({data,error})=>{
+ supabase.rpc('heda_account_active').then(result=>{if(result.error)throw new Error('Falta aplicar SQL 013 o no se pudo comprobar tu cuenta.');if(result.data!==true)throw new Error('Esta cuenta está deshabilitada. Contacta al responsable de HEDA.');return supabase.from('profiles').select('id,full_name,username,birth_date').eq('id',user.id).single();}).then(({data,error})=>{
  if(!current)return;if(error)throw error;setProfile(data);setForm({fullName:data.full_name||String(user.user_metadata?.full_name||'').slice(0,100),username:data.username||'',birthDate:displayBirthDate(data.birth_date)});setLoaded(true);onReady(!needsGoogleProfile(user,data));
- }).catch(()=>{if(current){setLoaded(true);setError('No pudimos cargar tu perfil. Revisa tu conexión e inténtalo otra vez.');}});
+ }).catch(e=>{if(current){setLoaded(true);setError(e.message||'No pudimos cargar tu perfil. Revisa tu conexión e inténtalo otra vez.');}});
  return()=>{current=false;};},[user?.id,google,attempt]);
  async function save(){if(busy.current)return;busy.current=true;setSaving(true);setError('');setFields({});dismissAuthKeyboard();try{const saved=await completeGoogleProfile(supabase,user.id,form);if(alive.current){setProfile(saved);onReady(true);}}catch(e){if(alive.current){setError(e.message);setFields(e.fields||{});}}finally{busy.current=false;if(alive.current)setSaving(false);}}
  async function exit(){if(busy.current)return;busy.current=true;setSaving(true);try{const {error}=await supabase.auth.signOut({scope:'local'});if(error)throw error;}catch{if(alive.current)setError('No pudimos cerrar la sesión. Revisa tu conexión.');}finally{busy.current=false;if(alive.current)setSaving(false);}}

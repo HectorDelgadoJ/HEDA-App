@@ -1,10 +1,13 @@
+import {getEthereumForecast} from '../services/ethereum';
+import {storeAlertHistory} from '../services/notificationInbox';
+import {financialAlerts} from '../utils/alerts';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/supabase';
 import { accountRows } from '../services/finance';
 import { onFinanceChange } from '../services/financeEvents';
-import { notifications, reconcileReminders, requestReminderPermission, clearForeignReminders } from '../services/phoneReminders';
+import { notifications, notifyPatternAlerts, reconcileReminders, requestReminderPermission, clearForeignReminders } from '../services/phoneReminders';
 const Context=createContext(null);
 export const useReminders=()=>useContext(Context);
 export default function ReminderProvider({userId,children}) {
@@ -16,11 +19,15 @@ export default function ReminderProvider({userId,children}) {
     if (running.current) {again.current=true;return;}
     running.current=true;
     try {
-      const tables=[['rules','recurring_movements','id,active,next_date'],['cards','card_payments','id,reminder,ledger_enabled,opening_balance,amount,paid,due_date'],['rows','transactions','id,amount,type,card_id,is_card_payment,transaction_date,recurring_movement_id,recurring_date'],['goals','goals','id,status,current_amount,target_amount,target_date']];
+      const tables=[['budgets','budgets','id,category,monthly_limit,starts_on,ends_on'],['rules','recurring_movements','id,name,type,amount,active,next_date'],['cards','card_payments','id,reminder,ledger_enabled,opening_balance,amount,paid,due_date'],['rows','transactions','id,amount,type,category,card_id,is_card_payment,transaction_date,recurring_movement_id,recurring_date'],['goals','goals','id,name,status,current_amount,target_amount,target_date']];
       const results=await Promise.all(tables.map(async([key,table,columns])=>{const result=await accountRows(table,columns,userId);if(result.error) throw new Error('No pudimos actualizar tus recordatorios. Conservamos los anteriores; reintenta.');return [key,result.data];}));
       const {data:{session}}=await supabase.auth.getSession();
       if(!active.current || !enabledRef.current || session?.user?.id!==userId) return;
-      const result=await reconcileReminders(userId,Object.fromEntries(results),()=>active.current && enabledRef.current);
+      const snapshot=Object.fromEntries(results);
+      const preferences=await supabase.from('heda_alert_preferences').select('ethereum').eq('user_id',userId).maybeSingle();if(preferences.data?.ethereum){try{snapshot.ethereum=await getEthereumForecast();}catch{ /* Keep payment schedules even when the market is unavailable. */ }}
+      await storeAlertHistory(userId,financialAlerts(snapshot));
+      const result=await reconcileReminders(userId,snapshot,()=>active.current && enabledRef.current);
+      await notifyPatternAlerts(userId,snapshot,()=>active.current&&enabledRef.current);
       if(active.current) {setCount(result.count);setStatus(!result.allowed?'Permiso desactivado. Abre Ajustes para permitir notificaciones.':result.total>60?'Se programaron los próximos 60 avisos. Abre HEDA para renovar los siguientes.':result.count?`${result.count} avisos programados · 9:00 a. m., un día antes y el día indicado.`:'No hay fechas futuras pendientes. Los vencidos se revisan en Alertas.');}
     } catch(error) {if(active.current)setStatus(error.message || 'No pudimos programar los avisos. Reintenta.');}
     finally {running.current=false;if(again.current && active.current){again.current=false;void refresh();}}

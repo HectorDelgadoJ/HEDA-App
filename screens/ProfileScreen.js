@@ -1,3 +1,4 @@
+import AdminEntry from '../components/AdminEntry';
 import BirthDateField from '../components/BirthDateField';
 import {displayBirthDate,ageFromBirthDate} from '../utils/birthDate';
 import LegalLinks from '../components/LegalLinks';
@@ -137,7 +138,7 @@ export default function ProfileScreen({ navigation }) {
   const details = information[panel];
   return <SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => {if (!busy.current) void load(true);}} tintColor={themeColor(colors.primary, colors)} />}>
-      <ScreenHeader title="Perfil" subtitle="Tu cuenta y HEDA, a tu manera" icon="person-outline" />
+      <AdminEntry navigation={navigation}/><ScreenHeader title="Perfil" subtitle="Tu cuenta y HEDA, a tu manera" icon="person-outline" />
       {error ? <View style={styles.errorBox}><Text style={styles.body}>{error}</Text><TouchableOpacity accessibilityRole="button" style={styles.retry} onPress={() => load()}><Text style={styles.link}>Reintentar</Text></TouchableOpacity></View> : null}
       <View style={styles.identity}><View style={styles.avatar}><Text style={styles.initials}>{profileInitials(name)}</Text></View><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.name}>{name}</Text><Text style={styles.email}>{user?.email || 'Cargando cuenta…'}</Text>{profile?.birth_date ? <Text style={styles.email}>{ageFromBirthDate(profile.birth_date)} años</Text> : null}{profile?.username ? <Text style={styles.username}>@{profile.username}</Text> : null}</View></View>
       {loading ? <ActivityIndicator color={themeColor(colors.primary, colors)} style={themeStyle({ marginBottom: 18 }, colors)} /> : null}

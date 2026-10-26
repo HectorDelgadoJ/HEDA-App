@@ -1,3 +1,4 @@
+import AdminScreen from '../screens/AdminScreen';
 import { oauthFailureReason } from '../utils/oauth';
 import {Alert} from '../services/alerts';
 import RecoverPasswordScreen from '../screens/RecoverPasswordScreen';
@@ -47,9 +48,10 @@ function TabsNavigator() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={{flex:1}}><Tab.Navigator
+    <View style={{flex:1}}><Tab.Navigator initialRouteName="Inicio"
       screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarAccessibilityLabel: route.name,
 
         tabBarActiveTintColor: colors.link,
         tabBarInactiveTintColor: colors.muted,
@@ -103,7 +105,7 @@ function TabsNavigator() {
         }
       })}>
 
-      <Tab.Screen name="Inicio" component={DashboardScreen} />
+      <Tab.Screen name="Administracion" component={AdminScreen} options={{tabBarButton:()=>null,tabBarItemStyle:{display:'none'}}}/><Tab.Screen name="Inicio" component={DashboardScreen} />
       <Tab.Screen name="Movimientos" component={ExpensesScreen} />
       <Tab.Screen name="IA" component={EducationScreen} />
       <Tab.Screen name="Reportes" component={GoalsScreen} />
@@ -193,6 +195,7 @@ export default function AppNavigator() {
       data: { subscription }
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
       const nextOwner=newSession?.user?.id||null;
+      if(!nextOwner&&Platform.OS==='web'&&'serviceWorker'in navigator)void navigator.serviceWorker.getRegistration('/').then(r=>r?.pushManager.getSubscription()).then(s=>s?.unsubscribe()).catch(()=>{});
       if(keyboardOwner.current!==nextOwner){dismissAuthKeyboard();keyboardOwner.current=nextOwner;}
       setSession(newSession);
     });
@@ -246,6 +249,8 @@ export default function AppNavigator() {
 
 }
 function ThemedNavigation({ children }) {
+  const lastModule=useRef(null);
+  function recordModule(){const module=navigationRef.current?.getCurrentRoute()?.name;if(module&&module!==lastModule.current&&!['Login','Register','RecoverPassword'].includes(module)){lastModule.current=module;void supabase.rpc('heda_visit',{p_module:module}).then(()=>{}).catch(()=>{});}}
   const navigationRef=useRef(null), lastTap=useRef(null), pendingTap=useRef(null);
   async function openNotice(response){
     const request=response?.notification?.request;
@@ -268,5 +273,5 @@ function ThemedNavigation({ children }) {
   const { colors } = useThemeStyles();
   const base = colors.dark ? DarkTheme : DefaultTheme;
   const theme = { ...base, colors: { ...base.colors, primary: colors.link, background: colors.background, card: colors.surface, text: colors.ink, border: colors.border, notification: colors.primary } };
-  return <NavigationContainer ref={navigationRef} onReady={()=>{if(pendingTap.current){void openNotice(pendingTap.current).catch(()=>{});pendingTap.current=null;}}} theme={theme}>{children}</NavigationContainer>;
+  return <NavigationContainer ref={navigationRef} onStateChange={recordModule} onReady={()=>{recordModule();if(pendingTap.current){void openNotice(pendingTap.current).catch(()=>{});pendingTap.current=null;}}} theme={theme}>{children}</NavigationContainer>;
 }

@@ -221,3 +221,23 @@ HEDA se exporta con `npm run build:web` a **dist**, preparada para Netlify Drop 
 - Matriz RF/RNF frente al reporte TT 2026-B088. Administrador, trazabilidad QR completa, personalización educativa y piloto siguen pendientes/parciales. No se afirma cumplimiento total.
 - 224 pruebas JavaScript aprobadas y 2 Python; exportaciones web/Android/iOS generadas. Navegador móvil simulado: gráfica, cambio de horizonte y metodología sin errores JS ni desbordamiento horizontal. No sustituye pruebas físicas o despliegue real.
 - Publicación manual pendiente: nueva ethereum-forecast, actualización heda-ai y dist en Netlify. Sin SQL nuevo para Ethereum. Instrucciones en GUIA_ETHEREUM_HEDA.md.
+
+
+## 26/10/2026 · Cierre local de puntos 1–5
+
+- SQL 013: rol administrador sin autoasignación; bloqueo de datos/funciones para deshabilitados; catálogo/cuestionarios; aprendizaje sincronizado; vigencia de presupuestos; QR v2 con participantes/estado y recibos idempotentes; auditoría sin valores privados; visitas por módulo y métricas agregadas.
+- SQL 014: suscripciones push propias con destinos permitidos, máximo cinco navegadores, reclamación de eventos con lease/reintentos y preferencia ETH opcional. Worker autenticado con clave separada y VAPID únicamente en servidor. Configuración y entrega reales pendientes.
+- Ethereum: dos endpoints Yahoo y alternativa Coinbase; se rechazan fuentes atrasadas, se identifica la fecha real, se conserva respaldo y diagnósticos seguros. LSTM v2 seleccionada por validación (F1 de prueba 0.3465/0.3110), comparadores exportados y validación temporal adicional. Revisión exploratoria, no test ciego nuevo ni garantía.
+- Interfaz en claro/oscuro: administrador, QR confirmado, presupuestos con calendario, lecciones recomendadas, historial sincronizado de avisos. Web Push voluntario; fechas nativas locales y patrones evaluados al actualizar.
+- Privacidad y condiciones alineadas con referencias entre usuarios, copias importadas, conteos internos y mensajes push genéricos. Guía única con orden SQL → funciones → dist → administrador → VAPID/Cron.
+
+- Verificación de cierre: 230 pruebas JavaScript y 2 Python aprobadas; fuentes IA y dashboards Ethereum/avisos comprobados en Deno. Solicitud Web Push cifrada con claves efímeras, sin envío. Exportaciones web/Android/iOS generadas; flujos con backend simulado en claro/oscuro, sin errores JS ni importación QR antes de confirmar.
+
+## 26 de octubre de 2026 — Inicio, alertas y administración
+- Métricas en tarjetas de dos columnas con iconos y barras de visitas por módulo; explicación de conteos en información.
+- Inicio: campana amarilla con cantidad exacta de avisos sin leer del buzón. El contador cambia de color si un aviso actual conocido requiere atención o prevención; si falla la consulta muestra un guion, no un cero inventado.
+- Consejo de Inicio: observación local inicial y consulta explícita de registros con IA mediante flecha circular; sin consultas automáticas, sin ejecutar propuestas y con estados de carga/error.
+- Alertas: pendientes primero, filtro inicial sin leer, tarjetas plegables y niveles descritos con texto y color. Ajustes e historial al final, plegados; historial muestra cinco avisos por vez y permite ampliar.
+- Presupuestos sin paneles de notificaciones antes del contenido.
+- Deshabilitar cuenta: confirmación explica bloqueo de consulta/modificación y conservación de datos. No cambia el mecanismo de permisos existente.
+- Verificación: exportación web correcta, 22 pruebas existentes de alertas/proveedor/cliente IA aprobadas; navegación con datos ficticios en 390×844, temas claro/oscuro, detalle de aviso urgente y dos consultas IA solicitadas, cero automáticas y cero errores de página. No se enviaron consultas a una cuenta real ni se publicó en Netlify.

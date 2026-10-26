@@ -1,5 +1,5 @@
 import { createAgentClient, handleAgentBody, publicMarketQuestion } from "./agent.js";
-import { withSupabase } from "npm:@supabase/server@1";
+import { withSupabase } from "npm:@supabase/server@1.9.2";
 import { createGeminiClient, geminiError, validateChatHistory } from "./gemini.js";
 import { handleHedaBody } from "./financial-summary.js";
 import { reserveAIQuota, readHedaRequest, assertAIAdult } from "./security.js";
@@ -12,6 +12,7 @@ const json = (status: number, body: Record<string, unknown>) => Response.json(bo
 const authenticated = withSupabase({ auth: "user" }, async (req, ctx) => {
   try {
     const body=await readHedaRequest(req);
+    const active=await ctx.supabase.rpc('heda_account_active');if(active.error||active.data!==true)return json(403,{ok:false,message:'Cuenta no disponible o falta SQL 013.'});
     await assertAIAdult(ctx.supabase);
     if(body.action==='assistant'){
       if(Deno.env.get('HEDA_AI_ENABLED')==='false')return json(503,{ok:false,message:'El asistente está temporalmente desactivado.'});

@@ -1,0 +1,33 @@
+{
+  "seeds": [
+    42,
+    7,
+    17,
+    73
+  ],
+  "selection": "highest validation macro F1 per horizon",
+  "note": "Exploratory search after v1 test inspection; original holdout is no longer a fresh blind test. Prospective validation required.",
+  "runs": [
+    {
+      "seed": 7,
+      "validationMacroF1": {
+        "1": 0.36406767835339265,
+        "7": 0.4049770481836146
+      }
+    },
+    {
+      "seed": 17,
+      "validationMacroF1": {
+        "1": 0.36456583654918157,
+        "7": 0.41290223884276095
+      }
+    },
+    {
+      "seed": 73,
+      "validationMacroF1": {
+        "1": 0.3526732377538829,
+        "7": 0.2924491366324027
+      }
+    }
+  ]
+}

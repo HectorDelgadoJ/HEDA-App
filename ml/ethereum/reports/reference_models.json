@@ -1,0 +1,379 @@
+{
+  "note": "Exploratory revision. The original test had already been inspected in v1; these results are not a fresh blind evaluation. No test result selects the exported model. Walk-forward folds exclude the original test period. A new prospective holdout is still required.",
+  "reports": {
+    "1": {
+      "selectedBy": "validation macro F1 only, between predeclared LogisticRegression and RandomForest",
+      "selected": "LogisticRegression",
+      "validationMacroF1": 0.3750040193645287,
+      "test": {
+        "accuracy": 0.40329218106995884,
+        "macroF1": 0.39847671691429526,
+        "perClass": {
+          "bajista": {
+            "precision": 0.3656716417910448,
+            "recall": 0.3202614379084967,
+            "f1": 0.34146341463414637,
+            "support": 153
+          },
+          "estable": {
+            "precision": 0.5088757396449705,
+            "recall": 0.45989304812834225,
+            "f1": 0.48314606741573035,
+            "support": 187
+          },
+          "alcista": {
+            "precision": 0.3333333333333333,
+            "recall": 0.4178082191780822,
+            "f1": 0.3708206686930091,
+            "support": 146
+          }
+        },
+        "confusionMatrix": [
+          [
+            49,
+            40,
+            64
+          ],
+          [
+            43,
+            86,
+            58
+          ],
+          [
+            42,
+            43,
+            61
+          ]
+        ],
+        "samples": 486
+      },
+      "expandingWindowFolds": [
+        {
+          "trainEnd": "2019-11-18",
+          "trainTargetEnd": "2019-11-19",
+          "validationStart": "2019-11-20",
+          "validationEnd": "2021-09-30",
+          "accuracy": 0.3832599118942731,
+          "macroF1": 0.365057946293679,
+          "perClass": {
+            "bajista": {
+              "precision": 0.35661764705882354,
+              "recall": 0.42543859649122806,
+              "f1": 0.388,
+              "support": 228
+            },
+            "estable": {
+              "precision": 0.3046875,
+              "recall": 0.25,
+              "f1": 0.2746478873239437,
+              "support": 156
+            },
+            "alcista": {
+              "precision": 0.44483985765124556,
+              "recall": 0.4208754208754209,
+              "f1": 0.43252595155709345,
+              "support": 297
+            }
+          },
+          "confusionMatrix": [
+            [
+              97,
+              39,
+              92
+            ],
+            [
+              53,
+              39,
+              64
+            ],
+            [
+              122,
+              50,
+              125
+            ]
+          ],
+          "samples": 681
+        },
+        {
+          "trainEnd": "2021-09-29",
+          "trainTargetEnd": "2021-09-30",
+          "validationStart": "2021-10-01",
+          "validationEnd": "2023-08-12",
+          "accuracy": 0.355359765051395,
+          "macroF1": 0.35621509749536956,
+          "perClass": {
+            "bajista": {
+              "precision": 0.35714285714285715,
+              "recall": 0.36637931034482757,
+              "f1": 0.3617021276595745,
+              "support": 232
+            },
+            "estable": {
+              "precision": 0.3888888888888889,
+              "recall": 0.39436619718309857,
+              "f1": 0.3916083916083916,
+              "support": 213
+            },
+            "alcista": {
+              "precision": 0.32158590308370044,
+              "recall": 0.3093220338983051,
+              "f1": 0.31533477321814257,
+              "support": 236
+            }
+          },
+          "confusionMatrix": [
+            [
+              85,
+              61,
+              86
+            ],
+            [
+              61,
+              84,
+              68
+            ],
+            [
+              92,
+              71,
+              73
+            ]
+          ],
+          "samples": 681
+        },
+        {
+          "trainEnd": "2023-08-11",
+          "trainTargetEnd": "2023-08-12",
+          "validationStart": "2023-08-13",
+          "validationEnd": "2025-06-23",
+          "accuracy": 0.39941262848751835,
+          "macroF1": 0.394583902615196,
+          "perClass": {
+            "bajista": {
+              "precision": 0.3804878048780488,
+              "recall": 0.3561643835616438,
+              "f1": 0.36792452830188677,
+              "support": 219
+            },
+            "estable": {
+              "precision": 0.4225352112676056,
+              "recall": 0.5172413793103449,
+              "f1": 0.46511627906976744,
+              "support": 232
+            },
+            "alcista": {
+              "precision": 0.3854166666666667,
+              "recall": 0.3217391304347826,
+              "f1": 0.35071090047393366,
+              "support": 230
+            }
+          },
+          "confusionMatrix": [
+            [
+              78,
+              80,
+              61
+            ],
+            [
+              55,
+              120,
+              57
+            ],
+            [
+              72,
+              84,
+              74
+            ]
+          ],
+          "samples": 681
+        }
+      ]
+    },
+    "7": {
+      "selectedBy": "validation macro F1 only, between predeclared LogisticRegression and RandomForest",
+      "selected": "RandomForest",
+      "validationMacroF1": 0.36535201583745275,
+      "test": {
+        "accuracy": 0.36875,
+        "macroF1": 0.318588418927402,
+        "perClass": {
+          "bajista": {
+            "precision": 0.4326530612244898,
+            "recall": 0.5170731707317073,
+            "f1": 0.4711111111111111,
+            "support": 205
+          },
+          "estable": {
+            "precision": 0.10185185185185185,
+            "recall": 0.15942028985507245,
+            "f1": 0.12429378531073447,
+            "support": 69
+          },
+          "alcista": {
+            "precision": 0.47244094488188976,
+            "recall": 0.2912621359223301,
+            "f1": 0.36036036036036034,
+            "support": 206
+          }
+        },
+        "confusionMatrix": [
+          [
+            106,
+            58,
+            41
+          ],
+          [
+            32,
+            11,
+            26
+          ],
+          [
+            107,
+            39,
+            60
+          ]
+        ],
+        "samples": 480
+      },
+      "expandingWindowFolds": [
+        {
+          "trainEnd": "2019-11-09",
+          "trainTargetEnd": "2019-11-16",
+          "validationStart": "2019-11-17",
+          "validationEnd": "2021-09-26",
+          "accuracy": 0.4147058823529412,
+          "macroF1": 0.34712475633528267,
+          "perClass": {
+            "bajista": {
+              "precision": 0.3580508474576271,
+              "recall": 0.6814516129032258,
+              "f1": 0.46944444444444444,
+              "support": 248
+            },
+            "estable": {
+              "precision": 0.35,
+              "recall": 0.14,
+              "f1": 0.2,
+              "support": 50
+            },
+            "alcista": {
+              "precision": 0.5638297872340425,
+              "recall": 0.2774869109947644,
+              "f1": 0.3719298245614035,
+              "support": 382
+            }
+          },
+          "confusionMatrix": [
+            [
+              169,
+              9,
+              70
+            ],
+            [
+              31,
+              7,
+              12
+            ],
+            [
+              272,
+              4,
+              106
+            ]
+          ],
+          "samples": 680
+        },
+        {
+          "trainEnd": "2021-09-19",
+          "trainTargetEnd": "2021-09-26",
+          "validationStart": "2021-09-27",
+          "validationEnd": "2023-08-07",
+          "accuracy": 0.40588235294117647,
+          "macroF1": 0.28951083591331267,
+          "perClass": {
+            "bajista": {
+              "precision": 0.4272151898734177,
+              "recall": 0.4368932038834951,
+              "f1": 0.432,
+              "support": 309
+            },
+            "estable": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 77
+            },
+            "alcista": {
+              "precision": 0.4005681818181818,
+              "recall": 0.47959183673469385,
+              "f1": 0.43653250773993807,
+              "support": 294
+            }
+          },
+          "confusionMatrix": [
+            [
+              135,
+              7,
+              167
+            ],
+            [
+              33,
+              0,
+              44
+            ],
+            [
+              148,
+              5,
+              141
+            ]
+          ],
+          "samples": 680
+        },
+        {
+          "trainEnd": "2023-07-31",
+          "trainTargetEnd": "2023-08-07",
+          "validationStart": "2023-08-08",
+          "validationEnd": "2025-06-17",
+          "accuracy": 0.40441176470588236,
+          "macroF1": 0.32617307320650746,
+          "perClass": {
+            "bajista": {
+              "precision": 0.4786729857819905,
+              "recall": 0.6733333333333333,
+              "f1": 0.5595567867036011,
+              "support": 300
+            },
+            "estable": {
+              "precision": 0.12403100775193798,
+              "recall": 0.20253164556962025,
+              "f1": 0.15384615384615385,
+              "support": 79
+            },
+            "alcista": {
+              "precision": 0.4418604651162791,
+              "recall": 0.1893687707641196,
+              "f1": 0.2651162790697674,
+              "support": 301
+            }
+          },
+          "confusionMatrix": [
+            [
+              202,
+              46,
+              52
+            ],
+            [
+              43,
+              16,
+              20
+            ],
+            [
+              177,
+              67,
+              57
+            ]
+          ],
+          "samples": 680
+        }
+      ]
+    }
+  }
+}

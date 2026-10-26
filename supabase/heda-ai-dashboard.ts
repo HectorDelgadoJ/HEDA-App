@@ -147,10 +147,10 @@ export function calculateFinancialSummary(transactions, cards, goals, today, bud
   const categoryKey=value=>String(value||'').trim().toLocaleLowerCase('es-MX');
   const budgetTotals=new Map();
   for(const row of month.filter(spending)){const key=categoryKey(row.category);budgetTotals.set(key,(budgetTotals.get(key)||0)+money(row.amount));}
-  const budgetStats=budgets.map(budget=>{const limit=money(budget.monthly_limit),spent=budgetTotals.get(categoryKey(budget.category))||0;return {limit,spent};}).filter(item=>item.limit>0);
+  const budgetStats=budgets.filter(b=>(!b.starts_on||b.starts_on<=today)&&(!b.ends_on||b.ends_on>=today)).map(budget=>{const limit=money(budget.monthly_limit),spent=budget.starts_on?sum(recorded.filter(r=>spending(r)&&categoryKey(r.category)===categoryKey(budget.category)&&r.transaction_date>=budget.starts_on&&r.transaction_date<=budget.ends_on)):budgetTotals.get(categoryKey(budget.category))||0;return {limit,spent,customPeriod:!!budget.starts_on};}).filter(item=>item.limit>0);
   return {
     coverage:{recordedTransactionCount:recorded.length,firstRecordedDate:recorded.length?recorded.map(row=>row.transaction_date).sort()[0]:null,sparseMonth:month.length<5},
-    budgets:{configuredCount:budgetStats.length,nearCount:budgetStats.filter(item=>item.spent<item.limit && item.spent*100>=item.limit*80).length,reachedCount:budgetStats.filter(item=>item.spent>=item.limit).length,monthlyLimitTotal:amount(budgetStats.reduce((sum,item)=>sum+item.limit,0)),spentInBudgetedCategories:amount(budgetStats.reduce((sum,item)=>sum+item.spent,0))},
+    budgets:{configuredCount:budgetStats.length,nearCount:budgetStats.filter(item=>item.spent<item.limit && item.spent*100>=item.limit*80).length,reachedCount:budgetStats.filter(item=>item.spent>=item.limit).length,monthlyLimitTotal:amount(budgetStats.filter(item=>!item.customPeriod).reduce((sum,item)=>sum+item.limit,0)),spentInBudgetedCategories:amount(budgetStats.reduce((sum,item)=>sum+item.spent,0))},
     currency:'MXN',period:{start,end:today,timeZone:'America/Mexico_City'},
     availableBalance:amount(cash(recorded)),
     monthly:{income:amount(income),expenses:amount(expenses),result:amount(income-expenses),cashChange:amount(cash(month)),cardPayments:amount(sum(month.filter(row=>row.is_card_payment))),transactionCount:month.length,
@@ -180,7 +180,7 @@ export async function loadFinancialPreview(client, userId, now = new Date()) {
     readSummaryRows(client,'transactions','id,type,amount,category,transaction_date,card_id,is_card_payment',userId,today),
     readSummaryRows(client,'card_payments','id,ledger_enabled,opening_balance,paid',userId,today),
     readSummaryRows(client,'goals','id,target_amount,current_amount,status',userId,today),
-    readSummaryRows(client,'budgets','id,category,monthly_limit',userId,today),
+    readSummaryRows(client,'budgets','id,category,monthly_limit,starts_on,ends_on',userId,today),
   ]);
   const summary=calculateFinancialSummary(transactions,cards,goals,today,budgets);
   const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(userId+'\n'+JSON.stringify(summary)));
@@ -270,7 +270,7 @@ AGENT_TOOLS.push({name:'request_ethereum_forecast',description:'Consulta el mode
 AGENT_TOOLS.push({name:'request_app_data',description:'Solicita consentimiento si la pregunta requiere datos personales de la cuenta y no hay contexto autorizado.',parameters:{type:'OBJECT',properties:{}}});
 export async function loadAgentContext(client,owner){
  const preview=await loadFinancialPreview(client,owner);
- const specs={transactions:'id,type,amount,category,transaction_date,card_id,is_card_payment',goals:'id,name,target_amount,current_amount,target_date,status',cards:'id,name,amount,due_date,paid,ledger_enabled,opening_balance',recurring:'id,name,type,amount,category,next_date,frequency,interval_count,active,card_id',budgets:'id,category,monthly_limit'};
+ const specs={transactions:'id,type,amount,category,transaction_date,card_id,is_card_payment',goals:'id,name,target_amount,current_amount,target_date,status',cards:'id,name,amount,due_date,paid,ledger_enabled,opening_balance',recurring:'id,name,type,amount,category,next_date,frequency,interval_count,active,card_id',budgets:'id,category,monthly_limit,starts_on,ends_on'};
  const tables={transactions:'transactions',goals:'goals',cards:'card_payments',recurring:'recurring_movements',budgets:'budgets'};
  const records={};await Promise.all(Object.entries(specs).map(async([key,columns])=>{let query=client.from(tables[key]).select(columns,{count:'exact'}).eq('user_id',owner);if(key==='transactions')query=query.order('transaction_date',{ascending:false});const {data,error,count}=await query.order('id').range(0,499).abortSignal(AbortSignal.timeout(15000));if(error||!Array.isArray(data)||!Number.isInteger(count))throw new Error('SUMMARY_LOAD_FAILED');records[key]={rows:data,total:count,complete:count<=data.length};}));
  const {data,error}=await client.from('profiles').select('full_name,username,occupation,financial_level,movement_mode,birth_date').eq('id',owner).single();if(error)throw new Error('SUMMARY_LOAD_FAILED');
@@ -340,13 +340,13 @@ export async function handleAgentBody(body,ctx,askAgent){
   if(error||data?.ethereumVersion!==1||!data.ok)return {...result,needsEthereum:undefined,ethereumUsed:true,message:'No pude consultar el módulo de Ethereum. Abre Ethereum y reintenta; si aún no se publicó, falta desplegar ethereum-forecast en Supabase.'};
   const trends=data.forecasts.map(f=>`${f.horizonDays} día(s), hasta ${f.targetDate}: tendencia ${f.trend}.`).join('\n');
   const metrics=data.forecasts.map(f=>`${f.horizonDays} día(s): F1 macro ${data.model.reports[String(f.horizonDays)].models.LSTM.test.macroF1.toFixed(3)}.`).join(' ');
-  return {...result,needsEthereum:undefined,ethereumUsed:true,sources:[],message:`${data.dataMode==='training_snapshot'?'Consulta histórica; no es una predicción actual.\n':''}Último cierre diario ETH-USD: $${Number(data.lastCandle.close).toFixed(2)} USD (${data.asOf}, UTC; Yahoo Finance).\n\n${trends}\n\nModelo LSTM experimental. ${metrics} Su desempeño es bajo; puede equivocarse. No es una señal para invertir.${data.warning?'\n'+data.warning:''} Abre Ethereum para ver la gráfica, comparación y metodología.`};
+  return {...result,needsEthereum:undefined,ethereumUsed:true,sources:[],message:`${data.dataMode==='training_snapshot'?'Consulta histórica; no es una predicción actual.\n':''}Último cierre diario ETH-USD: $${Number(data.lastCandle.close).toFixed(2)} USD (${data.asOf}, UTC; ${data.source}).\n\n${trends}\n\nModelo LSTM experimental. ${metrics} Su desempeño es bajo; puede equivocarse. No es una señal para invertir.${data.warning?'\n'+data.warning:''} Abre Ethereum para ver la gráfica, comparación y metodología.`};
  }
 
  return {...result,...(body.summaryDigest&&context?{financialSummaryUsed:true}:{} )};
 }
 
-import { withSupabase } from "npm:@supabase/server@1";
+import { withSupabase } from "npm:@supabase/server@1.9.2";
 
 const ask = createGeminiClient((name: string) => Deno.env.get(name));
 const askAgent = createAgentClient((name: string) => Deno.env.get(name));
@@ -356,6 +356,7 @@ const json = (status: number, body: Record<string, unknown>) => Response.json(bo
 const authenticated = withSupabase({ auth: "user" }, async (req, ctx) => {
   try {
     const body=await readHedaRequest(req);
+    const active=await ctx.supabase.rpc('heda_account_active');if(active.error||active.data!==true)return json(403,{ok:false,message:'Cuenta no disponible o falta SQL 013.'});
     await assertAIAdult(ctx.supabase);
     if(body.action==='assistant'){
       if(Deno.env.get('HEDA_AI_ENABLED')==='false')return json(503,{ok:false,message:'El asistente está temporalmente desactivado.'});

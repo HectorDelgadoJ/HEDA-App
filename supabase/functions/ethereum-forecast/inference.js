@@ -22,6 +22,12 @@ export function ethLSTM(input,model){
  const logits=model.weightOut.map((row,k)=>row.reduce((sum,w,i)=>sum+w*h[i],model.biasOut[k])),max=Math.max(...logits),exp=logits.map(x=>Math.exp(x-max)),total=exp.reduce((a,b)=>a+b,0);
  return exp.map(x=>x/total);
 }
+export function ethReference(input,model){
+ const x=input.flat();let probs;
+ if(model.name==='LogisticRegression'){const logits=model.coef.map((row,k)=>row.reduce((sum,w,i)=>sum+w*x[i],model.intercept[k])),max=Math.max(...logits),v=logits.map(z=>Math.exp(z-max)),sum=v.reduce((a,b)=>a+b,0);probs=v.map(z=>z/sum);}
+ else{probs=Array(model.classes.length).fill(0);for(const t of model.trees){let node=0;while(t.left[node]!==-1)node=x[t.feature[node]]<=t.threshold[node]?t.left[node]:t.right[node];const sum=t.value[node].reduce((a,b)=>a+b,0);t.value[node].forEach((v,i)=>{probs[i]+=v/sum/model.trees.length;});}}
+ return Object.fromEntries(model.classes.map((label,i)=>[label,probs[i]]));
+}
 export function validateEthBars(bars){
  if(!Array.isArray(bars)||bars.length<60||bars.length>10000)throw new Error('ETH_INVALID_DATA');
  for(let i=0;i<bars.length;i++){
@@ -48,24 +54,35 @@ export function forecastEthereum(bundle,input,{now=new Date(),dataMode='provider
  const last=bars.at(-1),forecasts=[1,7].map(horizon=>{
   const model=bundle.models[String(horizon)],normalized=features.map(row=>row.map((v,i)=>(v-model.mean[i])/model.scale[i]));
   const probabilities=ethLSTM(normalized,model),winner=probabilities.indexOf(Math.max(...probabilities));
-  return {horizonDays:horizon,targetDate:new Date(Date.parse(last.date)+horizon*86400000).toISOString().slice(0,10),trend:bundle.classes[winner],distribution:Object.fromEntries(bundle.classes.map((label,i)=>[label,probabilities[i]]))};
+  const reference=bundle.comparators?.[String(horizon)];let comparison=null;if(reference){const normalizedRef=features.map(row=>row.map((v,i)=>(v-reference.mean[i])/reference.scale[i])),p=ethReference(normalizedRef,reference),best=Object.keys(p).reduce((a,b)=>p[a]>p[b]?a:b);comparison={name:reference.name,trend:bundle.classes[Number(best)],test:reference.test};}
+  return {horizonDays:horizon,targetDate:new Date(Date.parse(last.date)+horizon*86400000).toISOString().slice(0,10),trend:bundle.classes[winner],comparison,distribution:Object.fromEntries(bundle.classes.map((label,i)=>[label,probabilities[i]]))};
  });
  const ageDays=Math.floor((Date.parse(now.toISOString().slice(0,10))-Date.parse(last.date))/86400000),snapshot=dataMode!=='provider';
  return {ok:true,ethereumVersion:1,symbol:'ETH-USD',currency:'USD',source:'Yahoo Finance',interval:'1d',timezone:'UTC',generatedAt:now.toISOString(),asOf:last.date,dataMode,stale:snapshot||ageDays>1,warning:warning||(ageDays>1?'Los datos del mercado no están actualizados.':null),lastCandle:last,history:bars.slice(-90),forecasts,model:{name:'LSTM experimental',version:bundle.modelVersion,trainedAt:bundle.trainedAt,datasetEnd:bundle.lastTrainingDatasetDate,datasetStart:bundle.source.firstDate,datasetRows:bundle.source.rows,window:bundle.window,threshold:bundle.threshold,reports:bundle.reports,limitations:['Clasificación experimental de tendencias, no predicción de un precio exacto.','La LSTM no superó a todos los modelos base en esta evaluación.','Los porcentajes son salidas softmax sin calibración: no son probabilidades reales garantizadas.','Una sola partición temporal y una semilla no prueban estabilidad futura.','El mercado puede cambiar y el rendimiento pasado no garantiza resultados futuros.']}};
 }
-export async function loadYahooEth(fetcher=fetch,now=new Date()){
+export async function loadYahooEth(fetcher=fetch,now=new Date(),host='query1.finance.yahoo.com'){
  const end=Math.floor(now.getTime()/1000),start=end-200*86400;
- const response=await fetcher(`https://query1.finance.yahoo.com/v8/finance/chart/ETH-USD?period1=${start}&period2=${end}&interval=1d`,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(9000)});
- if(!response.ok)throw new Error(response.status===429?'ETH_PROVIDER_LIMIT':'ETH_PROVIDER_UNAVAILABLE');
+ const response=await fetcher(`https://${host}/v8/finance/chart/ETH-USD?period1=${start}&period2=${end}&interval=1d`,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(4000)});
+ if(!response.ok)throw new Error(response.status===429?'ETH_PROVIDER_LIMIT':`ETH_PROVIDER_HTTP_${response.status}`);
  return parseYahooEth(await response.json(),now);
 }
+export async function loadCoinbaseEth(fetcher=fetch,now=new Date()){
+ const end=now.toISOString().slice(0,10),start=new Date(Date.parse(end)-200*86400000).toISOString();
+ const response=await fetcher(`https://api.exchange.coinbase.com/products/ETH-USD/candles?granularity=86400&start=${encodeURIComponent(start)}&end=${end}T00:00:00Z`,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(5000)});
+ if(!response.ok)throw new Error(`ETH_PROVIDER_HTTP_${response.status}`);
+ const raw=await response.json();if(!Array.isArray(raw))throw new Error('ETH_INVALID_DATA');
+ const rows=new Map();for(const r of raw){if(!Array.isArray(r)||r.length<6||!Number.isFinite(r[0]))throw new Error('ETH_INVALID_DATA');const date=new Date(r[0]*1000).toISOString().slice(0,10);if(date<end)rows.set(date,{date,low:r[1],high:r[2],open:r[3],close:r[4],volume:r[5]});}
+ return validateEthBars([...rows.values()].sort((a,b)=>a.date.localeCompare(b.date)));
+}
 export function createEthereumService(bundle,fetcher=fetch,clock=()=>new Date()){
- let cached=null,expires=0,pending=null;
+ let cached=null,expires=0,pending=null,lastGood=null;
  return async function getForecast(){
   const now=clock();if(cached&&now.getTime()<expires)return cached;if(pending)return pending;
-  pending=(async()=>{let bars,mode='provider',warning=null;
-   try{bars=await loadYahooEth(fetcher,now);}catch{bars=bundle.referenceBars;mode='training_snapshot';warning='No se pudo actualizar Yahoo Finance. Se muestra una estimación histórica con datos reales del entrenamiento, no una predicción actual.';}
-   cached=forecastEthereum(bundle,bars,{now,dataMode:mode,warning});expires=now.getTime()+(mode==='provider'?3600000:300000);return cached;
+  pending=(async()=>{let bars,source='Yahoo Finance',mode='provider',warning=null;const failures=[];
+   for(const host of ['query1.finance.yahoo.com','query2.finance.yahoo.com']){try{const candidate=await loadYahooEth(fetcher,now,host);if(Date.parse(now.toISOString().slice(0,10))-Date.parse(candidate.at(-1).date)>86400000)throw new Error('ETH_PROVIDER_STALE');bars=candidate;break;}catch(e){failures.push({provider:host,code:/^ETH_[A-Z_0-9]+$/.test(e.message)?e.message:'ETH_NETWORK_OR_TIMEOUT'});}}
+   if(!bars){try{bars=await loadCoinbaseEth(fetcher,now);source='Coinbase Exchange';warning='Fuente alternativa: Coinbase Exchange. Sus precios y volumen pueden diferir de Yahoo, usado para entrenar el modelo; la evaluación no valida este cambio de fuente.';}catch(e){failures.push({provider:'Coinbase Exchange',code:/^ETH_[A-Z_0-9]+$/.test(e.message)?e.message:'ETH_NETWORK_OR_TIMEOUT'});}}
+   if(bars)lastGood={bars,source};else if(lastGood){({bars,source}=lastGood);mode='cached_provider';warning='No se pudo actualizar el mercado. Se conserva la última consulta válida de esta instancia; revisa su fecha.';}else{bars=bundle.referenceBars;mode='training_snapshot';warning='No se pudieron actualizar las fuentes de mercado. Consulta histórica del experimento, no una predicción actual.';}
+   cached={...forecastEthereum(bundle,bars,{now,dataMode:mode,warning}),source,providerStatus:failures};expires=now.getTime()+(mode==='provider'?3600000:60000);return cached;
   })();try{return await pending;}finally{pending=null;}
  };
 }

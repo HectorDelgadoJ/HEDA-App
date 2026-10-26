@@ -35,10 +35,10 @@ export function calculateFinancialSummary(transactions, cards, goals, today, bud
   const categoryKey=value=>String(value||'').trim().toLocaleLowerCase('es-MX');
   const budgetTotals=new Map();
   for(const row of month.filter(spending)){const key=categoryKey(row.category);budgetTotals.set(key,(budgetTotals.get(key)||0)+money(row.amount));}
-  const budgetStats=budgets.map(budget=>{const limit=money(budget.monthly_limit),spent=budgetTotals.get(categoryKey(budget.category))||0;return {limit,spent};}).filter(item=>item.limit>0);
+  const budgetStats=budgets.filter(b=>(!b.starts_on||b.starts_on<=today)&&(!b.ends_on||b.ends_on>=today)).map(budget=>{const limit=money(budget.monthly_limit),spent=budget.starts_on?sum(recorded.filter(r=>spending(r)&&categoryKey(r.category)===categoryKey(budget.category)&&r.transaction_date>=budget.starts_on&&r.transaction_date<=budget.ends_on)):budgetTotals.get(categoryKey(budget.category))||0;return {limit,spent,customPeriod:!!budget.starts_on};}).filter(item=>item.limit>0);
   return {
     coverage:{recordedTransactionCount:recorded.length,firstRecordedDate:recorded.length?recorded.map(row=>row.transaction_date).sort()[0]:null,sparseMonth:month.length<5},
-    budgets:{configuredCount:budgetStats.length,nearCount:budgetStats.filter(item=>item.spent<item.limit && item.spent*100>=item.limit*80).length,reachedCount:budgetStats.filter(item=>item.spent>=item.limit).length,monthlyLimitTotal:amount(budgetStats.reduce((sum,item)=>sum+item.limit,0)),spentInBudgetedCategories:amount(budgetStats.reduce((sum,item)=>sum+item.spent,0))},
+    budgets:{configuredCount:budgetStats.length,nearCount:budgetStats.filter(item=>item.spent<item.limit && item.spent*100>=item.limit*80).length,reachedCount:budgetStats.filter(item=>item.spent>=item.limit).length,monthlyLimitTotal:amount(budgetStats.filter(item=>!item.customPeriod).reduce((sum,item)=>sum+item.limit,0)),spentInBudgetedCategories:amount(budgetStats.reduce((sum,item)=>sum+item.spent,0))},
     currency:'MXN',period:{start,end:today,timeZone:'America/Mexico_City'},
     availableBalance:amount(cash(recorded)),
     monthly:{income:amount(income),expenses:amount(expenses),result:amount(income-expenses),cashChange:amount(cash(month)),cardPayments:amount(sum(month.filter(row=>row.is_card_payment))),transactionCount:month.length,
@@ -68,7 +68,7 @@ export async function loadFinancialPreview(client, userId, now = new Date()) {
     readSummaryRows(client,'transactions','id,type,amount,category,transaction_date,card_id,is_card_payment',userId,today),
     readSummaryRows(client,'card_payments','id,ledger_enabled,opening_balance,paid',userId,today),
     readSummaryRows(client,'goals','id,target_amount,current_amount,status',userId,today),
-    readSummaryRows(client,'budgets','id,category,monthly_limit',userId,today),
+    readSummaryRows(client,'budgets','id,category,monthly_limit,starts_on,ends_on',userId,today),
   ]);
   const summary=calculateFinancialSummary(transactions,cards,goals,today,budgets);
   const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(userId+'\n'+JSON.stringify(summary)));

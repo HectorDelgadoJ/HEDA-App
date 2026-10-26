@@ -1,0 +1,2 @@
+self.addEventListener('push',event=>{event.waitUntil(self.registration.showNotification('HEDA · Revisa tus avisos',{body:'Hay una actualización de tus registros. Abre HEDA para revisarla.',icon:'/icons/icon-192.png',tag:'heda-update',data:{}}));});
+self.addEventListener('notificationclick',event=>{event.notification.close();event.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(windows=>{const own=windows.find(w=>new URL(w.url).origin===self.location.origin);return own?own.focus():clients.openWindow(self.location.origin+'/?hedaNotice=1');}));});
