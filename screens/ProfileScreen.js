@@ -40,7 +40,7 @@ const information = {
   },
   about: { title: 'Acerca de HEDA', sections: [
     ['HEDA', 'Aplicación académica para registrar, organizar y comprender las finanzas personales. Incluye educación financiera y un asistente de IA.'],
-    ['Alcance actual', 'No realiza pagos ni se conecta a bancos. Las estimaciones dependen de lo que registres. La IA puede equivocarse y no toma decisiones por ti. El módulo de Ethereum contiene ejemplos educativos, no cotizaciones actuales ni una predicción conectada.'],
+    ['Alcance actual', 'No realiza pagos ni se conecta a bancos. Las estimaciones dependen de lo que registres. La IA puede equivocarse y no toma decisiones por ti. El módulo de Ethereum clasifica tendencias con una LSTM experimental de desempeño bajo; muestra cierres diarios e identifica datos históricos sin actualización. No es asesoría de inversión.'],
     ['Versión', version]]
   }
 };

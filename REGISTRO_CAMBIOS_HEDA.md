@@ -203,3 +203,21 @@ HEDA se exporta con `npm run build:web` a **dist**, preparada para Netlify Drop 
 - QR real en Herramientas: generar, compartir texto, cámara nativa/web, lectura de imagen web y pegado de código. Revisión antes de importar a Mi saldo, sin identidad ni credenciales. Reintentos de un QR no duplican en la misma cuenta.
 - Permiso de cámara específico sin micrófono. Dependencias fijadas; Expo y notificaciones alineados con los parches requeridos por Expo. No se aplicó npm audit fix --force.
 - Privacidad/condiciones y guía actualizadas. SQL, Edge Function y publicación remotos pendientes del responsable; pruebas físicas de cámara y respuestas Gemini reales pendientes.
+
+
+### Claridad de QR y preguntas personales
+
+- QR con inicio Compartir / Recibir movimiento, formularios consistentes, calendario, lectura como acción principal y código técnico oculto. Elección explícita del tipo al recibir.
+- Acceso a datos visible en el chat. Preguntas personales comunes piden permiso directamente; el flujo de efectivo actual responde desde cifras calculadas por servidor, sin quedarse en una explicación de falta de acceso.
+- Nueva regresión cubre la pregunta exacta reportada, efectivo frente a gastos con tarjeta, periodos y mezcla de consultas con propuestas. Sin migración adicional.
+
+
+## 25/10/2026 · Ethereum real y revisión del TT
+
+- Dataset real ETH-USD: 3,272 velas diarias, manifiesto con fuente/fechas/SHA-256 y pipeline reproducible aislado de npm.
+- LSTM PyTorch entrenada a 1/7 días con validación temporal 70/15/15, fronteras purgadas y comparadores logística/árbol/Random Forest/mayoría. F1 macro en prueba 0.3465 y 0.2522: resultados bajos declarados, sin promesas de inversión.
+- Exportación de pesos e inferencia JavaScript verificadas frente a PyTorch; nueva Edge Function autenticada ethereum-forecast, gráfica, horizontes, metodología, métricas y estados de error/datos atrasados/consulta histórica. Última fila Yahoo vacía omitida sin rellenar huecos internos.
+- Chat puede consultar el módulo Ethereum; corregida ruta antigua que negaba herramientas de propuestas. Editar/eliminar toda entidad desde IA todavía pendiente, documentado explícitamente.
+- Matriz RF/RNF frente al reporte TT 2026-B088. Administrador, trazabilidad QR completa, personalización educativa y piloto siguen pendientes/parciales. No se afirma cumplimiento total.
+- 224 pruebas JavaScript aprobadas y 2 Python; exportaciones web/Android/iOS generadas. Navegador móvil simulado: gráfica, cambio de horizonte y metodología sin errores JS ni desbordamiento horizontal. No sustituye pruebas físicas o despliegue real.
+- Publicación manual pendiente: nueva ethereum-forecast, actualización heda-ai y dist en Netlify. Sin SQL nuevo para Ethereum. Instrucciones en GUIA_ETHEREUM_HEDA.md.

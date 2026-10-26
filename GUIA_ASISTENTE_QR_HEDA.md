@@ -54,3 +54,12 @@ No incluye identidad ni credenciales. No valida al emisor y cualquiera que vea e
 ## Justificación para el TT
 
 La IA interpreta lenguaje natural mediante funciones acotadas; el servidor recupera datos propios y valida propuestas. La persona confirma y PostgreSQL aplica la acción de forma atómica. El QR facilita captura compartida sin integrar infraestructura bancaria. Se pueden medir tiempo para registrar, tasa de errores y comprensión de las confirmaciones frente al formulario manual.
+
+
+## Ajuste de claridad y flujo de efectivo
+
+QR ahora inicia con dos opciones: Compartir movimiento y Recibir movimiento. Crear QR reutiliza categorías y calendario; el código de texto queda oculto salvo que el usuario lo solicite. Al recibir se permite elegir Gasto o Ingreso desde la perspectiva de la propia cuenta antes de confirmar. No se ejecutan pagos bancarios.
+
+El chat muestra Responde con mis datos. Una consulta como “¿Puedes decirme cómo va mi flujo de efectivo?” solicita permiso directamente si falta, sin depender de que el modelo elija pedirlo. Con permiso, el flujo del periodo actual se presenta desde los totales verificados: ingresos, gastos, pagos de tarjetas, cambio de saldo y saldo disponible. No confunde compras con tarjeta con salida inmediata de efectivo. No se inventa flujo real cero cuando no hay registros. Consultas de otros periodos o mezcladas con una acción mantienen la ruta del asistente con contexto.
+
+Para aplicar este ajuste: actualizar heda-ai con el archivo regenerado y subir dist al mismo sitio. No se requiere SQL adicional si 012 ya fue ejecutado.

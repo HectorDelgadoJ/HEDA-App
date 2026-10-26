@@ -46,3 +46,11 @@ yarn-error.*
 !.env.example
 .tmp-*/
 client_secret*.json
+
+# Isolated Ethereum research runtime and source market data
+.venv-ethereum/
+ml/ethereum/data/*.csv
+ml/ethereum/checkpoints/
+ml/ethereum/__pycache__/
+
+.tmp-*

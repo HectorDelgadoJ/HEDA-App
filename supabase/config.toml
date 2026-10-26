@@ -437,3 +437,8 @@ entrypoint = "./functions/heda-ai/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/delete-account/index.ts"
+
+[functions.ethereum-forecast]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/ethereum-forecast/index.ts"

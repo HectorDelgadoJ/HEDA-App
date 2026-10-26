@@ -1,4 +1,4 @@
-import { createAgentClient, handleAgentBody } from "./agent.js";
+import { createAgentClient, handleAgentBody, publicMarketQuestion } from "./agent.js";
 import { withSupabase } from "npm:@supabase/server@1";
 import { createGeminiClient, geminiError, validateChatHistory } from "./gemini.js";
 import { handleHedaBody } from "./financial-summary.js";
@@ -18,7 +18,7 @@ const authenticated = withSupabase({ auth: "user" }, async (req, ctx) => {
       await reserveAIQuota(ctx.supabase,'chat');
       const agentResult=await handleAgentBody(body,ctx,askAgent);
       // Optional public web lookup never receives authorized account context or proposals.
-      if(!agentResult.appDataUsed&&!agentResult.needsAppConsent&&!agentResult.proposals?.length&&Deno.env.get('GEMINI_SEARCH_ENABLED')==='true'){
+      if(publicMarketQuestion(body.message)&&!agentResult.ethereumUsed&&!agentResult.appDataUsed&&!agentResult.needsAppConsent&&!agentResult.proposals?.length&&Deno.env.get('GEMINI_SEARCH_ENABLED')==='true'){
         await reserveAIQuota(ctx.supabase,'chat');
         const publicAnswer=await ask(body.message,body.history||[]);
         return json(200,{...publicAnswer,agentVersion:1,proposals:[],appDataUsed:false});

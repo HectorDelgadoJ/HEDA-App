@@ -1,242 +1,35 @@
-import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
+import React,{useEffect,useState} from 'react';
+import {View,Text,ScrollView,TouchableOpacity,StyleSheet,ActivityIndicator} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import Svg,{Polyline} from 'react-native-svg';
+import {useThemeStyles} from '../theme/ThemeProvider';
 import SwipeBackToIA from '../components/SwipeBackToIA';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '../theme/colors';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-
-export default function EthereumScreen({ navigation }) {
-  const { colors, styles } = useThemeStyles(makeStyles);
-  return (
-    <SwipeBackToIA navigation={navigation}><SafeAreaView edges={['top', 'left', 'right']} style={themeStyle({ flex: 1, backgroundColor: colors.background }, colors)}>
-    <ScrollView style={themeStyle({ flex: 1 }, colors)} contentContainerStyle={styles.container}>
-
-      <Text style={styles.title}>
-        Ethereum
-      </Text>
-
-      <Text style={styles.subtitle}>
-        Demostración educativa con valores de ejemplo; no son cotizaciones actuales.
-      </Text>
-
-      <View style={styles.priceCard}>
-        <Text style={styles.priceLabel}>
-          Precio de ejemplo · ETH
-        </Text>
-
-        <Text style={styles.price}>
-          $3,250 USD
-        </Text>
-
-        <Text style={styles.change}>
-          +4.2% últimas 24 horas
-        </Text>
-      </View>
-
-      <View style={styles.predictionCard}>
-        <Text style={styles.predictionTitle}>
-          Escenario ilustrativo
-        </Text>
-
-        <Text style={styles.predictionText}>
-          Ejemplo de un escenario de subida. No existe todavía un modelo predictivo conectado.
-        </Text>
-
-        <Text style={styles.predictionValue}>
-          Valor hipotético:
-        </Text>
-
-        <Text style={styles.futurePrice}>
-          $3,480 USD
-        </Text>
-      </View>
-
-      <View style={styles.analysisCard}>
-        <Text style={styles.analysisTitle}>
-          Factores por considerar
-        </Text>
-
-        <Text style={styles.analysisItem}>
-          • Volumen de mercado
-        </Text>
-
-        <Text style={styles.analysisItem}>
-          • Tendencias históricas
-        </Text>
-
-        <Text style={styles.analysisItem}>
-          • Variaciones diarias
-        </Text>
-
-        <Text style={styles.analysisItem}>
-          • Indicadores financieros
-        </Text>
-
-        <Text style={styles.analysisItem}>
-          • Comportamiento del mercado
-        </Text>
-      </View>
-
-      <View style={styles.riskCard}>
-        <Text style={styles.riskTitle}>
-          Advertencia Financiera
-        </Text>
-
-        <Text style={styles.riskText}>
-          Las criptomonedas son activos de alto riesgo y volatilidad.
-          Esta información es únicamente educativa y no representa asesoría financiera.
-        </Text>
-      </View>
-
-
-
-    </ScrollView>
-    </SafeAreaView></SwipeBackToIA>);
-
+import ScreenHeader from '../components/ScreenHeader';
+import InfoButton from '../components/InfoButton';
+import {getEthereumForecast} from '../services/ethereum';
+const usd=n=>new Intl.NumberFormat('es-MX',{style:'currency',currency:'USD',currencyDisplay:'narrowSymbol',maximumFractionDigits:2}).format(n);
+const percent=n=>`${(n*100).toFixed(1)}%`;
+export default function EthereumScreen({navigation}){
+ const {colors,styles}=useThemeStyles(makeStyles),[data,setData]=useState(null),[error,setError]=useState(''),[loading,setLoading]=useState(true),[attempt,setAttempt]=useState(0),[horizon,setHorizon]=useState(1),[details,setDetails]=useState(false);
+ useEffect(()=>{const controller=new AbortController();let active=true;setLoading(true);setError('');getEthereumForecast({signal:controller.signal}).then(value=>{if(active)setData(value);}).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;controller.abort();};},[attempt]);
+ const prediction=data?.forecasts.find(x=>x.horizonDays===horizon),report=data?.model.reports[String(horizon)],history=data?.history||[],values=history.map(x=>x.close),low=Math.min(...values),high=Math.max(...values),points=values.map((v,i)=>`${8+i/(values.length-1)*304},${138-(v-low)/(high-low||1)*120}`).join(' ');
+ const trendColor=prediction?.trend==='alcista'?colors.income:prediction?.trend==='bajista'?colors.expense:colors.primary;
+ return <SwipeBackToIA navigation={navigation}><SafeAreaView edges={['top','left','right']} style={{flex:1,backgroundColor:colors.background}}><ScrollView contentContainerStyle={styles.container}>
+ <ScreenHeader title="Ethereum" subtitle="Historial y tendencias para aprender." icon="analytics-outline"/>
+ <View style={styles.row}><TouchableOpacity accessibilityRole="button" onPress={()=>navigation.goBack()} style={styles.secondary}><Text style={styles.link}>Volver</Text></TouchableOpacity><TouchableOpacity accessibilityRole="button" disabled={loading} onPress={()=>setAttempt(x=>x+1)} style={styles.secondary}><Text style={styles.link}>Actualizar</Text></TouchableOpacity></View>
+ {loading&&<View style={styles.card}><ActivityIndicator color={colors.primary}/><Text style={styles.copy}>Consultando datos y modelo…</Text></View>}
+ {!!error&&<View accessibilityRole="alert" style={styles.warning}><Text style={styles.strong}>No se pudo actualizar</Text><Text style={styles.copy}>{error}</Text></View>}
+ {data&&<>
+ {(data.stale||data.warning)&&<View style={styles.warning}><Text style={styles.strong}>{data.dataMode==='training_snapshot'?'Consulta histórica · sin actualización':'Datos pendientes de actualizar'}</Text><Text style={styles.copy}>{data.warning}</Text></View>}
+ <View style={styles.price}><Text style={styles.white}>ETH-USD · último cierre diario</Text><Text style={styles.amount}>{usd(data.lastCandle.close)} USD</Text><Text style={styles.white}>{data.asOf} · UTC · {data.source}</Text></View>
+ <View style={styles.card}><Text style={styles.strong}>Últimos {history.length} días</Text><Text style={styles.copy}>{usd(high)} máximo · {usd(low)} mínimo</Text><Svg viewBox="0 0 320 150" width="100%" height={160} accessibilityLabel="Gráfica del cierre diario de Ethereum"><Polyline points={points} fill="none" stroke={colors.primary} strokeWidth="2.5"/></Svg><View style={styles.row}><Text style={styles.small}>{history[0]?.date}</Text><Text style={styles.small}>{data.asOf}</Text></View></View>
+ <View style={styles.card}><View style={styles.row}><Text style={styles.strong}>Tendencia experimental</Text><InfoButton title="Cómo se interpreta" text="El modelo clasifica el cambio respecto al último cierre: bajista si es menor a −1%, estable entre −1% y +1%, y alcista si supera +1%. No estima un precio exacto. No es una señal de compra o venta."/></View><View style={styles.row}>{[1,7].map(n=><TouchableOpacity key={n} accessibilityRole="button" accessibilityState={{selected:n===horizon}} onPress={()=>setHorizon(n)} style={[styles.tab,n===horizon&&{backgroundColor:colors.primary}]}><Text style={{color:n===horizon?colors.onPrimary:colors.ink,fontWeight:'700'}}>{n} {n===1?'día':'días'}</Text></TouchableOpacity>)}</View>
+ <Text style={[styles.trend,{color:trendColor}]}>{prediction?.trend}</Text><Text style={styles.copy}>Del cierre {data.asOf} al {prediction?.targetDate} (UTC).</Text><View style={styles.warning}><Text style={styles.strong}>Modelo en evaluación</Text><Text style={styles.copy}>Su desempeño todavía es bajo. Puede equivocarse y no debe usarse para decidir inversiones.</Text></View>
+ <Text style={styles.small}>Evaluación fuera del entrenamiento · {report?.models.LSTM.test.samples} ejemplos</Text><Text style={styles.copy}>F1 macro: {report?.models.LSTM.test.macroF1.toFixed(3)} · exactitud: {percent(report?.models.LSTM.test.accuracy)}</Text>
+ <TouchableOpacity accessibilityRole="button" accessibilityState={{expanded:details}} onPress={()=>setDetails(x=>!x)} style={styles.secondary}><Text style={styles.link}>{details?'Ocultar metodología':'Ver metodología y comparación'}</Text></TouchableOpacity>
+ {details&&<><Text style={styles.copy}>LSTM · ventana de {data.model.window} días · {data.model.datasetRows} registros. Dataset: {data.model.datasetStart} a {data.model.datasetEnd}. División temporal 70/15/15 con separación de objetivos y normalización solo en entrenamiento.</Text><Text style={styles.strong}>F1 macro en prueba</Text>{Object.entries(report.models).map(([name,m])=><View key={name} style={styles.row}><Text style={styles.copy}>{name}</Text><Text style={styles.copy}>{m.test.macroF1.toFixed(3)}</Text></View>)}<Text style={styles.copy}>El mejor por validación fue {report.selectedByValidation}. La LSTM se conserva como experimento principal del TT; no fue el modelo ganador.</Text><InfoButton title="Limitaciones del experimento" text={data.model.limitations.join('\n\n')}/></>}
+ </View><View style={styles.card}><Text style={styles.strong}>Las criptomonedas son volátiles</Text><Text style={styles.copy}>Este módulo es educativo. Una tendencia estimada no garantiza lo que ocurrirá. Consulta generada: {new Date(data.generatedAt).toLocaleString('es-MX')}.</Text></View>
+ </>}
+ </ScrollView></SafeAreaView></SwipeBackToIA>;
 }
-
-const makeStyles = (colors) => StyleSheet.create({
-
-  container: {
-    flexGrow: 1,
-    backgroundColor: colors.background,
-    padding: 20,
-    paddingTop: 16,
-    paddingBottom: 28
-  },
-
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.ink,
-    marginBottom: 10
-  },
-
-  subtitle: {
-    fontSize: 16,
-    color: '#555',
-    marginBottom: 18
-  },
-
-  priceCard: {
-    backgroundColor: colors.primary,
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 20
-  },
-
-  priceLabel: {
-    color: 'white',
-    fontSize: 16
-  },
-
-  price: {
-    color: 'white',
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginTop: 10
-  },
-
-  change: {
-    color: '#D9F6FF',
-    marginTop: 10,
-    fontSize: 16
-  },
-
-  predictionCard: {
-    backgroundColor: 'white',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 20,
-
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 3
-  },
-
-  predictionTitle: {
-    fontSize: 19,
-    fontWeight: 'bold',
-    color: colors.ink,
-    marginBottom: 12
-  },
-
-  predictionText: {
-    fontSize: 15,
-    color: '#444',
-    lineHeight: 22,
-    marginBottom: 20
-  },
-
-  predictionValue: {
-    color: '#666',
-    fontSize: 15
-  },
-
-  futurePrice: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    color: colors.primary,
-    marginTop: 8
-  },
-
-  analysisCard: {
-    backgroundColor: 'white',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 20,
-
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 3
-  },
-
-  analysisTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.ink,
-    marginBottom: 15
-  },
-
-  analysisItem: {
-    fontSize: 16,
-    color: '#444',
-    marginBottom: 10
-  },
-
-  riskCard: {
-    backgroundColor: colors.ink,
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 18
-  },
-
-  riskTitle: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10
-  },
-
-  riskText: {
-    color: 'white',
-    lineHeight: 22,
-    fontSize: 15
-  },
-
-  button: {
-    backgroundColor: colors.primary,
-    padding: 18,
-    borderRadius: 15,
-    marginBottom: 40
-  },
-
-  buttonText: {
-    color: 'white',
-    textAlign: 'center',
-    fontWeight: 'bold',
-    fontSize: 16
-  }
-
-});
+const makeStyles=c=>StyleSheet.create({container:{padding:20,paddingBottom:36,gap:14},row:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'},card:{padding:18,borderRadius:20,backgroundColor:c.surface,borderColor:c.border,borderWidth:1,gap:12},warning:{padding:14,borderRadius:14,backgroundColor:c.warningSurface,gap:8},price:{padding:22,borderRadius:20,backgroundColor:c.primary,gap:10},white:{color:c.onPrimary,fontSize:14},amount:{color:c.onPrimary,fontSize:30,fontWeight:'800'},strong:{color:c.ink,fontSize:17,fontWeight:'700'},copy:{color:c.ink,fontSize:15,lineHeight:23},small:{color:c.muted,fontSize:13,lineHeight:20},link:{color:c.link,fontSize:15,fontWeight:'700'},secondary:{paddingVertical:12,paddingHorizontal:14,borderWidth:1,borderColor:c.headerBorder,borderRadius:12,backgroundColor:c.softBlue},tab:{flex:1,padding:14,alignItems:'center',backgroundColor:c.raised,borderRadius:12},trend:{fontSize:32,fontWeight:'800',textTransform:'capitalize'}});

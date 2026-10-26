@@ -300,3 +300,7 @@ Registro y perfil solicitan una fecha privada y calculan la edad al usarla. Las 
 ### IA con acciones y movimientos QR (25/10/2026)
 
 El asistente consulta datos propios con permiso y prepara movimientos, metas, presupuestos y recurrentes. Guarda únicamente con confirmación explícita y protección de reintentos en SQL. Herramientas incluye generación/lectura QR de movimientos con revisión; no son pagos bancarios. Aplica primero SQL 012, actualiza heda-ai y después publica dist. Consulta [GUIA_ASISTENTE_QR_HEDA.md](GUIA_ASISTENTE_QR_HEDA.md) para comandos, ejemplos, datos compartidos, límites y pruebas físicas pendientes.
+
+## Ethereum y revisión del TT
+
+Primera LSTM experimental real (OHLCV diario, tendencias 1/7 días). Consulta [publicación y reproducción](GUIA_ETHEREUM_HEDA.md) y [revisión de requisitos pendientes](REVISION_CUMPLIMIENTO_TT.md). El desempeño todavía es bajo; no es asesoría ni una señal de inversión. No se requiere instalar Python para ejecutar la app: solo para repetir el entrenamiento.
