@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Asistente IA",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "Educación financiera",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "Ethereum",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "Reportes y metas",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "QR académico",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "Alertas",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "Presupuestos",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  }
+]

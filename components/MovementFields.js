@@ -1,6 +1,8 @@
+import {useAccessibility} from './AccessibilityContext';
+import {Text, TextInput, TouchableOpacity} from './AccessiblePrimitives';
 import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import {View, StyleSheet} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { categoryOptions, localDate, calendarDays } from '../utils/movementForm';
@@ -11,17 +13,18 @@ export const movementColors = {
 };
 
 export function MovementType({ value, onChange, disabled = false }) {
+  const a=useAccessibility();
   const { colors, styles } = useThemeStyles(makeStyles);
-  return <View style={styles.typeRow}>{['Gasto', 'Ingreso'].map((type) => {
+  return <View accessibilityRole="radiogroup" accessibilityLabel="Tipo de movimiento" style={[styles.typeRow,a.textScale>=1.4&&{flexDirection:'column'}]}>{['Gasto', 'Ingreso'].map((type) => {
       const palette = movementColors[type];
       const active = value === type;
       return <TouchableOpacity key={type} disabled={disabled} accessibilityRole="radio"
       accessibilityState={{ checked: active, disabled }} accessibilityLabel={type}
       onPress={() => onChange(type)}
       style={themeStyle([styles.typeButton, { borderColor: active ? palette.foreground : colors.border, backgroundColor: active ? palette.background : '#FFFFFF' }], colors)}>
-      <Ionicons name={type === 'Ingreso' ? 'arrow-down-circle-outline' : 'arrow-up-circle-outline'} size={22} color={themeColor(palette.foreground, colors)} />
+      <Ionicons accessible={false} name={type === 'Ingreso' ? 'arrow-down-circle-outline' : 'arrow-up-circle-outline'} size={22} color={themeColor(palette.foreground, colors)} />
       <Text style={themeStyle([styles.typeLabel, { color: palette.foreground }], colors)}>{type}</Text>
-      {active && <Ionicons name="checkmark" size={18} color={themeColor(palette.foreground, colors)} />}
+      {active && <Ionicons accessible={false} name="checkmark" size={18} color={themeColor(palette.foreground, colors)} />}
     </TouchableOpacity>;
     })}</View>;
 }
@@ -31,13 +34,13 @@ export function CategoryPicker({ type, value, onChange, disabled = false, option
   const custom = !options.some(([label]) => label === value);
   const palette = movementColors[type];
   return <View style={styles.categorySection}>
-    <View style={styles.chips}>{[...options, ['Otra', 'create-outline']].map(([label, icon]) => {
+    <View accessibilityRole="radiogroup" accessibilityLabel="Categoría del movimiento" style={styles.chips}>{[...options, ['Otra', 'create-outline']].map(([label, icon]) => {
         const active = label === 'Otra' ? custom : value === label;
         return <TouchableOpacity key={label} disabled={disabled} accessibilityRole="radio"
         accessibilityState={{ checked: active, disabled }}
         onPress={() => onChange(label === 'Otra' ? '' : label)}
         style={themeStyle([styles.chip, active && { borderColor: palette.foreground, backgroundColor: palette.background }], colors)}>
-        <Ionicons name={icon} size={18} color={themeColor(active ? palette.foreground : colors.muted, colors)} />
+        <Ionicons accessible={false} name={icon} size={18} color={themeColor(active ? palette.foreground : colors.muted, colors)} />
         <Text style={themeStyle([styles.chipLabel, active && { color: palette.foreground }], colors)}>{label}</Text>
       </TouchableOpacity>;
       })}</View>
@@ -64,16 +67,16 @@ export function MovementDate({ value, onChange, disabled = false, title = 'Fecha
   return <View style={themeStyle([styles.dateCard, compact && { padding: 10 }], colors)}>
     <TouchableOpacity disabled={disabled} accessibilityRole="button" accessibilityLabel={`Fecha: ${label}. Cambiar fecha`}
     accessibilityState={{ expanded: open, disabled }} onPress={() => {setMonth(value.slice(0, 7));setOpen(!open);}} style={styles.dateHeader}>
-      <Ionicons name="calendar-outline" size={22} color={themeColor(colors.ink, colors)} />
+      <Ionicons accessible={false} name="calendar-outline" size={22} color={themeColor(colors.ink, colors)} />
       <View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.caption}>{title}</Text><Text style={styles.dateValue}>{compact && value === localDate() ? 'Hoy' : label}</Text></View>
       <Text style={styles.change}>Cambiar</Text>
-      <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color={themeColor(palette, colors)} />
+      <Ionicons accessible={false} name={open ? 'chevron-up' : 'chevron-down'} size={16} color={themeColor(palette, colors)} />
     </TouchableOpacity>
     {open && <View>
       <View style={styles.monthRow}>
-        <TouchableOpacity accessibilityLabel="Mes anterior" accessibilityRole="button" onPress={() => moveMonth(-1)} style={styles.monthArrow}><Ionicons name="chevron-back" size={22} color={themeColor(colors.ink, colors)} /></TouchableOpacity>
+        <TouchableOpacity accessibilityLabel="Mes anterior" accessibilityRole="button" onPress={() => moveMonth(-1)} style={styles.monthArrow}><Ionicons accessible={false} name="chevron-back" size={22} color={themeColor(colors.ink, colors)} /></TouchableOpacity>
         <Text style={styles.monthTitle}>{new Date(year, monthNumber - 1, 1, 12).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}</Text>
-        <TouchableOpacity accessibilityLabel="Mes siguiente" accessibilityRole="button" onPress={() => moveMonth(1)} style={styles.monthArrow}><Ionicons name="chevron-forward" size={22} color={themeColor(colors.ink, colors)} /></TouchableOpacity>
+        <TouchableOpacity accessibilityLabel="Mes siguiente" accessibilityRole="button" onPress={() => moveMonth(1)} style={styles.monthArrow}><Ionicons accessible={false} name="chevron-forward" size={22} color={themeColor(colors.ink, colors)} /></TouchableOpacity>
       </View>
       <View style={styles.grid}>{['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, i) => <Text key={i} style={styles.weekday}>{day}</Text>)}</View>
       <View style={styles.grid}>{calendarDays(year, monthNumber).map((day, i) => day === null ?
@@ -105,7 +108,7 @@ const makeStyles = (colors) => StyleSheet.create({
   change: { color: colors.primary, fontSize: 13, fontWeight: '600' },
   monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 },
   monthArrow: { padding: 10, minWidth: 44, minHeight: 44 },
-  monthTitle: { fontSize: 15, fontWeight: '600', color: colors.ink, textTransform: 'capitalize' },
+  monthTitle: { flex:1,textAlign:'center',fontSize: 15, fontWeight: '600', color: colors.ink, textTransform: 'capitalize' },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   weekday: { width: '14.2857%', textAlign: 'center', paddingVertical: 8, fontSize: 12, color: colors.muted },
   day: { width: '14.2857%', minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

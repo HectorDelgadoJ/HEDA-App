@@ -1,7 +1,8 @@
+import {Text, TouchableOpacity} from './AccessiblePrimitives';
 import {Platform} from 'react-native';
 import WebPushSettings from './WebPushSettings';
 import React from 'react';
-import { View, Text, Switch, TouchableOpacity, Linking } from 'react-native';
+import {View, Switch, Linking} from 'react-native';
 import { useReminders } from './ReminderProvider';
 import { useThemeStyles } from '../theme/ThemeProvider';
 import InfoButton from './InfoButton';

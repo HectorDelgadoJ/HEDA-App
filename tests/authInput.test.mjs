@@ -15,3 +15,5 @@ test('authentication removes native focus before dismissing the keyboard',()=>{
 test('keyboard dismissal still runs if the old input is already unmounted or native blur fails',()=>{
  let calls=0;const keyboard={dismiss:()=>calls++};dismissFocusedKeyboard(keyboard,{});dismissFocusedKeyboard(keyboard,{currentlyFocusedInput:()=>{throw new Error('unmounted');}});assert.equal(calls,2);
 });
+
+test('web username registration uses a valid HTML autocomplete token',()=>{assert.deepEqual(authAutofillProps('web',{autoComplete:'username-new'}),{autoComplete:'username'});assert.deepEqual(authAutofillProps('android',{autoComplete:'username-new'}),{autoComplete:'username-new'});});

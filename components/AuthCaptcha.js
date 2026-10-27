@@ -1,5 +1,6 @@
+import {Text, TouchableOpacity} from './AccessiblePrimitives';
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Platform, TouchableOpacity } from 'react-native';
+import {View, Platform} from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as Crypto from 'expo-crypto';
 import { useThemeStyles } from '../theme/ThemeProvider';

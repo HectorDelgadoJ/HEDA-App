@@ -1,3 +1,5 @@
+import {Switch} from './AccessiblePrimitives';
+import {Text, TextInput, TouchableOpacity, Modal} from './AccessiblePrimitives';
 import {Alert} from '../services/alerts';
 import { notifyFinanceChange } from '../services/financeEvents';
 import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
@@ -8,7 +10,7 @@ import { accountRows } from '../services/finance';
 import CardPayments from './CardPayments';
 import BalanceForecast from './BalanceForecast';
 import { useCallback, useRef, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Modal, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Keyboard, Switch } from 'react-native';
+import {View, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Keyboard} from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -162,7 +164,7 @@ export default function RecurringMovements({ onConfirmed, mode = 'simple', cards
       <TouchableOpacity accessibilityRole="button" style={styles.smallAction} onPress={loadRules}><Text style={styles.link}>Intentar de nuevo</Text></TouchableOpacity>
     </View> : <>
       <TouchableOpacity accessibilityRole="button" disabled={!!busy} style={styles.createButton} onPress={() => openForm()}>
-        <Ionicons name="add-circle-outline" size={22} color={themeColor("#FFFFFF", colors)} /><Text style={styles.buttonText}>Programar pago o ingreso</Text>
+        <Ionicons accessible={false} name="add-circle-outline" size={22} color={themeColor("#FFFFFF", colors)} /><Text style={styles.buttonText}>Programar pago o ingreso</Text>
       </TouchableOpacity>
       {rules.length ? <View style={styles.listHeading}><Text style={styles.listTitle}>Mis programaciones</Text><Text style={styles.countBadge}>{rules.length}</Text></View> : null}
       {!rules.length && <View style={styles.card}><Text style={styles.title}>Tu rutina, organizada</Text><Text style={styles.description}>Añade un pago o ingreso y elige cuándo se repite.</Text></View>}
@@ -180,20 +182,20 @@ export default function RecurringMovements({ onConfirmed, mode = 'simple', cards
             {busy === rule.id ? <ActivityIndicator color={themeColor("#FFFFFF", colors)} /> : <Text style={styles.buttonText}>{rule.type === 'income' ? 'Confirmar cobro' : rule.card_id ? 'Confirmar cargo' : 'Confirmar pago'} · {displayDate(rule.next_date)}</Text>}
           </TouchableOpacity>}
           <View style={styles.actions}>
-            <TouchableOpacity disabled={!!busy} accessibilityRole="button" style={themeStyle([styles.actionButton, styles.editAction, !!busy && styles.actionDisabled], colors)} onPress={() => openForm(rule)}><Ionicons name="create-outline" size={17} color={themeColor(colors.primary, colors)} /><Text style={styles.link}>Editar</Text></TouchableOpacity>
-            <TouchableOpacity disabled={!!busy} accessibilityRole="button" style={themeStyle([styles.actionButton, styles.pauseAction, !!busy && styles.actionDisabled], colors)} onPress={() => pause(rule)}><Ionicons name={rule.active ? 'pause-outline' : 'play-outline'} size={17} color={themeColor(colors.ink, colors)} /><Text style={themeStyle([styles.link, { color: colors.ink }], colors)}>{rule.active ? 'Pausar' : 'Reanudar'}</Text></TouchableOpacity>
-            <TouchableOpacity disabled={!!busy} accessibilityRole="button" style={themeStyle([styles.actionButton, styles.deleteAction, !!busy && styles.actionDisabled], colors)} onPress={() => deleteRule(rule)}><Ionicons name="trash-outline" size={17} color={themeColor(movementColors.Gasto.foreground, colors)} /><Text style={themeStyle([styles.link, { color: movementColors.Gasto.foreground }], colors)}>Eliminar</Text></TouchableOpacity>
+            <TouchableOpacity disabled={!!busy} accessibilityRole="button" style={themeStyle([styles.actionButton, styles.editAction, !!busy && styles.actionDisabled], colors)} onPress={() => openForm(rule)}><Ionicons accessible={false} name="create-outline" size={17} color={themeColor(colors.primary, colors)} /><Text style={styles.link}>Editar</Text></TouchableOpacity>
+            <TouchableOpacity disabled={!!busy} accessibilityRole="button" style={themeStyle([styles.actionButton, styles.pauseAction, !!busy && styles.actionDisabled], colors)} onPress={() => pause(rule)}><Ionicons accessible={false} name={rule.active ? 'pause-outline' : 'play-outline'} size={17} color={themeColor(colors.ink, colors)} /><Text style={themeStyle([styles.link, { color: colors.ink }], colors)}>{rule.active ? 'Pausar' : 'Reanudar'}</Text></TouchableOpacity>
+            <TouchableOpacity disabled={!!busy} accessibilityRole="button" style={themeStyle([styles.actionButton, styles.deleteAction, !!busy && styles.actionDisabled], colors)} onPress={() => deleteRule(rule)}><Ionicons accessible={false} name="trash-outline" size={17} color={themeColor(movementColors.Gasto.foreground, colors)} /><Text style={themeStyle([styles.link, { color: movementColors.Gasto.foreground }], colors)}>Eliminar</Text></TouchableOpacity>
           </View>
         </View>;
       })}
       <View style={styles.optionalCard}>
-        <View style={styles.optionalIcon}><Ionicons name="card-outline" size={23} color={themeColor(colors.primary, colors)} /></View>
+        <View style={styles.optionalIcon}><Ionicons accessible={false} name="card-outline" size={23} color={themeColor(colors.primary, colors)} /></View>
         <View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.listTitle}>Tarjetas por pagar</Text><Text style={styles.optionalLabel}>Opcional</Text></View>
         {cardsSaving ? <ActivityIndicator color={themeColor(colors.primary, colors)} /> : <Switch accessibilityLabel="Mostrar tarjetas por pagar" value={preferences.tools.cardPayments} onValueChange={toggleCards} disabled={!!busy || cardsSaving} trackColor={{true:colors.primary,false:colors.switchOff}} thumbColor={colors.onPrimary} ios_backgroundColor={colors.switchOff} />}
       </View>
       {preferences.tools.cardPayments ? <CardPayments mode={mode} transactions={forecastTransactions} onPaid={async () => {notifyFinanceChange();await loadRules();await onConfirmed();}} /> : null}
       <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: forecastOpen }} onPress={() => setForecastOpen(!forecastOpen)} style={styles.optionalCard}>
-        <View style={styles.optionalIcon}><Ionicons name="calendar-outline" size={23} color={themeColor(colors.primary, colors)} /></View><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.listTitle}>Saldo estimado</Text><Text style={styles.optionalLabel}>Hasta el cierre del próximo mes</Text></View><Ionicons name={forecastOpen ? 'chevron-up' : 'chevron-down'} size={20} color={themeColor(colors.primary, colors)} />
+        <View style={styles.optionalIcon}><Ionicons accessible={false} name="calendar-outline" size={23} color={themeColor(colors.primary, colors)} /></View><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.listTitle}>Saldo estimado</Text><Text style={styles.optionalLabel}>Hasta el cierre del próximo mes</Text></View><Ionicons accessible={false} name={forecastOpen ? 'chevron-up' : 'chevron-down'} size={20} color={themeColor(colors.primary, colors)} />
       </TouchableOpacity>
       {forecastOpen ? <BalanceForecast rules={rules} transactions={forecastTransactions} cards={cards} today={today} /> : null}
     </>}
@@ -205,7 +207,7 @@ export default function RecurringMovements({ onConfirmed, mode = 'simple', cards
             <Text style={styles.modalTitle}>{editingId ? 'Editar programación' : 'Nueva programación'}</Text>
             <TouchableOpacity accessibilityLabel="Cerrar formulario" accessibilityRole="button" disabled={!!busy}
               style={styles.closeButton} hitSlop={8} onPress={() => {Keyboard.dismiss();setVisible(false);}}>
-              <Ionicons name="close" size={22} color={themeColor(colors.ink, colors)} /><Text style={styles.closeText}>Cerrar</Text>
+              <Ionicons accessible={false} name="close" size={22} color={themeColor(colors.ink, colors)} /><Text style={styles.closeText}>Cerrar</Text>
             </TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={{ padding: 18 }} keyboardShouldPersistTaps="handled">

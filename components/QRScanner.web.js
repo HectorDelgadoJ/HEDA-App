@@ -1,5 +1,6 @@
+import {Text, TouchableOpacity} from './AccessiblePrimitives';
 import React,{useEffect,useRef,useState} from 'react';
-import {View,Text,TouchableOpacity} from 'react-native';
+import {View} from 'react-native';
 import jsQR from 'jsqr';
 import {useThemeStyles} from '../theme/ThemeProvider';
 export default function QRScanner({onCode}){

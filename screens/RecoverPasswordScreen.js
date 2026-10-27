@@ -1,5 +1,6 @@
+import {Text} from '../components/AccessiblePrimitives';
 import React,{useCallback,useEffect,useRef,useState} from 'react';
-import {Text,View} from 'react-native';
+import {View} from 'react-native';
 import AuthLayout from '../components/AuthLayout';
 import {AuthButton,AuthField,AuthNotice} from '../components/AuthFields';
 import AuthCaptcha,{useAuthCaptcha} from '../components/AuthCaptcha';

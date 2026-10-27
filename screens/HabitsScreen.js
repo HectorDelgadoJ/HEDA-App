@@ -1,7 +1,8 @@
+import {Text, TouchableOpacity} from '../components/AccessiblePrimitives';
 import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
 import InfoButton from '../components/InfoButton';
 import React, { useCallback, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import {View, StyleSheet, ScrollView, ActivityIndicator, RefreshControl} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -75,10 +76,10 @@ export default function HabitsScreen({ navigation }) {
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={themeColor(colors.primary, colors)} />}>
       <ScreenHeader title="Hábitos" subtitle="Descubre patrones en lo que registras." actionIcon="arrow-back" actionLabel="Volver a IA" onAction={() => go('IA')} />
       <Text style={styles.gestureHint}>← Desliza hacia la izquierda para volver a IA</Text>
-      {loading ? <View style={styles.state}><ActivityIndicator color={themeColor(colors.primary, colors)} /><Text style={styles.body}>Revisando tus movimientos…</Text></View> : error ? <View style={styles.card}><Ionicons name="cloud-offline-outline" size={30} color={themeColor(colors.primary, colors)} /><Text style={styles.title}>No pudimos preparar el análisis</Text><Text style={styles.body}>{error}</Text><Action label="Reintentar" icon="refresh-outline" onPress={() => load()} /></View> : null}
+      {loading ? <View style={styles.state}><ActivityIndicator color={themeColor(colors.primary, colors)} /><Text style={styles.body}>Revisando tus movimientos…</Text></View> : error ? <View style={styles.card}><Ionicons accessible={false} name="cloud-offline-outline" size={30} color={themeColor(colors.primary, colors)} /><Text style={styles.title}>No pudimos preparar el análisis</Text><Text style={styles.body}>{error}</Text><Action label="Reintentar" icon="refresh-outline" onPress={() => load()} /></View> : null}
       {showData ? <>
         <View style={styles.hero}>
-          <View style={styles.row}><Text style={styles.heroEyebrow}>TUS REGISTROS · {monthLabel.toUpperCase()}</Text><Ionicons name="analytics-outline" size={24} color={themeColor("#FFFFFF", colors)} /></View>
+          <View style={styles.row}><Text style={styles.heroEyebrow}>TUS REGISTROS · {monthLabel.toUpperCase()}</Text><Ionicons accessible={false} name="analytics-outline" size={24} color={themeColor("#FFFFFF", colors)} /></View>
           <Text style={styles.heroTitle}>{data.transactionCount ? 'Cada registro cuenta' : 'Tu primer paso empieza aquí'}</Text>
           <Text style={styles.heroText}>{data.transactionCount ? `Registraste movimientos en ${data.activeDays} de los ${data.elapsedDays} días transcurridos del mes.` : 'Agrega tus ingresos y gastos para descubrir cómo se mueve tu dinero. No hace falta registrar algo todos los días.'}</Text>
           <View style={styles.track}><View style={themeStyle([styles.fill, { width: `${data.recordingPercent}%` }], colors)} /></View>
@@ -97,7 +98,7 @@ export default function HabitsScreen({ navigation }) {
           <InfoButton title={"Cómo interpretar la diferencia del mes"} text={"Es la diferencia entre ingresos y gastos registrados; no es tu saldo disponible ni ahorro confirmado."} />
         </View>
         <View style={styles.card}>
-          <View style={styles.heading}><Ionicons name="pie-chart-outline" size={24} color={themeColor(colors.primary, colors)} /><Text accessibilityRole="header" style={themeStyle([styles.title, styles.flex], colors)}>¿Dónde se concentra tu gasto?</Text></View>
+          <View style={styles.heading}><Ionicons accessible={false} name="pie-chart-outline" size={24} color={themeColor(colors.primary, colors)} /><Text accessibilityRole="header" style={themeStyle([styles.title, styles.flex], colors)}>¿Dónde se concentra tu gasto?</Text></View>
           {top ? <><Text style={styles.highlight}>{top.name}</Text><Text style={styles.body}>{top.percent}% de tus gastos del mes · {money(top.amount)}</Text><InfoButton title={"Cómo se identifica tu categoría principal"} text={"Es tu categoría de mayor gasto registrado. Eso no significa que sea un gasto excesivo."} />
             {data.categories.slice(0, 5).map((category, index) => <View key={category.name} style={styles.category}><View style={styles.row}><Text style={themeStyle([styles.categoryName, styles.flex], colors)}>{category.name}</Text><Text style={styles.categoryValue}>{money(category.amount)}</Text></View><View style={styles.categoryTrack}><View style={themeStyle({ height: '100%', borderRadius: 5, width: `${category.percent}%`, backgroundColor: accents[index] }, colors)} /></View></View>)}
             {data.categories.length > 5 ? <Text style={styles.small}>Aquí ves las cinco categorías principales. Consulta el detalle completo en Reportes.</Text> : null}
@@ -105,7 +106,7 @@ export default function HabitsScreen({ navigation }) {
           </> : <><Text style={styles.body}>Aún no hay gastos registrados este mes para identificar una categoría principal.</Text><Action secondary label="Registrar un gasto" icon="add-outline" onPress={() => go('Movimientos')} /></>}
         </View>
         <View style={styles.card}>
-          <View style={styles.heading}><Ionicons name="swap-vertical-outline" size={24} color={themeColor(colors.primary, colors)} /><Text accessibilityRole="header" style={themeStyle([styles.title, styles.flex], colors)}>Comparación con el mes anterior</Text></View>
+          <View style={styles.heading}><Ionicons accessible={false} name="swap-vertical-outline" size={24} color={themeColor(colors.primary, colors)} /><Text accessibilityRole="header" style={themeStyle([styles.title, styles.flex], colors)}>Comparación con el mes anterior</Text></View>
           <Text style={styles.body}>Comparamos del día 1 al {comparison.days} de ambos meses.</Text>
           <View style={styles.compare}><Text style={styles.small}>{range(comparison.previousStart, comparison.previousEnd)}</Text><Text style={styles.amount}>{money(comparison.previousExpenses)}</Text></View>
           <View style={styles.compare}><Text style={styles.small}>{range(comparison.currentStart, comparison.currentEnd)}</Text><Text style={styles.amount}>{money(comparison.currentExpenses)}</Text></View>
@@ -126,11 +127,11 @@ export default function HabitsScreen({ navigation }) {
 
 function Metric({ label, value, icon }) {
   const { colors, styles } = useThemeStyles(makeStyles);
-  return <View style={themeStyle([styles.card, styles.metric], colors)}><Ionicons name={icon} size={23} color={themeColor(colors.primary, colors)} /><Text style={styles.metricValue}>{value}</Text><Text style={styles.small}>{label}</Text></View>;
+  return <View style={themeStyle([styles.card, styles.metric], colors)}><Ionicons accessible={false} name={icon} size={23} color={themeColor(colors.primary, colors)} /><Text style={styles.metricValue}>{value}</Text><Text style={styles.small}>{label}</Text></View>;
 }
 function Action({ label, icon, onPress, secondary, light }) {
   const { colors, styles } = useThemeStyles(makeStyles);
-  return <TouchableOpacity accessibilityRole="button" style={themeStyle([styles.action, secondary && styles.secondary, light && styles.light], colors)} onPress={onPress}><Ionicons name={icon} size={20} color={themeColor(secondary || light ? colors.primary : '#FFFFFF', colors)} /><Text style={themeStyle([styles.actionText, (secondary || light) && styles.link], colors)}>{label}</Text></TouchableOpacity>;
+  return <TouchableOpacity accessibilityRole="button" style={themeStyle([styles.action, secondary && styles.secondary, light && styles.light], colors)} onPress={onPress}><Ionicons accessible={false} name={icon} size={20} color={themeColor(secondary || light ? colors.primary : '#FFFFFF', colors)} /><Text style={themeStyle([styles.actionText, (secondary || light) && styles.link], colors)}>{label}</Text></TouchableOpacity>;
 }
 const makeStyles = (colors) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },

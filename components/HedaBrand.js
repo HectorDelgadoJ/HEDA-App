@@ -1,5 +1,6 @@
+import {Text} from './AccessiblePrimitives';
 import React from 'react';
-import {Image,View,Text} from 'react-native';
+import {Image, View} from 'react-native';
 import {useThemeStyles} from '../theme/ThemeProvider';
 export default function HedaBrand({size=42,light=false,compact=false}){
  const {colors}=useThemeStyles();

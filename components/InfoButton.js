@@ -1,7 +1,8 @@
+import {TouchableOpacity} from './AccessiblePrimitives';
 import {Alert} from '../services/alerts';
 import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
 import React from 'react';
-import { Keyboard, StyleSheet, TouchableOpacity } from 'react-native';
+import {Keyboard, StyleSheet} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
@@ -12,7 +13,7 @@ export default function InfoButton({ title = 'Más información', text, style })
     Keyboard.dismiss();
     Alert.alert(title, text, [{ text: 'Entendido', style: 'cancel' }], { cancelable: true });
   }}>
-    <Ionicons name="information-circle" size={25} color={themeColor(colors.primary, colors)} />
+    <Ionicons accessible={false} name="information-circle" size={25} color={themeColor(colors.primary, colors)} />
   </TouchableOpacity>;
 }
 const makeStyles = (colors) => StyleSheet.create({ button: { width: 44, height: 44, alignSelf: 'flex-end', alignItems: 'center', justifyContent: 'center', borderRadius: 22 } });

@@ -1,0 +1,57 @@
+[
+  {
+    "name": "Inicio",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "Movimientos",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "Reportes",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "IA",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "Perfil",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "Personalizar accesibilidad",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "Inicio texto 200%",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  }
+]

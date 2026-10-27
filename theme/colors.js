@@ -1,9 +1,9 @@
 export const lightColors = {
-  dark: false, background: '#F5F7FB', primary: '#2474EA', link: '#2474EA', ink: '#183153', muted: '#64748B',
+  dark: false, background: '#F5F7FB', primary: '#1D63D8', link: '#175CC4', ink: '#183153', muted: '#59687E',
   softBlue: '#EDF4FF', border: '#E2E8F0', surface: '#FFFFFF', raised: '#F1F5F9',
   headerBackground: '#EDF4FF', headerBorder: '#D8E5FA',
-  input:'#FFFFFF', inputBorder:'#B7C5D8', placeholder:'#64748B', onPrimary:'#FFFFFF',
-  income:'#157347', expense:'#B42332', incomeSurface:'#EAF7EF', expenseSurface:'#FFF0F1', warning:'#925F10', warningSurface:'#FFF4E5', overlay:'rgba(9,22,42,0.40)', switchOff:'#CBD5E1',
+  input:'#FFFFFF', inputBorder:'#718198', placeholder:'#64748B', onPrimary:'#FFFFFF',
+  income:'#157347', expense:'#B42332', incomeSurface:'#EAF7EF', expenseSurface:'#FFF0F1', warning:'#925F10', warningSurface:'#FFF4E5', overlay:'rgba(9,22,42,0.40)', switchOff:'#64748B',
 };
 export const darkColors = {
   dark: true, background: '#0B1220', primary: '#2563EB', link: '#93C5FD', ink: '#E5ECF8', muted: '#A8B7CC',

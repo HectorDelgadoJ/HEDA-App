@@ -1,3 +1,4 @@
+import {Text, TouchableOpacity, Modal, TextInput} from '../components/AccessiblePrimitives';
 import AdminEntry from '../components/AdminEntry';
 import BirthDateField from '../components/BirthDateField';
 import {displayBirthDate,ageFromBirthDate} from '../utils/birthDate';
@@ -11,7 +12,7 @@ import AuthCaptcha, { useAuthCaptcha } from '../components/AuthCaptcha';
 import { isCustomizedExperience } from '../utils/experience';
 import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
 import React, { useCallback, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import {View, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, KeyboardAvoidingView, Platform, Keyboard} from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -142,8 +143,8 @@ export default function ProfileScreen({ navigation }) {
       {error ? <View style={styles.errorBox}><Text style={styles.body}>{error}</Text><TouchableOpacity accessibilityRole="button" style={styles.retry} onPress={() => load()}><Text style={styles.link}>Reintentar</Text></TouchableOpacity></View> : null}
       <View style={styles.identity}><View style={styles.avatar}><Text style={styles.initials}>{profileInitials(name)}</Text></View><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.name}>{name}</Text><Text style={styles.email}>{user?.email || 'Cargando cuenta…'}</Text>{profile?.birth_date ? <Text style={styles.email}>{ageFromBirthDate(profile.birth_date)} años</Text> : null}{profile?.username ? <Text style={styles.username}>@{profile.username}</Text> : null}</View></View>
       {loading ? <ActivityIndicator color={themeColor(colors.primary, colors)} style={themeStyle({ marginBottom: 18 }, colors)} /> : null}
-      {notice ? <View accessibilityLiveRegion="polite" style={styles.success}><Ionicons name="checkmark-circle-outline" size={21} color={themeColor("#15803D", colors)} /><Text style={themeStyle([styles.body, { color: '#15803D', flex: 1 }], colors)}>{notice}</Text></View> : null}
-      <TouchableOpacity accessibilityRole="button" style={styles.personalize} onPress={openSettings}><View style={styles.icon}><Ionicons name="options-outline" size={23} color={themeColor(colors.primary, colors)} /></View><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.rowTitle}>Personalizar HEDA</Text><Text style={styles.subtitle}>Vista {isCustomizedExperience(preferences) ? 'personalizada' : simple ? 'simple' : 'completa'} · Inicio y herramientas</Text></View><Ionicons name="chevron-forward" size={20} color={themeColor(colors.primary, colors)} /></TouchableOpacity>
+      {notice ? <View accessibilityLiveRegion="polite" style={styles.success}><Ionicons accessible={false} name="checkmark-circle-outline" size={21} color={themeColor("#15803D", colors)} /><Text style={themeStyle([styles.body, { color: '#15803D', flex: 1 }], colors)}>{notice}</Text></View> : null}
+      <TouchableOpacity accessibilityRole="button" style={styles.personalize} onPress={openSettings}><View style={styles.icon}><Ionicons accessible={false} name="options-outline" size={23} color={themeColor(colors.primary, colors)} /></View><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.rowTitle}>Personalizar HEDA</Text><Text style={styles.subtitle}>Vista {isCustomizedExperience(preferences) ? 'personalizada' : simple ? 'simple' : 'completa'} · Inicio y herramientas</Text></View><Ionicons accessible={false} name="chevron-forward" size={20} color={themeColor(colors.primary, colors)} /></TouchableOpacity>
       <Text style={styles.section}>Cuenta</Text><View style={styles.group}>
         <Option icon="person-outline" title="Editar perfil" text="Nombre, usuario y ocupación" disabled={!profile || loading} onPress={() => openPanel('edit')} />
         <Option icon="lock-closed-outline" title="Cambiar contraseña" text="Verifica tu contraseña actual" disabled={!user || loading} onPress={() => openPanel('password')} />
@@ -160,14 +161,14 @@ export default function ProfileScreen({ navigation }) {
         <Option icon="help-circle-outline" title="Ayuda rápida" onPress={() => openPanel('help')} />
         <Option icon="information-circle-outline" title="Acerca de HEDA" last onPress={() => openPanel('about')} />
       </View>
-      <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: logoutBusy || saving }} disabled={logoutBusy || saving} onPress={logout} style={styles.logout}><Ionicons name="log-out-outline" size={21} color={themeColor("#B42332", colors)} /><Text style={styles.logoutText}>{logoutBusy ? 'Cerrando sesión…' : 'Cerrar sesión'}</Text></TouchableOpacity>
+      <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: logoutBusy || saving }} disabled={logoutBusy || saving} onPress={logout} style={styles.logout}><Ionicons accessible={false} name="log-out-outline" size={21} color={themeColor("#B42332", colors)} /><Text style={styles.logoutText}>{logoutBusy ? 'Cerrando sesión…' : 'Cerrar sesión'}</Text></TouchableOpacity>
       <TouchableOpacity accessibilityRole="button" disabled={!user||loading||saving||logoutBusy} onPress={()=>{dismissAuthKeyboard();setDeleteOpen(true);}} style={{minHeight:48,alignItems:'center',justifyContent:'center',marginTop:8}}><Text style={{color:colors.expense,fontSize:14,fontWeight:'600'}}>Eliminar cuenta</Text></TouchableOpacity>
       <Text style={styles.version}>HEDA · {version}</Text>
     </ScrollView>
     {deleteOpen&&user?<DeleteAccountPanel ownerId={user.id} email={user.email} onClose={()=>setDeleteOpen(false)}/>:null}
     <Modal visible={!!panel} animationType="slide" presentationStyle="pageSheet" onRequestClose={closePanel}>
       <SafeAreaProvider><SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={styles.safe}><KeyboardAvoidingView style={themeStyle({ flex: 1 }, colors)} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.modalHeader}><Text accessibilityRole="header" style={styles.modalTitle}>{panel === 'edit' ? 'Editar perfil' : panel === 'password' ? 'Cambiar contraseña' : details?.title}</Text><TouchableOpacity accessibilityRole="button" accessibilityLabel="Cerrar formulario" hitSlop={8} style={styles.close} disabled={saving} onPress={closePanel}><Ionicons name="close" size={21} color={themeColor(colors.primary, colors)} /><Text style={styles.closeText}>Cerrar</Text></TouchableOpacity></View>
+        <View style={styles.modalHeader}><Text accessibilityRole="header" style={styles.modalTitle}>{panel === 'edit' ? 'Editar perfil' : panel === 'password' ? 'Cambiar contraseña' : details?.title}</Text><TouchableOpacity accessibilityRole="button" accessibilityLabel="Cerrar formulario" hitSlop={8} style={styles.close} disabled={saving} onPress={closePanel}><Ionicons accessible={false} name="close" size={21} color={themeColor(colors.primary, colors)} /><Text style={styles.closeText}>Cerrar</Text></TouchableOpacity></View>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {panel === 'edit' ? <>
             <Field label="Nombre completo" value={draft.full_name} onChangeText={(value) => setDraft((previous) => ({ ...previous, full_name: value }))} error={fields.full_name} maxLength={100} editable={!saving} autoComplete="name" />
@@ -179,7 +180,7 @@ export default function ProfileScreen({ navigation }) {
             <Field label="Contraseña actual" value={passwords.current} onChangeText={(value) => setPasswords((previous) => ({ ...previous, current: value }))} error={fields.current} maxLength={128} editable={!saving} secureTextEntry={!visiblePassword} autoCapitalize="none" autoCorrect={false} autoComplete="current-password" />
             <Field label="Nueva contraseña" value={passwords.next} onChangeText={(value) => setPasswords((previous) => ({ ...previous, next: value }))} error={fields.next} maxLength={128} editable={!saving} secureTextEntry={!visiblePassword} autoCapitalize="none" autoCorrect={false} autoComplete="new-password" />
             <Field label="Confirmar nueva contraseña" value={passwords.confirmation} onChangeText={(value) => setPasswords((previous) => ({ ...previous, confirmation: value }))} error={fields.confirmation} maxLength={128} editable={!saving} secureTextEntry={!visiblePassword} autoCapitalize="none" autoCorrect={false} autoComplete="new-password" />
-            <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: visiblePassword }} style={styles.retry} disabled={saving} onPress={() => {dismissAuthKeyboard();setVisiblePassword(!visiblePassword);}}><Ionicons name={visiblePassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={themeColor(colors.primary, colors)} /><Text style={styles.link}>{visiblePassword ? 'Ocultar contraseñas' : 'Mostrar contraseñas'}</Text></TouchableOpacity>
+            <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: visiblePassword }} style={styles.retry} disabled={saving} onPress={() => {dismissAuthKeyboard();setVisiblePassword(!visiblePassword);}}><Ionicons accessible={false} name={visiblePassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={themeColor(colors.primary, colors)} /><Text style={styles.link}>{visiblePassword ? 'Ocultar contraseñas' : 'Mostrar contraseñas'}</Text></TouchableOpacity>
             <InfoButton title="Requisitos de contraseña" text="Utiliza entre 8 y 128 caracteres. Supabase puede aplicar requisitos adicionales. Las contraseñas se envían al servicio de autenticación; no se guardan en tu perfil ni se comparten con IA." />
           </> : details?.sections.map(([title, text]) => <View key={title} style={styles.infoSection}><Text style={styles.rowTitle}>{title}</Text><Text style={themeStyle([styles.body, { marginTop: 9 }], colors)}>{text}</Text></View>)}
           {panel==='password'?<AuthCaptcha captcha={captcha}/>:null}
@@ -196,7 +197,7 @@ function Field({ label, error, autoComplete, textContentType, ...props }) {
 }
 function Option({ icon, title, text, onPress, disabled, last }) {
   const { colors, styles } = useThemeStyles(makeStyles);
-  return <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: !!disabled }} disabled={disabled} onPress={onPress} style={themeStyle([styles.option, !last && styles.divider, disabled && { opacity: 0.5 }], colors)}><View style={styles.icon}><Ionicons name={icon} size={22} color={themeColor(colors.primary, colors)} /></View><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.rowTitle}>{title}</Text>{text ? <Text style={styles.subtitle}>{text}</Text> : null}</View><Ionicons name="chevron-forward" size={18} color={themeColor(colors.muted, colors)} /></TouchableOpacity>;
+  return <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: !!disabled }} disabled={disabled} onPress={onPress} style={themeStyle([styles.option, !last && styles.divider, disabled && { opacity: 0.5 }], colors)}><View style={styles.icon}><Ionicons accessible={false} name={icon} size={22} color={themeColor(colors.primary, colors)} /></View><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.rowTitle}>{title}</Text>{text ? <Text style={styles.subtitle}>{text}</Text> : null}</View><Ionicons accessible={false} name="chevron-forward" size={18} color={themeColor(colors.muted, colors)} /></TouchableOpacity>;
 }
 const makeStyles = (colors) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background }, content: { padding: 18, paddingBottom: 30 },

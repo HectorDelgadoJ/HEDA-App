@@ -1,5 +1,6 @@
+import {Text, TouchableOpacity} from './AccessiblePrimitives';
 import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import {View, StyleSheet} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 export default function PaymentSource({ cards, value, onChange, disabled, onManage }) {
@@ -8,7 +9,7 @@ export default function PaymentSource({ cards, value, onChange, disabled, onMana
   return <View style={styles.container}>
     <Text style={styles.label}>¿Cómo lo pagas?</Text>
     <View style={styles.row}>{choices.map((card) => <TouchableOpacity key={card.id || 'cash'} accessibilityRole="radio" accessibilityState={{ checked: value === card.id, disabled }} disabled={disabled} onPress={() => onChange(card.id)} style={themeStyle([styles.button, value === card.id && styles.selected], colors)}>
-      <Ionicons name={card.id ? 'card-outline' : 'wallet-outline'} size={18} color={themeColor(colors.primary, colors)} /><Text style={styles.text}>{card.name}</Text>
+      <Ionicons accessible={false} name={card.id ? 'card-outline' : 'wallet-outline'} size={18} color={themeColor(colors.primary, colors)} /><Text style={styles.text}>{card.name}</Text>
     </TouchableOpacity>)}</View>
     {value && !choices.some((card) => card.id === value) && <Text style={styles.error}>La tarjeta ya no está disponible. Elige dónde registrar este gasto.</Text>}
     <Text style={styles.caption}>{value ? 'Aumenta la deuda de esta tarjeta. Tu saldo cambia cuando la pagas.' : 'Se descuenta directamente de tu saldo disponible.'}</Text>

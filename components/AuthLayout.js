@@ -1,10 +1,11 @@
+import {Text, TouchableOpacity} from './AccessiblePrimitives';
 import LegalLinks from './LegalLinks';
 import {InstallHint} from './WebInstallProvider';
 import HedaBrand from './HedaBrand';
 import { useFocusEffect } from '@react-navigation/native';
 import { dismissAuthKeyboard } from '../services/keyboard';
 import React, { useCallback } from 'react';
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity } from 'react-native';
+import {View, ScrollView, KeyboardAvoidingView, Platform, StyleSheet} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStyles } from '../theme/ThemeProvider';
@@ -13,7 +14,7 @@ export default function AuthLayout({title,description,children,onBack,backLabel=
   useFocusEffect(useCallback(()=>()=>dismissAuthKeyboard(),[]));
   return <SafeAreaView style={styles.safe}><KeyboardAvoidingView style={styles.flex} behavior={Platform.OS==='ios'?'padding':undefined}><ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets={false} contentInsetAdjustmentBehavior="never" showsVerticalScrollIndicator={false}>
     <View style={styles.shell}>
-      <View style={styles.top}>{onBack?<TouchableOpacity accessibilityRole="button" onPress={onBack} style={styles.back}><Ionicons name="arrow-back" size={21} color={colors.link}/><Text style={styles.link}>{backLabel}</Text></TouchableOpacity>:<Text style={styles.wordmark}>FINANZAS A TU RITMO</Text>}{step?<Text style={styles.step}>{step}</Text>:null}</View>
+      <View style={styles.top}>{onBack?<TouchableOpacity accessibilityRole="button" onPress={onBack} style={styles.back}><Ionicons accessible={false} name="arrow-back" size={21} color={colors.link}/><Text style={styles.link}>{backLabel}</Text></TouchableOpacity>:<Text style={styles.wordmark}>FINANZAS A TU RITMO</Text>}{step?<Text style={styles.step}>{step}</Text>:null}</View>
       {showBanner?<View style={styles.banner}><View style={{marginBottom:14}}><HedaBrand light/></View><Text style={styles.bannerTitle}>Tu dinero, más claro.</Text><Text style={styles.bannerText}>Organiza tus gastos, recuerda tus pagos y avanza a tu ritmo.</Text></View>:<View style={{marginBottom:18}}><HedaBrand/></View>}
       <View style={styles.card}><Text accessibilityRole="header" style={styles.title}>{title}</Text><Text style={styles.description}>{description}</Text>{children}<LegalLinks/></View><InstallHint/>
     </View>

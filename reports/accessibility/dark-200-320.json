@@ -1,0 +1,65 @@
+[
+  {
+    "name": "Inicio 200%",
+    "violations": [],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "Movimientos 200%",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "Reportes 200%",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "Perfil 200%",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "IA 200%",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "Inicio 200%",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "Ethereum 200%",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  },
+  {
+    "name": "Opciones 200%",
+    "violations": [],
+    "incomplete": [
+      "aria-hidden-focus",
+      "color-contrast"
+    ]
+  }
+]

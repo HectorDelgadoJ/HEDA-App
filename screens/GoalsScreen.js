@@ -1,3 +1,4 @@
+import {Text, TouchableOpacity, TextInput, Modal} from '../components/AccessiblePrimitives';
 import {Alert} from '../services/alerts';
 import { notifyFinanceChange } from '../services/financeEvents';
 import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
@@ -13,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import React, { useCallback, useMemo, useState } from 'react';
 
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator, RefreshControl, Keyboard, KeyboardAvoidingView, TouchableWithoutFeedback, Platform, InputAccessoryView } from 'react-native';
+import {View, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, Keyboard, KeyboardAvoidingView, TouchableWithoutFeedback, Platform, InputAccessoryView} from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -524,9 +525,9 @@ export default function GoalsScreen() {
 
         {loadError && <View style={styles.notice}><Text style={styles.cardText}>No pudimos actualizar todos los datos. Desliza hacia abajo para reintentar.</Text></View>}
         <View style={styles.periodNav}>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Periodo anterior" style={styles.periodButton} onPress={() => {setPeriodOffset((value) => value - 1);setSelectedBar(null);}}><Ionicons name="chevron-back" size={22} color={themeColor(colors.ink, colors)} /></TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Periodo anterior" style={styles.periodButton} onPress={() => {setPeriodOffset((value) => value - 1);setSelectedBar(null);}}><Ionicons accessible={false} name="chevron-back" size={22} color={themeColor(colors.ink, colors)} /></TouchableOpacity>
           <Text style={styles.periodText}>{periodText}</Text>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Periodo siguiente" disabled={periodOffset === 0} style={themeStyle([styles.periodButton, periodOffset === 0 && { opacity: 0.3 }], colors)} onPress={() => {setPeriodOffset((value) => Math.min(value + 1, 0));setSelectedBar(null);}}><Ionicons name="chevron-forward" size={22} color={themeColor(colors.ink, colors)} /></TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Periodo siguiente" disabled={periodOffset === 0} style={themeStyle([styles.periodButton, periodOffset === 0 && { opacity: 0.3 }], colors)} onPress={() => {setPeriodOffset((value) => Math.min(value + 1, 0));setSelectedBar(null);}}><Ionicons accessible={false} name="chevron-forward" size={22} color={themeColor(colors.ink, colors)} /></TouchableOpacity>
         </View>
         {/* RESUMEN */}
 
@@ -606,7 +607,7 @@ export default function GoalsScreen() {
             setGoalModalVisible(true)
             }>
 
-            <Ionicons name="add" size={20} color={themeColor("#FFFFFF", colors)} />
+            <Ionicons accessible={false} name="add" size={20} color={themeColor("#FFFFFF", colors)} />
             <Text style={styles.newGoalButtonText}>Nueva meta</Text>
           </TouchableOpacity>
         </View>
@@ -705,7 +706,7 @@ export default function GoalsScreen() {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Eliminar meta ${mainGoal.name}`} disabled={!!deletingGoalId} onPress={() => confirmDeleteGoal(mainGoal)} style={themeStyle([styles.deleteGoalButton, deletingGoalId && { opacity: 0.5 }], colors)}>
-              {deletingGoalId === mainGoal.id ? <ActivityIndicator color={themeColor("#B42332", colors)} /> : <><Ionicons name="trash-outline" size={17} color={themeColor("#B42332", colors)} /><Text style={styles.deleteGoalText}>Eliminar meta</Text></>}
+              {deletingGoalId === mainGoal.id ? <ActivityIndicator color={themeColor("#B42332", colors)} /> : <><Ionicons accessible={false} name="trash-outline" size={17} color={themeColor("#B42332", colors)} /><Text style={styles.deleteGoalText}>Eliminar meta</Text></>}
             </TouchableOpacity>
           </View>);
         }) :
@@ -1031,7 +1032,7 @@ export default function GoalsScreen() {
                   {chooseGoalDate ? <>
                     <MovementDate title="Fecha meta" value={goalDate || localDate()} onChange={setGoalDate} initiallyOpen />
                     <TouchableOpacity accessibilityRole="button" style={styles.optionalDateButton} onPress={() => {setGoalDate('');setChooseGoalDate(false);}}><Text style={styles.sectionLink}>Quitar fecha · Sin fecha límite</Text></TouchableOpacity>
-                  </> : <TouchableOpacity accessibilityRole="button" style={styles.optionalDateButton} onPress={() => {Keyboard.dismiss();setGoalDate(localDate());setChooseGoalDate(true);}}><Ionicons name="calendar-outline" size={20} color={themeColor(colors.primary, colors)} /><Text style={styles.sectionLink}>Elegir fecha</Text></TouchableOpacity>}
+                  </> : <TouchableOpacity accessibilityRole="button" style={styles.optionalDateButton} onPress={() => {Keyboard.dismiss();setGoalDate(localDate());setChooseGoalDate(true);}}><Ionicons accessible={false} name="calendar-outline" size={20} color={themeColor(colors.primary, colors)} /><Text style={styles.sectionLink}>Elegir fecha</Text></TouchableOpacity>}
                   <Text style={styles.chartHint}>Puedes crear la meta sin fecha límite.</Text>
 
                   <TouchableOpacity

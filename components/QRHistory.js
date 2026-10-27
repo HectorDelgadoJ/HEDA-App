@@ -1,5 +1,6 @@
+import {Text, TouchableOpacity} from './AccessiblePrimitives';
 import React,{useState} from 'react';
-import {View,Text,TouchableOpacity} from 'react-native';
+import {View} from 'react-native';
 import {supabase} from '../services/supabase';
 import {ttRPC} from '../services/tt';
 import {useThemeStyles} from '../theme/ThemeProvider';

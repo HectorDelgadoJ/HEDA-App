@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-26",
+  "reference": "WCAG 2.2 A/AA",
+  "tool": "axe-core 4.10.3",
+  "environment": "Headless Microsoft Edge, local Expo web export, mocked authenticated backend; no real user records or provider requests.",
+  "audits": 48,
+  "violationsDetected": 0,
+  "manualReviewRuleIds": [
+    "aria-hidden-focus",
+    "aria-prohibited-attr",
+    "color-contrast"
+  ],
+  "unitTests": {
+    "passed": 252,
+    "failed": 0,
+    "skipped": 0
+  },
+  "nativeExports": [
+    "Android",
+    "iOS"
+  ],
+  "physicalScreenReadersTested": false,
+  "conformanceClaim": false,
+  "scope": "Sampled screens and states only; not a WCAG conformance certification."
+}

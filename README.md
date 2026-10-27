@@ -308,3 +308,6 @@ Primera LSTM experimental real (OHLCV diario, tendencias 1/7 días). Consulta [p
 ## Cierre de módulos TT (26/10/2026)
 
 [Guía de publicación de los puntos 1–5](GUIA_CIERRE_TT_HEDA.md): SQL 013/014 → funciones → dist → cuenta de administrador → permisos y envío programado opcional. Incluye QR verificable, presupuestos por periodo, contenido personalizado y progreso sincronizado, administrador y avisos. La LSTM v2 sigue siendo experimental; consulta los resultados en ml/ethereum/reports.
+
+
+Accesibilidad y atajos de los módulos: ver [ACCESIBILIDAD_HEDA_TT.md](ACCESIBILIDAD_HEDA_TT.md) para opciones, evidencia automatizada, demostración y pruebas físicas pendientes.

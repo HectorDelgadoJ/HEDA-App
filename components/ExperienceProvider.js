@@ -1,9 +1,11 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {Modal, TouchableOpacity, Text} from './AccessiblePrimitives';
 import GoogleProfileGate from './GoogleProfileGate';
 import WebInstallProvider from './WebInstallProvider';
 import AppDialogs from './AppDialogs';
 import {welcomeStage} from '../utils/welcome';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { Modal, View, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
+import {View, ActivityIndicator} from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../services/supabase';
 import { normalizeExperience } from '../utils/experience';
@@ -19,7 +21,7 @@ export default function ExperienceProvider({ user, children }) {
   const [profileReady, setProfileReady] = useState(!user);
   const [ready, setReady] = useState(!user);
   const [manualTour,setManualTour]=useState(false),[tourRun,setTourRun]=useState(0);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false),[settingsSection,setSettingsSection]=useState('view');
   const [previewTheme, setPreviewTheme] = useState(null);
   const colors = (previewTheme || preferences.theme) === 'dark' ? darkColors : lightColors;
   const [deferred, setDeferred] = useState(false);
@@ -31,13 +33,14 @@ export default function ExperienceProvider({ user, children }) {
     active.current = true;
     const version = revision.current;
     const fallback = setTimeout(() => { if (active.current) setReady(true); }, 8000);
+    if(!userId)void AsyncStorage.getItem('heda:guest-accessibility:v1').then(raw=>{if(active.current&&revision.current===version&&raw){const saved=JSON.parse(raw);setPreferences(normalizeExperience({...preferences,accessibility:saved.accessibility,theme:saved.theme}));}}).catch(()=>{});
     if (userId) supabase.auth.getUser().then(({ data, error }) => {
       if (active.current && revision.current === version && !error && data.user?.id === userId) setPreferences(normalizeExperience(data.user.user_metadata?.heda_experience));
     }).catch(() => {}).finally(() => { if (active.current) setReady(true); });
     return () => { clearTimeout(fallback); active.current = false; revision.current++; };
   }, [userId]);
   async function savePreferences(next) {
-    if (busy.current || !userId) return false;
+    if(busy.current)return false;if(!userId){revision.current++;const guest=normalizeExperience({...next,version:1});try{await AsyncStorage.setItem('heda:guest-accessibility:v1',JSON.stringify({accessibility:guest.accessibility,theme:guest.theme}));setPreferences(guest);setPreviewTheme(null);setSettingsOpen(false);return true;}catch{setError('No se pudieron guardar los ajustes en este dispositivo. Reintenta.');return false;}}
     busy.current = true; setSaving(true); setError(''); revision.current++;
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -55,11 +58,11 @@ export default function ExperienceProvider({ user, children }) {
   const tourOpen=!!userId&&profileReady&&ready&&!onboarding&&!settingsOpen&&(manualTour||stage==='tour');
   async function finishTour(){if(await savePreferences({...preferences,tourDone:true})){setManualTour(false);}}
   function openTour(){setError('');setTourRun(value=>value+1);setManualTour(true);}
-  return <ThemeProvider theme={previewTheme || preferences.theme}><Context.Provider value={{ preferences, tourOpen,tourRun,finishTour,openTour,saving,error, simple: preferences.mode === 'simple', openSettings: () => { setError(''); setPreviewTheme(null); setSettingsOpen(true); }, savePreferences }}>
+  return <ThemeProvider theme={previewTheme || preferences.theme} accessibility={preferences.accessibility}><Context.Provider value={{ preferences, tourOpen,tourRun,finishTour,openTour,saving,error, simple: preferences.mode === 'simple', openSettings: (section='view') => {setSettingsSection(section);setError(''); setPreviewTheme(null); setSettingsOpen(true); }, savePreferences }}>
     <WebInstallProvider><GoogleProfileGate key={userId||'guest'} user={user} onReady={setProfileReady}>{children}</GoogleProfileGate><AppDialogs/>
-    <Modal visible={!!userId && profileReady && (!ready || onboarding || settingsOpen)} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { if (!saving) { setPreviewTheme(null); if(onboarding){void savePreferences({...preferences,tourDone:true});}else{setSettingsOpen(false);} } }}>
+    <Modal visible={settingsOpen || !!userId && profileReady && (!ready || onboarding)} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { if (!saving) { setPreviewTheme(null); if(onboarding){void savePreferences({...preferences,tourDone:true});}else{setSettingsOpen(false);} } }}>
       <SafeAreaProvider><SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        {!ready ? <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={colors.primary} /></View> : <ExperienceForm key={settingsOpen ? 'settings' : 'onboarding'} initial={preferences} onboarding={!settingsOpen} saving={saving} error={error} onSave={savePreferences} onPreviewTheme={setPreviewTheme} onClose={() => { setPreviewTheme(null); setSettingsOpen(false); }} />}
+        {!ready ? <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={colors.primary} /></View> : <ExperienceForm key={settingsOpen ? 'settings' : 'onboarding'} initial={preferences} onboarding={!settingsOpen} initialSection={settingsSection} saving={saving} error={error} onSave={savePreferences} onPreviewTheme={setPreviewTheme} onClose={() => { setPreviewTheme(null); setSettingsOpen(false); }} />}
         {error && onboarding ? <View style={{ paddingHorizontal: 22, paddingBottom: 12 }}><Defer onPress={() => { setPreviewTheme(null); setDeferred(true); setError(''); }} /></View> : null}
       </SafeAreaView></SafeAreaProvider>
     </Modal></WebInstallProvider>

@@ -1,3 +1,4 @@
+import {Text, TouchableOpacity, TextInput, Modal} from '../components/AccessiblePrimitives';
 import {Alert} from '../services/alerts';
 import { notifyFinanceChange } from '../services/financeEvents';
 import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
@@ -17,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, Keyboard, KeyboardAvoidingView, TouchableWithoutFeedback, Platform, InputAccessoryView } from 'react-native';
+import {View, StyleSheet, ScrollView, ActivityIndicator, Keyboard, KeyboardAvoidingView, TouchableWithoutFeedback, Platform, InputAccessoryView} from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -653,7 +654,7 @@ export default function ExpensesScreen({ route, navigation }) {
         <ScreenHeader title="Movimientos" subtitle="Registra lo que entra y lo que sale" icon="swap-vertical-outline" />
 
         {!simple && accountOptions}
-        <View style={styles.sectionTabs}>
+        <View accessibilityRole="tablist" accessibilityLabel="Secciones de movimientos" style={styles.sectionTabs}>
           {['Nuevo', 'Historial', 'Recurrentes'].map((name) => <TouchableOpacity key={name} accessibilityRole="tab"
             accessibilityState={{ selected: section === name, disabled: saving }} disabled={saving}
             onPress={() => {Keyboard.dismiss();setSection(name);scrollRef.current?.scrollTo({ y: 0, animated: false });}}
@@ -708,18 +709,18 @@ export default function ExpensesScreen({ route, navigation }) {
         </View>
 
         <CategoryPicker type={type} value={selectedCategory} onChange={selectCategory} options={visibleCategories(categoryOrder[type], selectedCategory, !simple || allCategories)} error={errors.category} disabled={saving} />
-        {simple && categoryOrder[type].length > 4 ? <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: allCategories }} disabled={saving} style={styles.noteToggle} onPress={() => setAllCategories(!allCategories)}><Text style={styles.noteToggleText}>{allCategories ? 'Ver menos categorías' : 'Ver todas las categorías'}</Text><Ionicons name={allCategories ? 'chevron-up' : 'chevron-down'} size={17} color={themeColor(colors.primary, colors)} /></TouchableOpacity> : null}
+        {simple && categoryOrder[type].length > 4 ? <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: allCategories }} disabled={saving} style={styles.noteToggle} onPress={() => setAllCategories(!allCategories)}><Text style={styles.noteToggleText}>{allCategories ? 'Ver menos categorías' : 'Ver todas las categorías'}</Text><Ionicons accessible={false} name={allCategories ? 'chevron-up' : 'chevron-down'} size={17} color={themeColor(colors.primary, colors)} /></TouchableOpacity> : null}
         <MovementDate compact={simple} value={transactionDate} onChange={(value) => {draftDirty.current = true;setTransactionDate(value);}} disabled={saving} />
 
-        {simple ? <TouchableOpacity accessibilityRole="button" disabled={saving} accessibilityState={{ expanded: moreOptions }} style={styles.noteToggle} onPress={() => setMoreOptions(!moreOptions)}><Ionicons name="options-outline" size={19} color={themeColor(colors.primary, colors)} /><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.noteToggleText}>Más opciones</Text><Text style={themeStyle({ color: colors.muted, fontSize: 11, marginTop: 4 }, colors)}>{type === 'Ingreso' ? 'Ingresa a Mi saldo' : cardId ? `Tarjeta: ${cards.find((card) => card.id === cardId)?.name || 'seleccionada'}` : 'Sale de Mi saldo'}{notes ? ' · Con nota' : ''}</Text></View><Ionicons name={moreOptions ? 'chevron-up' : 'chevron-down'} size={18} color={themeColor(colors.primary, colors)} /></TouchableOpacity> : null}
+        {simple ? <TouchableOpacity accessibilityRole="button" disabled={saving} accessibilityState={{ expanded: moreOptions }} style={styles.noteToggle} onPress={() => setMoreOptions(!moreOptions)}><Ionicons accessible={false} name="options-outline" size={19} color={themeColor(colors.primary, colors)} /><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.noteToggleText}>Más opciones</Text><Text style={themeStyle({ color: colors.muted, fontSize: 11, marginTop: 4 }, colors)}>{type === 'Ingreso' ? 'Ingresa a Mi saldo' : cardId ? `Tarjeta: ${cards.find((card) => card.id === cardId)?.name || 'seleccionada'}` : 'Sale de Mi saldo'}{notes ? ' · Con nota' : ''}</Text></View><Ionicons accessible={false} name={moreOptions ? 'chevron-up' : 'chevron-down'} size={18} color={themeColor(colors.primary, colors)} /></TouchableOpacity> : null}
         {(!simple || moreOptions) && <>
         {simple && type === 'Gasto' && accountOptions}
         {simple && mode === 'cards' && type === 'Gasto' && <PaymentSource cards={cards} value={cardId} onChange={setCardId} disabled={saving || loading} onManage={() => {Keyboard.dismiss();setSection('Recurrentes');scrollRef.current?.scrollTo({ y: 0, animated: false });}} />}
         <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: noteOpen, disabled: saving }} disabled={saving}
               style={styles.noteToggle} onPress={() => setNoteOpen(!noteOpen)}>
-          <Ionicons name="create-outline" size={18} color={themeColor(colors.primary, colors)} />
+          <Ionicons accessible={false} name="create-outline" size={18} color={themeColor(colors.primary, colors)} />
           <Text style={styles.noteToggleText}>{noteOpen ? 'Plegar nota' : notes ? 'Ver nota' : 'Añadir nota (opcional)'}</Text>
-          <Ionicons name={noteOpen ? 'chevron-up' : 'chevron-down'} size={16} color={themeColor(colors.primary, colors)} />
+          <Ionicons accessible={false} name={noteOpen ? 'chevron-up' : 'chevron-down'} size={16} color={themeColor(colors.primary, colors)} />
         </TouchableOpacity>
         {/* NOTAS */}
 
@@ -852,7 +853,7 @@ export default function ExpensesScreen({ route, navigation }) {
         <View style={styles.saveActions}>
           <TouchableOpacity accessibilityRole="button" accessibilityLabel="Restablecer formulario" disabled={saving}
             onPress={handleCancel} style={styles.resetButton}>
-            <Ionicons name="refresh-outline" size={22} color={themeColor(colors.muted, colors)} />
+            <Ionicons accessible={false} name="refresh-outline" size={22} color={themeColor(colors.muted, colors)} />
           </TouchableOpacity>
           <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: saving, busy: saving }}
             style={themeStyle([styles.primaryButton, { backgroundColor: activeColor }, saving && styles.primaryButtonDisabled], colors)}
@@ -1299,7 +1300,7 @@ const makeStyles = (colors) => StyleSheet.create({
   inputLabel: {
     fontSize: 12,
     textTransform: 'uppercase',
-    color: '#9CA3AF',
+    color: colors.muted,
     fontWeight: '700',
     marginBottom: 8
   },
@@ -1353,7 +1354,7 @@ const makeStyles = (colors) => StyleSheet.create({
   optionLabel: {
     fontSize: 12,
     textTransform: 'uppercase',
-    color: '#9CA3AF',
+    color: colors.muted,
     fontWeight: '700'
   },
 
@@ -1534,7 +1535,7 @@ const makeStyles = (colors) => StyleSheet.create({
   editLabel: {
     fontSize: 12,
     textTransform: 'uppercase',
-    color: '#9CA3AF',
+    color: colors.muted,
     fontWeight: '700',
     marginBottom: 8
   },

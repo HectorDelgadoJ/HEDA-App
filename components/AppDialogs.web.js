@@ -1,5 +1,6 @@
+import {Modal, Text, TouchableOpacity} from './AccessiblePrimitives';
 import React,{useEffect,useRef,useState} from 'react';
-import {Modal,View,Text,ScrollView,TouchableOpacity} from 'react-native';
+import {View, ScrollView} from 'react-native';
 import {webAlerts} from '../utils/alertQueue';
 import {useThemeStyles} from '../theme/ThemeProvider';
 export default function AppDialogs(){

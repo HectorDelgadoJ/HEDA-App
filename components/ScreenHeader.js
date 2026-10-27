@@ -1,7 +1,8 @@
+import {Text, TouchableOpacity} from './AccessiblePrimitives';
 import HedaBrand from './HedaBrand';
 import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import {View, StyleSheet} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { layout } from '../theme/layout';
@@ -15,8 +16,8 @@ export default function ScreenHeader({ title, subtitle, icon, actionIcon, action
       <Text style={styles.subtitle}>{subtitle}</Text>
     </View>
     {actionContent || (onAction ? <TouchableOpacity accessibilityRole="button" accessibilityLabel={actionLabel} onPress={onAction} style={styles.icon}>
-      <Ionicons name={actionIcon} size={24} color={themeColor(colors.primary, colors)} />
-    </TouchableOpacity> : <View style={styles.icon}><Ionicons name={icon} size={24} color={themeColor(colors.primary, colors)} /></View>)}
+      <Ionicons accessible={false} name={actionIcon} size={24} color={themeColor(colors.primary, colors)} />
+    </TouchableOpacity> : <View style={styles.icon}><Ionicons accessible={false} name={icon} size={24} color={themeColor(colors.primary, colors)} /></View>)}
   </View>;
 }
 

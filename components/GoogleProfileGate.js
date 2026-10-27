@@ -1,7 +1,8 @@
+import {Text} from './AccessiblePrimitives';
 import BirthDateField from './BirthDateField';
 import {displayBirthDate} from '../utils/birthDate';
 import React,{useEffect,useRef,useState} from 'react';
-import {View,Text,ScrollView,KeyboardAvoidingView,Platform,ActivityIndicator} from 'react-native';
+import {View, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {supabase} from '../services/supabase';
 import {completeGoogleProfile,needsGoogleProfile} from '../services/googleProfile';

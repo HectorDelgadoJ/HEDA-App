@@ -1,7 +1,8 @@
+import {Text, TouchableOpacity} from './AccessiblePrimitives';
 import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
 import InfoButton from './InfoButton';
 import { useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import {View, StyleSheet} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { balanceForecast } from '../utils/recurringMovements';
@@ -17,7 +18,7 @@ export default function BalanceForecast({ rules, transactions, today, cards = []
   const [includeOverdue, setIncludeOverdue] = useState(false);
   const forecast = useMemo(() => balanceForecast(rules, transactions, today, includeOverdue, cards), [rules, transactions, today, includeOverdue, cards]);
   return <View style={styles.card}>
-    <View style={styles.heading}><View style={styles.icon}><Ionicons name="calendar-outline" size={22} color={themeColor(colors.primary, colors)} /></View>
+    <View style={styles.heading}><View style={styles.icon}><Ionicons accessible={false} name="calendar-outline" size={22} color={themeColor(colors.primary, colors)} /></View>
       <Text style={styles.title}>Saldo estimado al cierre del próximo mes</Text>
     </View>
     <Text style={styles.period}>Al {fullDate(forecast.end)}</Text>
@@ -31,14 +32,14 @@ export default function BalanceForecast({ rules, transactions, today, cards = []
     {forecast.overdueCount > 0 && <View style={styles.overdue}>
       <Text style={styles.caption}>Hay {forecast.overdueCount} movimiento{forecast.overdueCount === 1 ? '' : 's'} anterior{forecast.overdueCount === 1 ? '' : 'es'} sin confirmar: ingresos +{money(forecast.overdueIncome)} y pagos −{money(forecast.overdueExpenses)}.</Text>
       <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: includeOverdue }} onPress={() => setIncludeOverdue(!includeOverdue)} style={styles.toggle}>
-        <Ionicons name={includeOverdue ? 'checkbox' : 'square-outline'} size={22} color={themeColor(colors.primary, colors)} />
+        <Ionicons accessible={false} name={includeOverdue ? 'checkbox' : 'square-outline'} size={22} color={themeColor(colors.primary, colors)} />
         <Text style={styles.link}>Incluir pendientes anteriores</Text>
       </TouchableOpacity>
       <Text style={styles.caption}>{includeOverdue ? 'Los pendientes anteriores también forman parte de esta estimación.' : 'No están incluidos en la estimación.'}</Text>
     </View>}
     <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded }} style={styles.toggle} onPress={() => setExpanded(!expanded)}>
       <Text style={themeStyle([styles.link, { flex: 1 }], colors)}>{expanded ? 'Ocultar desglose' : `Ver pagos y cobros incluidos (${forecast.occurrences.length})`}</Text>
-      <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={themeColor(colors.primary, colors)} />
+      <Ionicons accessible={false} name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={themeColor(colors.primary, colors)} />
     </TouchableOpacity>
     {expanded && <View style={styles.details}>
       {!forecast.occurrences.length && <Text style={styles.caption}>No tienes pagos o ingresos activos programados para este periodo.</Text>}

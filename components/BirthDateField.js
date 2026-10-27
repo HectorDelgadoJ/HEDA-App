@@ -1,5 +1,6 @@
+import {Text} from './AccessiblePrimitives';
 import React from 'react';
-import {View,Text} from 'react-native';
+import {View} from 'react-native';
 import {AuthField} from './AuthFields';
 import {maskBirthDate,ageFromBirthDate} from '../utils/birthDate';
 import {useThemeStyles} from '../theme/ThemeProvider';

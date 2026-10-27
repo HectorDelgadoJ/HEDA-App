@@ -1,6 +1,7 @@
+import {Modal, Text, TouchableOpacity} from './AccessiblePrimitives';
 import {Alert} from '../services/alerts';
 import React,{useCallback,useEffect,useRef,useState} from 'react';
-import { Modal, View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import {View, ScrollView, KeyboardAvoidingView, Platform} from 'react-native';
 import {SafeAreaProvider,SafeAreaView} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Ionicons} from '@expo/vector-icons';
@@ -32,7 +33,7 @@ export default function DeleteAccountPanel({ownerId,email,onClose}){
  });}
  const section={color:colors.ink,fontSize:16,lineHeight:25,marginTop:16},canDelete=sent&&confirmation==='ELIMINAR'&&/^\d{6,10}$/.test(code.replace(/\s/g,''));
  return <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={close}><SafeAreaProvider><SafeAreaView style={{flex:1,backgroundColor:colors.background}}><KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':undefined}>
- <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:20,paddingTop:8,paddingBottom:12,borderBottomWidth:1,borderBottomColor:colors.border}}><HedaBrand size={32}/><TouchableOpacity accessibilityRole="button" accessibilityLabel="Cancelar eliminación de cuenta" disabled={loading} onPress={close} style={{minHeight:48,paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:5,borderRadius:12,backgroundColor:colors.softBlue}}><Ionicons name="close" size={22} color={colors.link}/><Text style={{color:colors.link,fontWeight:'600'}}>Cerrar</Text></TouchableOpacity></View>
+ <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:20,paddingTop:8,paddingBottom:12,borderBottomWidth:1,borderBottomColor:colors.border}}><HedaBrand size={32}/><TouchableOpacity accessibilityRole="button" accessibilityLabel="Cancelar eliminación de cuenta" disabled={loading} onPress={close} style={{minHeight:48,paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:5,borderRadius:12,backgroundColor:colors.softBlue}}><Ionicons accessible={false} name="close" size={22} color={colors.link}/><Text style={{color:colors.link,fontWeight:'600'}}>Cerrar</Text></TouchableOpacity></View>
  <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{padding:20,paddingBottom:36}}>
  <Text accessibilityRole="header" style={{fontSize:26,lineHeight:33,color:colors.ink,fontWeight:'700'}}>Eliminar mi cuenta</Text>
  <View style={{backgroundColor:colors.expenseSurface,borderWidth:1,borderColor:colors.expense,borderRadius:16,padding:16,marginVertical:18}}><Text style={{color:colors.expense,fontSize:16,fontWeight:'700',lineHeight:24}}>Esta acción no se puede deshacer.</Text><Text style={{color:colors.ink,fontSize:15,lineHeight:23,marginTop:8}}>Se eliminarán tu perfil, movimientos, tarjetas, pagos programados, metas, presupuestos y preferencias de HEDA.</Text></View>

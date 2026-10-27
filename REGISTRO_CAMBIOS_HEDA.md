@@ -255,3 +255,12 @@ HEDA se exporta con `npm run build:web` a **dist**, preparada para Netlify Drop 
 - Captura prospectiva manual de dos predicciones con fuente Yahoo, cierre 2026-10-25 y objetivos 2026-10-26/2026-11-01, con hora y hash de modelo. Resultados pendientes, no se inventan aciertos.
 - Verificación: 22 pruebas JS focalizadas y 3 Python aprobadas, Deno check de bundles Ethereum/notify, exportación web y revisión móvil claro/oscuro sin errores de página ni desbordamiento. La captura pública de mercado funcionó. No publicación remota ni SQL nuevo.
 - Usuario reportó recepción real de una notificación en su celular; queda verificar por separado si desaparecieron los errores de generación del worker.
+
+
+### Accesibilidad para revisión del TT y módulos visibles en Inicio
+- Seis atajos reales y opcionales: IA, Educación, Gestión financiera, Ethereum, Reportes/metas y QR académico. Se guardan por cuenta y pueden ocultarse desde Elegir qué mostrar.
+- Opciones en Personalización y acceso desde Inicio/login: escalado 100/120/140/200%, contraste reforzado, negrita, lectura espaciada, reducción de movimiento y áreas táctiles más amplias. Login conserva ajustes localmente; cuenta usa metadatos propios. No se comparten estas preferencias con IA.
+- Primitivas compartidas de texto/entrada/botón/ventana/interruptor en componentes propios; respeto de fuentes del dispositivo y reducción de movimiento del sistema. Menú vertical con nombres completos para texto desde 140%.
+- Correcciones de contraste, estados ARIA y agrupación de pestañas/radios, nombres de interruptores y progreso, relación campo/error y autocomplete web del nombre de usuario. Gráficas con alternativas textuales; Ethereum ahora muestra OHLCV completo plegable.
+- Evidencia: 48 revisiones axe-core 4.10.3 sin infracciones detectadas en estados muestreados; 252 pruebas aprobadas y ninguna omitida; exportación web/Android/iOS. Se probaron teclado, persistencia, atajos y texto 200% a 320/390. Se documentan revisiones manuales pendientes; no se afirma certificación WCAG ni prueba física VoiceOver/TalkBack.
+- Guía ACCESIBILIDAD_HEDA_TT.md con demostración para el 27/10 y plan hasta presentación del 18/11. Dist preparada; sin SQL, Edge ni secretos nuevos.

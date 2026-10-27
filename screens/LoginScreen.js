@@ -1,15 +1,17 @@
+import {Text, TouchableOpacity} from '../components/AccessiblePrimitives';
+import {useExperience} from '../components/ExperienceProvider';
 import { dismissAuthKeyboard } from '../services/keyboard';
 import AuthCaptcha, { useAuthCaptcha } from '../components/AuthCaptcha';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import {View} from 'react-native';
 import { useThemeStyles } from '../theme/ThemeProvider';
 import AuthLayout from '../components/AuthLayout';
 import { AuthButton, AuthField, AuthNotice } from '../components/AuthFields';
 import { supabase } from '../services/supabase';
 import { loginAccount } from '../services/authActions';
 export default function LoginScreen({navigation}){
-  const {colors}=useThemeStyles();
+  const {colors}=useThemeStyles();const {openSettings}=useExperience();
   const captcha=useAuthCaptcha();
   const [googleBusy,setGoogleBusy]=useState(false);
   const [email,setEmail]=useState(''),[password,setPassword]=useState(''),[loading,setLoading]=useState(false),[errors,setErrors]=useState({}),[failure,setFailure]=useState('');
@@ -26,6 +28,7 @@ export default function LoginScreen({navigation}){
     finally{captcha.reset();busy.current=false;if(active.current)setLoading(false);}
   }
   return <AuthLayout title="Qué gusto verte" description="Entra para continuar con tus finanzas.">
+    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Abrir opciones de accesibilidad" onPress={()=>openSettings('accessibility')} style={{minHeight:44,justifyContent:'center',marginBottom:12}}><Text style={{color:colors.link,fontWeight:'700'}}>Accesibilidad y lectura</Text></TouchableOpacity>
     <AuthNotice text={failure}/>
     <GoogleSignInButton disabled={loading||googleBusy} onBusy={value=>{busy.current=value;setGoogleBusy(value);}} onError={setFailure}/>
     <AuthField ref={emailRef} label="Correo electrónico" placeholder="nombre@correo.com" value={email} onChangeText={changeEmail} keyboardType="email-address" autoComplete="email" textContentType="emailAddress" maxLength={254} returnKeyType="next" onSubmitEditing={focusPassword} error={errors.email} editable={!loading&&!googleBusy}/>

@@ -1,10 +1,11 @@
+import {Text, TextInput, TouchableOpacity, Modal} from './AccessiblePrimitives';
 import {Alert} from '../services/alerts';
 import { notifyFinanceChange } from '../services/financeEvents';
 import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
 import InfoButton from './InfoButton';
 import { cardDebt, recordedRows } from '../utils/finance';
 import { useCallback, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, StyleSheet } from 'react-native';
+import {View, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, StyleSheet} from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -95,12 +96,12 @@ export default function CardPayments({ transactions, onPaid, mode = 'simple' }) 
     );
   }
   return <View style={styles.section}>
-    <View style={styles.row}><Ionicons name="card-outline" size={23} color={themeColor(colors.primary, colors)} /><Text style={styles.title}>{mode === 'cards' ? 'Mis tarjetas' : 'Tarjetas por pagar'}</Text></View>
+    <View style={styles.row}><Ionicons accessible={false} name="card-outline" size={23} color={themeColor(colors.primary, colors)} /><Text style={styles.title}>{mode === 'cards' ? 'Mis tarjetas' : 'Tarjetas por pagar'}</Text></View>
     <InfoButton title="Tarjetas y saldo disponible" text={mode === 'cards' ? 'Tus cargos se suman aquí. Tu saldo baja al pagar la tarjeta.' : 'Tu saldo sigue igual. Aquí reservas lo que necesitas para tus tarjetas.'} />
     {notice ? <Text accessibilityLiveRegion="polite" style={styles.caption}>{notice}</Text> : null}
     {loading ? <ActivityIndicator color={themeColor(colors.primary, colors)} /> : error ? <View><Text style={styles.error}>{error}</Text><TouchableOpacity accessibilityRole="button" onPress={load} style={styles.action}><Text style={styles.link}>Intentar de nuevo</Text></TouchableOpacity></View> : <>
       <View style={styles.summary}><Text style={styles.caption}>Saldo actual: {money(summary.balance)}</Text><Text style={styles.caption}>Pendiente en tarjetas: {money(summary.pending)}</Text><Text style={styles.title}>Después de pagarlas: {money(summary.remaining)}</Text><InfoButton title={"Qué significa Después de pagarlas"} text={"Reserva toda la deuda registrada de estas tarjetas; no incluye otros pagos programados."} /></View>
-      <TouchableOpacity disabled={busy} accessibilityRole="button" style={styles.action} onPress={() => open()}><Ionicons name="add" size={19} color={themeColor(colors.primary, colors)} /><Text style={styles.link}>Agregar tarjeta</Text></TouchableOpacity>
+      <TouchableOpacity disabled={busy} accessibilityRole="button" style={styles.action} onPress={() => open()}><Ionicons accessible={false} name="add" size={19} color={themeColor(colors.primary, colors)} /><Text style={styles.link}>Agregar tarjeta</Text></TouchableOpacity>
       {!cards.length ? <Text style={styles.caption}>Añade el importe pendiente de tu estado de cuenta y su fecha límite.</Text> : null}
       {cards.map((card) => <View key={card.id} style={styles.card}>
         <View style={styles.row}><Text style={themeStyle([styles.title, { flex: 1 }], colors)}>{card.name}</Text><Text style={styles.amount}>{cardDebt(card, recordedTransactions) < 0 ? `${money(-cardDebt(card, recordedTransactions))} a favor` : cardDebt(card, recordedTransactions) === 0 ? 'Sin deuda' : money(cardDebt(card, recordedTransactions))}</Text></View>
@@ -116,12 +117,12 @@ export default function CardPayments({ transactions, onPaid, mode = 'simple' }) 
     </>}
     <Modal visible={visible} presentationStyle="pageSheet" animationType="slide" onRequestClose={() => {if (!busy) setVisible(false);}}>
       <SafeAreaProvider><SafeAreaView style={styles.modal} edges={['top', 'bottom', 'left', 'right']}>
-        <View style={styles.header}><Text style={styles.title}>{editing ? 'Actualizar pago' : 'Agregar tarjeta'}</Text><TouchableOpacity disabled={busy} accessibilityRole="button" accessibilityLabel="Cerrar formulario" onPress={() => setVisible(false)} style={styles.action}><Text style={styles.link}>Cerrar</Text><Ionicons name="close" size={22} color={themeColor(colors.primary, colors)} /></TouchableOpacity></View>
+        <View style={styles.header}><Text style={styles.title}>{editing ? 'Actualizar pago' : 'Agregar tarjeta'}</Text><TouchableOpacity disabled={busy} accessibilityRole="button" accessibilityLabel="Cerrar formulario" onPress={() => setVisible(false)} style={styles.action}><Text style={styles.link}>Cerrar</Text><Ionicons accessible={false} name="close" size={22} color={themeColor(colors.primary, colors)} /></TouchableOpacity></View>
         <KeyboardAvoidingView style={themeStyle({ flex: 1 }, colors)} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 18 }}>
           <Text style={styles.caption}>Nombre de la tarjeta</Text><TextInput selectionColor={colors.link} cursorColor={colors.link} editable={!busy} accessibilityLabel="Nombre de la tarjeta" value={form.name} maxLength={60} placeholder="Ej. Nu o BBVA" placeholderTextColor={colors.placeholder} onChangeText={(name) => setForm((previous) => ({ ...previous, name }))} style={styles.input} keyboardAppearance={colors.dark ? "dark" : "light"} />
           <Text style={styles.caption}>{mode === 'cards' || cards.find((card) => card.id === editing)?.ledger_enabled ? 'Deuda inicial anterior a HEDA · MXN' : 'Importe pendiente por pagar · MXN'}</Text><TextInput selectionColor={colors.link} cursorColor={colors.link} editable={!busy} accessibilityLabel="Importe pendiente por pagar" value={form.amount} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={colors.placeholder} onChangeText={(amount) => setForm((previous) => ({ ...previous, amount }))} style={styles.input} keyboardAppearance={colors.dark ? "dark" : "light"} />
           <Text style={styles.caption}>Fecha límite de pago</Text><MovementDate disabled={busy} value={form.date} onChange={(date) => setForm((previous) => ({ ...previous, date }))} />
-          <TouchableOpacity disabled={busy} accessibilityRole="checkbox" accessibilityState={{ checked: form.reminder }} style={styles.action} onPress={() => setForm((previous) => ({ ...previous, reminder: !previous.reminder }))}><Ionicons name={form.reminder ? 'checkbox' : 'square-outline'} size={23} color={themeColor(colors.primary, colors)} /><Text style={styles.link}>Recordarme dentro de HEDA</Text></TouchableOpacity>
+          <TouchableOpacity disabled={busy} accessibilityRole="checkbox" accessibilityState={{ checked: form.reminder }} style={styles.action} onPress={() => setForm((previous) => ({ ...previous, reminder: !previous.reminder }))}><Ionicons accessible={false} name={form.reminder ? 'checkbox' : 'square-outline'} size={23} color={themeColor(colors.primary, colors)} /><Text style={styles.link}>Recordarme dentro de HEDA</Text></TouchableOpacity>
           <Text style={styles.caption}>{mode === 'cards' || cards.find((card) => card.id === editing)?.ledger_enabled ? 'Escribe solo lo que debías antes de registrar cargos aquí. Usa 0 si empiezas sin deuda. Las compras que registres se sumarán automáticamente. Actualiza la fecha límite con tu estado de cuenta.' : 'Usa el importe que quieres cubrir de tu estado de cuenta. Puedes actualizarlo cada mes.'}</Text>
           {formError ? <Text accessibilityLiveRegion="polite" style={styles.error}>{formError}</Text> : null}
           <TouchableOpacity disabled={busy} accessibilityRole="button" onPress={save} style={styles.save}>{busy ? <ActivityIndicator color={themeColor("#FFFFFF", colors)} /> : <Text style={themeStyle({ color: '#FFFFFF', fontWeight: '600' }, colors)}>Guardar tarjeta</Text>}</TouchableOpacity>

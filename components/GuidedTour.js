@@ -1,5 +1,6 @@
+import {Text, TouchableOpacity} from './AccessiblePrimitives';
 import React,{useEffect,useState} from 'react';
-import {View,Text,TouchableOpacity,ScrollView} from 'react-native';
+import {View, ScrollView} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import {useExperience} from './ExperienceProvider';

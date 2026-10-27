@@ -73,3 +73,5 @@ test('legacy named-color cards do not remain white in dark mode and labels remai
  assert.equal(themeColor('white',lightColors,'backgroundColor'),'white');
  for(const surface of ['surface','raised','input','softBlue'])for(const foreground of ['ink','muted','link'])assert.ok(contrast(darkColors[foreground],darkColors[surface])>=4.5,`${foreground} on ${surface}`);
 });
+
+test('light text, action labels, input boundaries and placeholders meet contrast thresholds',()=>{for(const bg of ['surface','softBlue','background'])for(const fg of ['ink','muted','link'])assert.ok(contrast(lightColors[fg],lightColors[bg])>=4.5,`${fg} on ${bg}`);assert.ok(contrast(lightColors.onPrimary,lightColors.primary)>=4.5);assert.ok(contrast(lightColors.inputBorder,lightColors.input)>=3);assert.ok(contrast(lightColors.placeholder,lightColors.input)>=4.5);});

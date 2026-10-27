@@ -1,3 +1,4 @@
+import {Text, TouchableOpacity} from '../components/AccessiblePrimitives';
 import {useFocusEffect} from '@react-navigation/native';
 import {educationPlan} from '../utils/educationPlan';
 import {lessonCatalog} from '../services/tt';
@@ -12,13 +13,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ScreenHeader from '../components/ScreenHeader';
 import { supabase } from '../services/supabase';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity } from
-'react-native';
+import {View, StyleSheet, ScrollView} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const lessons = [
@@ -208,9 +203,9 @@ export default function FinancialEducationScreen({ navigation }) {
       <View style={styles.progressCard}>
         <View style={styles.progressHeader}>
           <View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.cardTitle}>{progress === 100 ? '¡Completaste tu ruta!' : 'Tu ruta de aprendizaje'}</Text><Text style={styles.cardText}>{loading ? 'Cargando tu progreso…' : `${learnedIds.length} de ${catalog.length} lecciones completadas`}</Text></View>
-          <View style={styles.progressBadge}><Ionicons name={progress === 100 ? 'trophy-outline' : 'school-outline'} size={23} color={themeColor(colors.primary, colors)} /><Text style={styles.progressPercent}>{progress}%</Text></View>
+          <View style={styles.progressBadge}><Ionicons accessible={false} name={progress === 100 ? 'trophy-outline' : 'school-outline'} size={23} color={themeColor(colors.primary, colors)} /><Text style={styles.progressPercent}>{progress}%</Text></View>
         </View>
-        <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: progress }} style={styles.progressBackground}><View style={themeStyle([styles.progressFill, { width: `${progress}%` }], colors)} /></View>
+        <View accessibilityLabel="Progreso de lecciones completadas" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: progress }} style={styles.progressBackground}><View style={themeStyle([styles.progressFill, { width: `${progress}%` }], colors)} /></View>
         <InfoButton title={"Dónde se guarda tu progreso"} text={"Tu avance se guarda por cuenta en este dispositivo."} />
       </View>
       {notice ? <View accessibilityLiveRegion="polite" style={styles.notice}><Text style={styles.cardText}>{notice}</Text>{!ready && owner.current ? <TouchableOpacity accessibilityRole="button" style={styles.retry} onPress={() => reload.current()} disabled={loading}><Text style={styles.linkText}>Reintentar</Text></TouchableOpacity> : null}</View> : null}
@@ -219,20 +214,20 @@ export default function FinancialEducationScreen({ navigation }) {
             const selected = selectedLesson.id === lesson.id;
             const learned = learnedIds.includes(lesson.id);
             return <TouchableOpacity key={lesson.id} accessibilityRole="button" accessibilityState={{ selected, disabled: saving }} accessibilityLabel={`${lesson.title}. ${learned ? 'Completada' : 'Pendiente'}`} disabled={saving} style={themeStyle([styles.topic, selected && styles.topicSelected], colors)} onPress={() => selectLesson(lesson, true)}>
-          <View style={styles.topicTop}><Ionicons name={lesson.icon||'book-outline'} size={22} color={themeColor(selected ? '#FFFFFF' : colors.primary, colors)} /><Ionicons name={learned ? 'checkmark-circle' : 'chevron-forward'} size={19} color={themeColor(learned ? selected ? '#FFFFFF' : '#15803D' : selected ? '#FFFFFF' : colors.muted, colors)} /></View>
+          <View style={styles.topicTop}><Ionicons accessible={false} name={lesson.icon||'book-outline'} size={22} color={themeColor(selected ? '#FFFFFF' : colors.primary, colors)} /><Ionicons accessible={false} name={learned ? 'checkmark-circle' : 'chevron-forward'} size={19} color={themeColor(learned ? selected ? '#FFFFFF' : '#15803D' : selected ? '#FFFFFF' : colors.muted, colors)} /></View>
           <Text style={themeStyle([styles.topicTitle, selected && styles.white], colors)}>{lesson.title}</Text>
           <Text style={themeStyle([styles.topicMeta, selected && styles.white], colors)}>{learned ? 'Completada' : `${lesson.level} · Lectura breve`}</Text>
         </TouchableOpacity>;
           })}</View>
       <View onLayout={(event) => {lessonY.current = event.nativeEvent.layout.y;}} style={styles.lessonCard}>
-        <View style={styles.lessonHeader}><View style={styles.lessonIcon}><Ionicons name={selectedLesson.icon||'book-outline'} size={28} color={themeColor(colors.primary, colors)} /></View><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.topicMeta}>LECCIÓN {catalog.findIndex(l=>l.id===selectedLesson.id)+1} DE {catalog.length}</Text><Text accessibilityRole="header" style={styles.lessonTitle}>{selectedLesson.title}</Text><Text style={styles.level}>{completed ? 'Completada ✓' : selectedLesson.level}</Text></View></View>
+        <View style={styles.lessonHeader}><View style={styles.lessonIcon}><Ionicons accessible={false} name={selectedLesson.icon||'book-outline'} size={28} color={themeColor(colors.primary, colors)} /></View><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.topicMeta}>LECCIÓN {catalog.findIndex(l=>l.id===selectedLesson.id)+1} DE {catalog.length}</Text><Text accessibilityRole="header" style={styles.lessonTitle}>{selectedLesson.title}</Text><Text style={styles.level}>{completed ? 'Completada ✓' : selectedLesson.level}</Text></View></View>
         {selectedLesson.recommendation&&<Text style={styles.lessonText}>Para ti: {selectedLesson.recommendation}</Text>}<Text style={styles.lessonSubtitle}>¿Qué significa?</Text><Text style={styles.lessonText}>{selectedLesson.description}</Text>
-        <View style={styles.exampleBox}><View style={styles.exampleHeader}><Ionicons name="bulb-outline" size={20} color={themeColor(colors.primary, colors)} /><Text style={styles.exampleTitle}>Ejemplo sencillo</Text></View><Text style={styles.exampleText}>{selectedLesson.example}</Text></View>
-        <View style={styles.tipBox}><View style={styles.exampleHeader}><Ionicons name="sparkles-outline" size={20} color={themeColor("#B7791F", colors)} /><Text style={styles.tipTitle}>Quédate con esta idea</Text></View><Text style={styles.tipText}>{selectedLesson.tip}</Text></View>
-        <View style={styles.quizHeader}><View style={styles.quizIcon}><Ionicons name="help-circle-outline" size={24} color={themeColor(colors.primary, colors)} /></View><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.cardTitle}>Ponlo en práctica</Text><Text style={styles.cardText}>{quiz.question}</Text></View></View>
+        <View style={styles.exampleBox}><View style={styles.exampleHeader}><Ionicons accessible={false} name="bulb-outline" size={20} color={themeColor(colors.primary, colors)} /><Text style={styles.exampleTitle}>Ejemplo sencillo</Text></View><Text style={styles.exampleText}>{selectedLesson.example}</Text></View>
+        <View style={styles.tipBox}><View style={styles.exampleHeader}><Ionicons accessible={false} name="sparkles-outline" size={20} color={themeColor("#B7791F", colors)} /><Text style={styles.tipTitle}>Quédate con esta idea</Text></View><Text style={styles.tipText}>{selectedLesson.tip}</Text></View>
+        <View style={styles.quizHeader}><View style={styles.quizIcon}><Ionicons accessible={false} name="help-circle-outline" size={24} color={themeColor(colors.primary, colors)} /></View><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.cardTitle}>Ponlo en práctica</Text><Text style={styles.cardText}>{quiz.question}</Text></View></View>
         {quiz.options.map((option, index) => {
             const chosen = answer === index;
-            return <TouchableOpacity key={`${selectedLesson.id}-${index}`} accessibilityRole="radio" accessibilityState={{ checked: chosen, disabled: loading || saving || !ready }} disabled={loading || saving || !ready} style={themeStyle([styles.answerButton, chosen && (correct ? styles.answerCorrect : styles.answerWrong)], colors)} onPress={() => setAnswer(index)}><View style={styles.answerRow}><Ionicons name={chosen ? correct ? 'checkmark-circle' : 'close-circle' : 'ellipse-outline'} size={21} color={themeColor(chosen ? correct ? '#15803D' : '#B91C1C' : colors.muted, colors)} /><Text style={themeStyle([styles.answerText, { flex: 1 }], colors)}>{option}</Text></View></TouchableOpacity>;
+            return <TouchableOpacity key={`${selectedLesson.id}-${index}`} accessibilityRole="radio" accessibilityState={{ checked: chosen, disabled: loading || saving || !ready }} disabled={loading || saving || !ready} style={themeStyle([styles.answerButton, chosen && (correct ? styles.answerCorrect : styles.answerWrong)], colors)} onPress={() => setAnswer(index)}><View style={styles.answerRow}><Ionicons accessible={false} name={chosen ? correct ? 'checkmark-circle' : 'close-circle' : 'ellipse-outline'} size={21} color={themeColor(chosen ? correct ? '#15803D' : '#B91C1C' : colors.muted, colors)} /><Text style={themeStyle([styles.answerText, { flex: 1 }], colors)}>{option}</Text></View></TouchableOpacity>;
           })}
         {answer !== null ? <Text accessibilityLiveRegion="polite" style={themeStyle([styles.feedback, { color: correct ? '#15803D' : '#B91C1C' }], colors)}>{correct ? `¡Correcto! ${quiz.explanation}` : 'Todavía no. Revisa la idea principal y prueba la otra respuesta.'}</Text> : <Text style={styles.localNote}>Elige una respuesta para completar la lección.</Text>}
         {completed ? <View><Text accessibilityLiveRegion="polite" style={styles.savedText}>✓ Lección completada y guardada</Text><TouchableOpacity accessibilityRole="button" style={styles.primaryButton} onPress={() => nextLesson ? selectLesson(nextLesson, true) : navigation.navigate('IA')}><Text style={styles.primaryButtonText}>{nextLesson ? 'Siguiente lección →' : 'Volver a herramientas'}</Text></TouchableOpacity></View> : <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: !correct || !ready || saving }} disabled={!correct || !ready || saving} style={themeStyle([styles.primaryButton, (!correct || !ready || saving) && styles.disabled], colors)} onPress={completeLesson}><Text style={styles.primaryButtonText}>{saving ? 'Guardando…' : 'Completar lección'}</Text></TouchableOpacity>}

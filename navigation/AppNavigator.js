@@ -1,3 +1,6 @@
+import LargeNavigationBar from '../components/LargeNavigationBar';
+import {useAccessibility} from '../components/AccessibilityContext';
+import {Text} from '../components/AccessiblePrimitives';
 import AdminScreen from '../screens/AdminScreen';
 import { oauthFailureReason } from '../utils/oauth';
 import {Alert} from '../services/alerts';
@@ -11,14 +14,14 @@ import { useThemeStyles, themeStyle, themeColor } from "../theme/ThemeProvider";
 import ExperienceProvider from '../components/ExperienceProvider';
 import { colors } from '../theme/colors';
 import { useEffect, useRef, useState } from 'react';
-import { View, ActivityIndicator, Linking, Text } from 'react-native';
+import {View, ActivityIndicator, Linking} from 'react-native';
 
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createBottomTabNavigator, BottomTabBar } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
+import {Platform} from 'react-native';
 import {
   SafeAreaProvider,
   useSafeAreaInsets } from
@@ -44,20 +47,23 @@ const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 function TabsNavigator() {
+  const accessibility=useAccessibility();
   const { colors } = useThemeStyles();
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={{flex:1}}><Tab.Navigator initialRouteName="Inicio"
+    <View style={{flex:1}}><Tab.Navigator initialRouteName="Inicio" tabBar={props=>accessibility.textScale>=1.4?<LargeNavigationBar {...props}/>:<BottomTabBar {...props}/>}
       screenOptions={({ route }) => ({
         headerShown: false,
+        animation:accessibility.reduceMotion?'none':undefined,
+        tabBarLabel:({color})=><Text style={{color,fontSize:11,textAlign:'center'}}>{route.name}</Text>,
         tabBarAccessibilityLabel: route.name,
 
         tabBarActiveTintColor: colors.link,
         tabBarInactiveTintColor: colors.muted,
 
         tabBarStyle: {
-          height: (Platform.OS==='web'?72:56) + insets.bottom,
+          height: (accessibility.textScale>=1.4?Math.ceil(72*accessibility.textScale):Platform.OS==='web'?72:56) + insets.bottom,
           paddingTop: 8,
           paddingBottom: Math.max(insets.bottom, 6),
           backgroundColor: colors.surface,
@@ -101,7 +107,7 @@ function TabsNavigator() {
             iconName = focused ? 'person' : 'person-outline';
           }
 
-          return <Ionicons name={iconName} size={22} color={themeColor(color, colors)} />;
+          return <Ionicons accessible={false} name={iconName} size={22} color={themeColor(color, colors)} />;
         }
       })}>
 
@@ -233,7 +239,7 @@ export default function AppNavigator() {
     <SafeAreaProvider>
       <ExperienceProvider key={session?.user?.id || 'guest'} user={session?.user}><ReminderProvider userId={session?.user?.id}><ThemedNavigation>
         <View style={{flex:1,width:'100%',maxWidth:Platform.OS==='web'?1000:undefined,alignSelf:'center'}}>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <AccessibleStackNavigator screenOptions={{ headerShown: false }}>
           {session ?
             <Stack.Screen name="App" component={TabsNavigator} /> :
 
@@ -243,7 +249,7 @@ export default function AppNavigator() {
               <Stack.Screen name="RecoverPassword" component={RecoverPasswordScreen} />
             </>
             }
-        </Stack.Navigator></View>
+        </AccessibleStackNavigator></View>
       </ThemedNavigation></ReminderProvider></ExperienceProvider>
     </SafeAreaProvider>);
 
@@ -275,3 +281,5 @@ function ThemedNavigation({ children }) {
   const theme = { ...base, colors: { ...base.colors, primary: colors.link, background: colors.background, card: colors.surface, text: colors.ink, border: colors.border, notification: colors.primary } };
   return <NavigationContainer ref={navigationRef} onStateChange={recordModule} onReady={()=>{recordModule();if(pendingTap.current){void openNotice(pendingTap.current).catch(()=>{});pendingTap.current=null;}}} theme={theme}>{children}</NavigationContainer>;
 }
+
+function AccessibleStackNavigator(props){const a=useAccessibility();return <Stack.Navigator {...props} screenOptions={{...props.screenOptions,animation:a.reduceMotion?'none':undefined}}/>;}

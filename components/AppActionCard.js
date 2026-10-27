@@ -1,5 +1,6 @@
+import {Text, TouchableOpacity} from './AccessiblePrimitives';
 import React,{useEffect,useRef,useState} from 'react';
-import {View,Text,TouchableOpacity,ActivityIndicator} from 'react-native';
+import {View, ActivityIndicator} from 'react-native';
 import {useThemeStyles} from '../theme/ThemeProvider';
 import {appActionRows} from '../supabase/functions/heda-ai/actions';
 import {applyOwnAction} from '../services/appActions';
