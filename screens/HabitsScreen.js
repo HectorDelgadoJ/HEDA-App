@@ -74,7 +74,7 @@ export default function HabitsScreen({ navigation }) {
 
   return <SwipeBackToIA navigation={navigation}><SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={themeColor(colors.primary, colors)} />}>
-      <ScreenHeader title="Hábitos" subtitle="Descubre patrones en lo que registras." actionIcon="arrow-back" actionLabel="Volver a IA" onAction={() => go('IA')} />
+      <ScreenHeader title="Hábitos" subtitle="Descubre patrones en lo que registras." actionIcon="arrow-back" actionLabel="Volver a herramientas" onAction={() => go('Herramientas')} />
       <Text style={styles.gestureHint}>← Desliza hacia la izquierda para volver a IA</Text>
       {loading ? <View style={styles.state}><ActivityIndicator color={themeColor(colors.primary, colors)} /><Text style={styles.body}>Revisando tus movimientos…</Text></View> : error ? <View style={styles.card}><Ionicons accessible={false} name="cloud-offline-outline" size={30} color={themeColor(colors.primary, colors)} /><Text style={styles.title}>No pudimos preparar el análisis</Text><Text style={styles.body}>{error}</Text><Action label="Reintentar" icon="refresh-outline" onPress={() => load()} /></View> : null}
       {showData ? <>

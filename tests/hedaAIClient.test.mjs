@@ -35,9 +35,9 @@ test('financial preview never requests a model answer and requires the updated f
  const preview=new Function('supabase',source+'; return previewHedaFinances;')(mock);assert.equal((await preview()).summary.currency,'MXN');
 });
 test('financial analysis sends consent and digest, never a client-calculated summary',async()=>{
- let body;const send=make(client(async(name,options)=>{body=options.body;return {data:{ok:true,agentVersion:1,message:'Análisis',financialSummaryUsed:true}};}));
- await send('Analiza',[],{summaryDigest:'approved-digest'});assert.deepEqual(body,{message:'Analiza',action:'assistant',appConsent:false,financialConsent:true,summaryDigest:'approved-digest'});
- await assert.rejects(make(client(async()=>({data:{ok:true,message:'Old'}})))('Analiza',[],{summaryDigest:'approved-digest'}),/Actualiza heda-ai/);
+ let body;const send=make(client(async(name,options)=>{body=options.body;return {data:{ok:true,agentVersion:1,message:'Análisis',financialVersion:1,financialSummaryUsed:true}};}));
+ await send('Analiza',[],{summaryDigest:'approved-digest'});assert.deepEqual(body,{message:'Analiza',financialConsent:true,summaryDigest:'approved-digest'});
+ await assert.rejects(make(client(async()=>({data:{ok:true,message:'Old'}})))('Analiza',[],{summaryDigest:'approved-digest'}),/análisis financiero/);
 });
 
 test('session changed during a request never returns another account answer',async()=>{

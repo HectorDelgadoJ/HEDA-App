@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {savedChatsKey,readSavedChats,saveChatSlot} from '../utils/savedChats';
 import {Text, TouchableOpacity, TextInput, Modal} from '../components/AccessiblePrimitives';
 import AppActionCard from '../components/AppActionCard';
 import {Alert} from '../services/alerts';
@@ -23,9 +25,22 @@ export default function EducationScreen({ navigation, route }) {
   const [loadingAI, setLoadingAI] = useState(false);
   const [failure, setFailure] = useState(null);
   const [appConsent,setAppConsent]=useState(false);
-  const [toolsOpen, setToolsOpen] = useState(false);
+  const [savedChats,setSavedChats]=useState([]),[chatsOpen,setChatsOpen]=useState(false),[chatBusy,setChatBusy]=useState(false);
+  const savedRef=useRef([]),chatId=useRef(null),saveLock=useRef(false);
+  async function loadChats(id){
+    try{const raw=id?await AsyncStorage.getItem(savedChatsKey(id)):null;if(ownerRef.current!==id)return;const chats=readSavedChats(raw,id);savedRef.current=chats;setSavedChats(chats);}catch{Alert.alert('Chats guardados','No pudimos leer los chats de este dispositivo.');}
+  }
+  async function persistChats(next){
+    const id=ownerRef.current;if(!id)throw new Error('Vuelve a iniciar sesión.');
+    const {data:{session}}=await supabase.auth.getSession();if(session?.user?.id!==id)throw new Error('Tu sesión cambió.');
+    await AsyncStorage.setItem(savedChatsKey(id),JSON.stringify({version:1,owner:id,chats:next}));
+    if(ownerRef.current===id){savedRef.current=next;setSavedChats(next);}
+  }
+  async function saveCurrent(){if(saveLock.current)return;saveLock.current=true;setChatBusy(true);try{const id=chatId.current||`chat-${Date.now()}`;await persistChats(saveChatSlot(savedRef.current,messagesRef.current,id));chatId.current=id;Alert.alert('Chat guardado','Disponible en este dispositivo. Vuelve a guardar si agregas más mensajes.');}catch(e){Alert.alert('No se guardó el chat',e.message);}finally{saveLock.current=false;setChatBusy(false);}}
+  function openSaved(chat){resetChat();chatId.current=chat.id;commit(chat.messages);setChatsOpen(false);}
+  function removeSaved(chat){Alert.alert('Borrar chat guardado','Se borrará la copia guardada en este dispositivo. No elimina registros del proveedor.',[{text:'Cancelar',style:'cancel'},{text:'Borrar',style:'destructive',onPress:async()=>{if(saveLock.current)return;saveLock.current=true;setChatBusy(true);try{await persistChats(savedRef.current.filter(c=>c.id!==chat.id));if(chatId.current===chat.id)chatId.current=null;}catch(e){Alert.alert('No se pudo borrar',e.message);}finally{saveLock.current=false;setChatBusy(false);}}}]);}
   const [actionsOpen, setActionsOpen] = useState(false);
-  useEffect(()=>{if(route?.params?.openChat){setToolsOpen(false);setActionsOpen(false);navigation.setParams({openChat:undefined});}},[route?.params?.openChat,navigation]);
+  useEffect(()=>{if(route?.params?.openChat){setActionsOpen(false);navigation.setParams({openChat:undefined});}},[route?.params?.openChat,navigation]);
   const [financialContext, setFinancialContext] = useState(null);
   const [financialPreview, setFinancialPreview] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -40,10 +55,11 @@ export default function EducationScreen({ navigation, route }) {
 
   function commit(next) {messagesRef.current = next;setMessages(next);}
   function resetChat() {
+    chatId.current=null;
     generation.current++;
     requestRef.current?.abort();
     requestRef.current = null;
-    setActionsOpen(false);setToolsOpen(false);
+    setActionsOpen(false);
     commit([]);setQuestion('');setFailure(null);setLoadingAI(false);
     setAppConsent(false);setFinancialContext(null);setFinancialPreview(null);setSummaryLoading(false);
   }
@@ -52,20 +68,23 @@ export default function EducationScreen({ navigation, route }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       const id = session?.user?.id || null;
       if (event === 'SIGNED_OUT' || ownerRef.current && ownerRef.current !== id) resetChat();
-      ownerRef.current = id;
+      if(ownerRef.current!==id){savedRef.current=[];setSavedChats([]);setChatsOpen(false);}
+      ownerRef.current = id;void loadChats(id);
     });
+    void supabase.auth.getSession().then(({data:{session}})=>{if(!ownerRef.current){ownerRef.current=session?.user?.id||null;void loadChats(ownerRef.current);}});
     return () => {generation.current++;requestRef.current?.abort();subscription.unsubscribe();};
   }, []);
 
   function newConversation() {
-    if (!messagesRef.current.length && !question.trim() && !financialContext && !requestRef.current) return;
-    Alert.alert('Nueva conversación', 'Se borrarán los mensajes de esta pantalla y HEDA empezará sin ese contexto. Esto no elimina registros del proveedor.', [
+    if (!messagesRef.current.length && !question.trim() && !financialContext && !appConsent && !requestRef.current) return;
+    Alert.alert('Nueva conversación', 'Se vaciará el chat abierto y se retirará su permiso para consultar datos. Los chats que guardaste seguirán disponibles en este dispositivo.', [
     { text: 'Cancelar', style: 'cancel' }, { text: 'Empezar de nuevo', onPress: resetChat }]
     );
   }
 
   async function openFinancialPreview() {
-    if (requestRef.current) return;
+    if (requestRef.current) {Alert.alert('Consulta en curso','Espera a que termine la respuesta para preparar el análisis.');return;}
+    setActionsOpen(false);setFinancialPreview(null);
     const requestGeneration = generation.current;
     const controller = new AbortController();
     requestRef.current = controller;setSummaryLoading(true);Keyboard.dismiss();
@@ -124,20 +143,10 @@ export default function EducationScreen({ navigation, route }) {
   return <SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
     <KeyboardAvoidingView style={themeStyle({ flex: 1 }, colors)} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.cleanHeader}>
-        {toolsOpen ? <TouchableOpacity accessibilityRole="button" accessibilityLabel="Volver al asistente" onPress={() => setToolsOpen(false)} style={styles.headerBack}><Ionicons accessible={false} name="arrow-back" size={23} color={themeColor(colors.primary, colors)} /></TouchableOpacity> : <View style={styles.headerSparkle}><Ionicons accessible={false} name="sparkles" size={22} color={themeColor(colors.primary, colors)} /></View>}
-        <Text accessibilityRole="header" style={styles.cleanTitle}>{toolsOpen ? 'Aprender y explorar' : 'Asistente HEDA'}</Text>
+        <View style={styles.headerSparkle}><Ionicons accessible={false} name="sparkles" size={22} color={colors.link}/></View>
+        <Text accessibilityRole="header" style={styles.cleanTitle}>Asistente HEDA</Text><TouchableOpacity accessibilityRole="button" accessibilityLabel={"Chats guardados, "+savedChats.length+" de 2"} style={styles.headerBack} onPress={()=>{Keyboard.dismiss();setActionsOpen(false);setChatsOpen(true);}}><Ionicons accessible={false} name="chatbubbles-outline" size={23} color={colors.link}/><Text style={{color:colors.link,fontSize:12}}>{savedChats.length}/2</Text></TouchableOpacity>
       </View>
-      {toolsOpen && <ScrollView style={styles.container} contentContainerStyle={styles.chatContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.toolsDescription}>Elige una herramienta para continuar.</Text>
-        <View style={styles.grid}>
-          <ToolCard icon="school-outline" title="Educación" text="Aprende finanzas paso a paso con ejemplos sencillos." accent="#2463B5" tint="#EAF2FF" onPress={() => navigation.navigate('EducacionFinanciera')} />
-          <ToolCard icon="analytics-outline" title="Hábitos" text="Descubre patrones en tus ingresos y gastos registrados." accent="#7951B0" tint="#F2ECFC" onPress={() => navigation.navigate('Habitos')} />
-          <ToolCard icon="qr-code-outline" title="Compartir por QR" text="Comparte un movimiento o importa uno después de revisarlo." accent="#18785D" tint="#E6F6EF" onPress={()=>navigation.navigate('QR')}/>
-          <ToolCard icon="notifications-outline" title="Alertas" text="Revisa pagos pendientes y configura presupuestos mensuales." accent="#A65B16" tint="#FFF1E3" onPress={() => navigation.navigate('Alertas')} />
-          <ToolCard icon="trending-up-outline" title="Ethereum" text="Consulta el módulo informativo de criptomonedas." accent="#167B83" tint="#E5F5F5" onPress={() => navigation.navigate('Ethereum')} />
-        </View>
-      </ScrollView>}
-      <View style={themeStyle({ flex: 1, display: toolsOpen ? 'none' : 'flex' }, colors)}>
+      <View style={themeStyle({ flex: 1, display: 'flex' }, colors)}>
       <ScrollView ref={scrollRef} style={styles.container} contentContainerStyle={styles.chatContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}
         onContentSizeChange={() => {if (scrollToLatest.current) {scrollRef.current?.scrollToEnd({ animated: true });scrollToLatest.current = false;}}}>
         {!financialContext&&<TouchableOpacity accessibilityRole="button" disabled={loadingAI||summaryLoading} onPress={()=>authorizeAppData(question.trim()||undefined)} style={{flexDirection:'row',alignItems:'center',gap:10,padding:14,borderRadius:16,backgroundColor:colors.softBlue,marginBottom:14}}><Ionicons accessible={false} name={appConsent?'checkmark-circle-outline':'wallet-outline'} size={22} color={colors.link}/><View style={{flex:1}}><Text style={{color:colors.ink,fontWeight:'700',fontSize:15}}>{appConsent?'Tus registros están conectados':'Responde con mis datos'}</Text><Text style={{color:colors.muted,fontSize:13,lineHeight:19}}>{appConsent?'Puedes preguntar por tu saldo, gastos o metas.':'Permite consultar tu cuenta en este chat.'}</Text></View></TouchableOpacity>}
@@ -145,7 +154,7 @@ export default function EducationScreen({ navigation, route }) {
         {!messages.length && <View style={styles.welcomeCard}>
           <View style={styles.welcomeHeading}><View style={styles.welcomeIcon}><Ionicons accessible={false} name="sparkles" size={23} color={themeColor(colors.primary, colors)} /></View><Text style={styles.welcomeTitle}>¿Qué quieres entender de tu dinero?</Text></View>
           <View style={styles.welcomeSuggestions}>{[['Ahorrar', '¿Cómo empiezo a ahorrar?'], ['Organizar gastos', '¿Cómo organizo mis gastos?'], ['Entender mi tarjeta', '¿Cómo funciona el pago de una tarjeta?']].map(([label, text]) => <TouchableOpacity key={label} accessibilityRole="button" style={styles.quietSuggestion} onPress={() => {setQuestion(text);inputRef.current?.focus();}}><Text style={styles.quietSuggestionText}>{label}</Text><Ionicons accessible={false} name="add" size={15} color={themeColor(colors.primary, colors)} /></TouchableOpacity>)}</View>
-          <TouchableOpacity accessibilityRole="button" style={styles.exploreLink} onPress={() => {Keyboard.dismiss();setActionsOpen(false);setToolsOpen(true);}}><View style={styles.exploreIcon}><Ionicons accessible={false} name="book-outline" size={25} color={themeColor("#FFFFFF", colors)} /></View><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.exploreText}>Aprender y explorar</Text><Text style={styles.exploreSubtitle}>Educación, hábitos y herramientas</Text></View><Ionicons accessible={false} name="arrow-forward" size={22} color={themeColor("#FFFFFF", colors)} /></TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Analizar mis finanzas" style={styles.exploreLink} disabled={loadingAI||summaryLoading} onPress={openFinancialPreview}><Ionicons accessible={false} name="pie-chart-outline" size={25} color="#FFFFFF"/><View style={{flex:1}}><Text style={styles.exploreText}>Analizar mis finanzas</Text><Text style={styles.exploreSubtitle}>Revisa tu resumen antes de compartirlo</Text></View></TouchableOpacity>
         </View>}
         {messages.map((item) => <View key={item.id} style={themeStyle([styles.chatBubble, item.role === 'user' ? styles.userBubble : styles.assistantBubble], colors)}>
           <Text style={themeStyle([styles.bubbleAuthor, item.role === 'user' && { color: '#E2EDFF' }], colors)}>{item.role === 'user' ? 'Tú' : 'HEDA'}</Text>
@@ -173,25 +182,26 @@ export default function EducationScreen({ navigation, route }) {
           <TouchableOpacity accessibilityRole="button" style={styles.menuAction} disabled={loadingAI||summaryLoading} onPress={()=>{setActionsOpen(false);authorizeAppData();}}><Ionicons accessible={false} name="shield-checkmark-outline" size={22} color={colors.link}/><Text style={styles.menuText}>{appConsent?'Datos autorizados en este chat':'Consultar mis datos'}</Text></TouchableOpacity>
           <TouchableOpacity accessibilityRole="button" style={styles.menuAction} onPress={() => {setActionsOpen(false);newConversation();}}><Ionicons accessible={false} name="add-circle-outline" size={22} color={themeColor(colors.primary, colors)} /><Text style={styles.menuText}>Nueva conversación</Text></TouchableOpacity>
           <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: loadingAI || summaryLoading }} disabled={loadingAI || summaryLoading} style={themeStyle([styles.menuAction, (loadingAI || summaryLoading) && { opacity: 0.45 }], colors)} onPress={() => {setActionsOpen(false);void openFinancialPreview();}}><Ionicons accessible={false} name="pie-chart-outline" size={22} color={themeColor(colors.primary, colors)} /><Text style={styles.menuText}>Analizar mis finanzas</Text></TouchableOpacity>
-          <TouchableOpacity accessibilityRole="button" style={themeStyle([styles.menuAction, styles.exploreMenuAction], colors)} onPress={() => {Keyboard.dismiss();setActionsOpen(false);setToolsOpen(true);}}><Ionicons accessible={false} name="book-outline" size={22} color={themeColor("#6D28D9", colors)} /><Text style={themeStyle([styles.menuText, { color: '#6D28D9' }], colors)}>Aprender y explorar</Text><Ionicons accessible={false} name="arrow-forward" size={19} color={themeColor("#6D28D9", colors)} /></TouchableOpacity>
+
         </View> : null}
         <View style={styles.composerRow}>
           <TouchableOpacity accessibilityRole="button" accessibilityLabel={actionsOpen ? 'Cerrar acciones del asistente' : 'Abrir acciones del asistente'} accessibilityState={{ expanded: actionsOpen }} style={themeStyle([styles.plusButton, actionsOpen && styles.plusButtonActive], colors)} onPress={() => {Keyboard.dismiss();setActionsOpen(!actionsOpen);}}><Ionicons accessible={false} name={actionsOpen ? 'close' : 'add'} size={26} color={themeColor(colors.primary, colors)} /></TouchableOpacity>
           <TextInput selectionColor={colors.link} cursorColor={colors.link} ref={inputRef} value={question} onChangeText={setQuestion} placeholder={messages.length ? 'Pregunta algo más…' : 'Escribe tu pregunta…'} placeholderTextColor={colors.placeholder} multiline maxLength={2000} editable={!loadingAI && !summaryLoading} accessibilityLabel="Mensaje para HEDA" onFocus={() => setActionsOpen(false)} style={styles.composerInput} keyboardAppearance={colors.dark ? "dark" : "light"} />
           <TouchableOpacity accessibilityRole="button" accessibilityLabel={failure ? 'Reintentar mensaje' : 'Enviar mensaje'} disabled={loadingAI || summaryLoading || !question.trim()} onPress={send} style={themeStyle([styles.sendChatButton, (loadingAI || !question.trim()) && { opacity: 0.45 }], colors)}>{loadingAI || summaryLoading ? <ActivityIndicator color={themeColor("#FFFFFF", colors)} size="small" /> : <Ionicons accessible={false} name="arrow-up" size={23} color={themeColor("#FFFFFF", colors)} />}</TouchableOpacity>
         </View>
-        <View style={styles.composerFooter}><Text style={styles.composerHint}>{question.length}/2000</Text><InfoButton title={"Privacidad, contexto y límites de IA"} text={"Se envían tu pregunta y mensajes recientes de este chat a Google Gemini; el nivel gratuito puede usar el contenido para mejorar productos. No compartas datos sensibles. El chat se conserva solo en memoria mientras usas la app y se limpia al cerrar sesión o iniciar uno nuevo. Consultar mis datos permite compartir registros de esta cuenta durante el chat, sin correo, fecha de nacimiento ni notas. Analizar mis finanzas comparte solo el resumen que revisas. Las propuestas se guardan únicamente al confirmar. Nueva conversación deja de compartirlo. El uso tiene límites compartidos del proyecto; HEDA informa si se alcanza uno, pero no conoce la cuota restante en tiempo real."} style={themeStyle({ width: 44, height: 44 }, colors)} /></View>
+        <View style={styles.composerFooter}><Text style={styles.composerHint}>{question.length}/2000</Text><InfoButton title={"Privacidad, contexto y límites de IA"} text={"Se envían tu pregunta y mensajes recientes de este chat a Google Gemini; el nivel gratuito puede usar el contenido para mejorar productos. No compartas datos sensibles. Puedes guardar hasta dos chats en este dispositivo. Contienen los mensajes, que pueden incluir información financiera; no se sincronizan con otros dispositivos. Bórralos desde Chats guardados si compartes el equipo. Los permisos y las propuestas para modificar registros no se guardan. Consultar mis datos permite compartir registros de esta cuenta durante el chat, sin correo, fecha de nacimiento ni notas. Analizar mis finanzas comparte solo el resumen que revisas. Las propuestas se guardan únicamente al confirmar. Nueva conversación deja de compartirlo. El uso tiene límites compartidos del proyecto; HEDA informa si se alcanza uno, pero no conoce la cuota restante en tiempo real."} style={themeStyle({ width: 44, height: 44 }, colors)} /></View>
       </View>
       </View>
+      <Modal visible={chatsOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={()=>setChatsOpen(false)}><SafeAreaProvider><SafeAreaView edges={['top','bottom','left','right']} style={styles.safe}><View style={styles.summaryModalHeader}><Text accessibilityRole="header" style={styles.toolsHeading}>Chats guardados · {savedChats.length}/2</Text><TouchableOpacity accessibilityRole="button" accessibilityLabel="Cerrar chats guardados" style={styles.summaryClose} onPress={()=>setChatsOpen(false)}><Ionicons accessible={false} name="close" size={25} color={colors.ink}/></TouchableOpacity></View><ScrollView contentContainerStyle={{padding:18,gap:14}}><Text style={styles.cardText}>Guarda hasta dos conversaciones en este dispositivo, con sus últimas 20 preguntas y respuestas. Solo se conserva el texto; al abrirlas tendrás que autorizar otra vez la consulta de tus datos.</Text><TouchableOpacity accessibilityRole="button" disabled={chatBusy||loadingAI||summaryLoading||!messages.length} onPress={saveCurrent} style={[styles.consentPrimary,{opacity:chatBusy||loadingAI||summaryLoading||!messages.length?0.5:1}]}><Text style={styles.analyzeButtonText}>{chatBusy?'Guardando…':chatId.current?'Actualizar este chat guardado':'Guardar conversación actual'}</Text></TouchableOpacity>{!savedChats.length&&<Text style={styles.cardText}>Todavía no has guardado chats.</Text>}{savedChats.map(chat=><View key={chat.id} style={{padding:16,gap:12,borderWidth:1,borderColor:colors.border,borderRadius:16}}><Text style={styles.summaryBadgeTitle}>{chat.title}</Text><Text style={styles.cardText}>{chat.messages.length/2} preguntas guardadas</Text><TouchableOpacity accessibilityRole="button" accessibilityLabel={'Abrir chat: '+chat.title} disabled={chatBusy} style={styles.retryButton} onPress={()=>{if(messages.length||question.trim())Alert.alert('Abrir chat guardado','Los cambios sin guardar del chat abierto se perderán.',[{text:'Cancelar',style:'cancel'},{text:'Abrir',onPress:()=>openSaved(chat)}]);else openSaved(chat);}}><Text style={styles.suggestionText}>Abrir conversación</Text></TouchableOpacity><TouchableOpacity accessibilityRole="button" accessibilityLabel={'Borrar chat: '+chat.title} disabled={chatBusy} style={styles.retryButton} onPress={()=>removeSaved(chat)}><Text style={{color:colors.expense,fontWeight:'700'}}>Borrar</Text></TouchableOpacity></View>)}</ScrollView></SafeAreaView></SafeAreaProvider></Modal>
       <Modal visible={!!financialPreview} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setFinancialPreview(null)}>
         <SafeAreaProvider><SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={styles.safe}>
           <View style={styles.summaryModalHeader}><Text accessibilityRole="header" style={styles.toolsHeading}>Revisa tu resumen</Text><TouchableOpacity accessibilityRole="button" accessibilityLabel="Cerrar resumen sin compartir" style={styles.summaryClose} onPress={() => setFinancialPreview(null)}><Ionicons accessible={false} name="close" size={25} color={themeColor(colors.ink, colors)} /></TouchableOpacity></View>
           <ScrollView contentContainerStyle={{ padding: 18, paddingTop: 0 }}>
             {financialPreview && <FinancialSummaryPreview summary={financialPreview.summary} />}
-            <Text style={styles.consentExplanation}>Al continuar enviarás estos importes a Google Gemini y comenzarás un chat nuevo. Los seguimientos usarán el mismo resumen mientras esté activo. En el nivel gratuito, Google puede usar el contenido para mejorar productos.</Text>
+            <Text style={styles.consentExplanation}>Al continuar se vaciará el chat abierto sin guardar y enviarás estos importes a Google Gemini en un chat nuevo. Los chats guardados se conservarán. Los seguimientos usarán el mismo resumen mientras esté activo. En el nivel gratuito, Google puede usar el contenido para mejorar productos.</Text>
             <Text style={styles.consentExplanation}>No se envían nombres, correos, notas, identificadores ni nombres de tarjetas o metas. La búsqueda web estará desactivada en este chat. No se harán pagos. Cualquier propuesta para guardar datos requerirá una confirmación adicional.</Text>
           </ScrollView>
-          <View style={styles.consentFooter}><TouchableOpacity accessibilityRole="button" style={[styles.consentPrimary, financialPreview?.summary.monthly.transactionCount === 0 && {opacity:0.45}]} disabled={!financialPreview?.summary.monthly.transactionCount} onPress={approveFinancialPreview}><Text style={styles.analyzeButtonText}>Compartir y analizar</Text><Ionicons accessible={false} name="arrow-forward" size={18} color={themeColor("#FFFFFF", colors)} /></TouchableOpacity><TouchableOpacity accessibilityRole="button" style={styles.summaryCancel} onPress={() => setFinancialPreview(null)}><Text style={styles.suggestionText}>Cancelar · No compartir</Text></TouchableOpacity></View>
+          <View style={styles.consentFooter}><TouchableOpacity accessibilityRole="button" accessibilityLabel="Compartir y analizar" style={[styles.consentPrimary, financialPreview?.summary.monthly.transactionCount === 0 && {opacity:0.45}]} disabled={!financialPreview?.summary.monthly.transactionCount} onPress={approveFinancialPreview}><Text style={styles.analyzeButtonText}>Compartir y analizar</Text><Ionicons accessible={false} name="arrow-forward" size={18} color={themeColor("#FFFFFF", colors)} /></TouchableOpacity><TouchableOpacity accessibilityRole="button" style={styles.summaryCancel} onPress={() => setFinancialPreview(null)}><Text style={styles.suggestionText}>Cancelar · No compartir</Text></TouchableOpacity></View>
         </SafeAreaView></SafeAreaProvider>
       </Modal>
     </KeyboardAvoidingView>
@@ -214,40 +224,6 @@ function FinancialSummaryPreview({ summary }) {
     <Text style={styles.previewSectionTitle}>Cómo interpretar el resumen</Text>
     {summary.limitations.map((text) => <Text key={text} style={styles.consentExplanation}>• {text}</Text>)}
   </View>;
-}
-
-// =====================================================
-// TOOL CARD
-// =====================================================
-
-function ToolCard({ icon, title, text, onPress, accent = colors.primary, tint = colors.softBlue }) {
-  const { colors, styles } = useThemeStyles(makeStyles);
-  return (
-    <TouchableOpacity
-      accessibilityRole="button"
-      accessibilityLabel={`Abrir ${title}`}
-      style={themeStyle([styles.toolCard, { borderColor: tint }], colors)}
-      onPress={onPress}
-      activeOpacity={0.8}>
-
-      <View style={themeStyle([styles.toolIcon, { backgroundColor: tint }], colors)}>
-        <Ionicons
-          name={icon}
-          size={23}
-          color={themeColor(accent, colors)} />
-
-      </View>
-
-      <Text style={styles.toolTitle}>
-        {title}
-      </Text>
-
-      <Text style={styles.toolText}>
-        {text}
-      </Text>
-      <View style={styles.openTool}><Text style={themeStyle([styles.openToolText, { color: accent }], colors)}>Abrir</Text><Ionicons accessible={false} name="arrow-forward" size={17} color={themeColor(accent, colors)} /></View>
-    </TouchableOpacity>);
-
 }
 
 const makeStyles = (colors) => StyleSheet.create({

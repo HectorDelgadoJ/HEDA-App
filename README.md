@@ -311,3 +311,7 @@ Primera LSTM experimental real (OHLCV diario, tendencias 1/7 días). Consulta [p
 
 
 Accesibilidad y atajos de los módulos: ver [ACCESIBILIDAD_HEDA_TT.md](ACCESIBILIDAD_HEDA_TT.md) para opciones, evidencia automatizada, demostración y pruebas físicas pendientes.
+
+
+### IA y Herramientas
+La pestaña IA contiene el chat y la revisión del resumen financiero antes de compartirlo. El icono de chats permite guardar, abrir, actualizar o borrar hasta dos conversaciones por cuenta en este dispositivo (últimas 20 preguntas y respuestas). Los guardados son locales, no se sincronizan; al abrirlos no se restauran permisos ni propuestas ejecutables. Herramientas tiene su propia pestaña inferior con Educación financiera, Hábitos, QR, Alertas/presupuestos y Ethereum. La visita guiada de Perfil explica esta navegación.

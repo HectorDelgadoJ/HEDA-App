@@ -8,7 +8,7 @@ export default function SwipeBackToIA({ navigation, children }) {
     onMoveShouldSetPanResponderCapture: (_event, gesture) => gesture.numberActiveTouches === 1
       && gesture.dx < -28 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 2.5,
     onPanResponderRelease: (_event, gesture) => {
-      if (gesture.dx < -85 && Math.abs(gesture.dy) < 55) navigation.navigate('IA');
+      if (gesture.dx < -85 && Math.abs(gesture.dy) < 55) navigation.navigate('Herramientas');
     },
     onPanResponderTerminationRequest: () => true,
   }), [navigation]);

@@ -1,3 +1,4 @@
+import ToolsScreen from '../screens/ToolsScreen';
 import LargeNavigationBar from '../components/LargeNavigationBar';
 import {useAccessibility} from '../components/AccessibilityContext';
 import {Text} from '../components/AccessiblePrimitives';
@@ -95,6 +96,7 @@ function TabsNavigator() {
             iconName = focused ? 'wallet' : 'wallet-outline';
           }
 
+          if (route.name === 'Herramientas') iconName = focused ? 'grid' : 'grid-outline';
           if (route.name === 'IA') {
             iconName = focused ? 'sparkles' : 'sparkles-outline';
           }
@@ -114,6 +116,7 @@ function TabsNavigator() {
       <Tab.Screen name="Administracion" component={AdminScreen} options={{tabBarButton:()=>null,tabBarItemStyle:{display:'none'}}}/><Tab.Screen name="Inicio" component={DashboardScreen} />
       <Tab.Screen name="Movimientos" component={ExpensesScreen} />
       <Tab.Screen name="IA" component={EducationScreen} />
+      <Tab.Screen name="Herramientas" component={ToolsScreen} />
       <Tab.Screen name="Reportes" component={GoalsScreen} />
       <Tab.Screen name="Perfil" component={ProfileScreen} />
 

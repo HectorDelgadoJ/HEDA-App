@@ -165,7 +165,7 @@ export default function AlertsScreen({ navigation, route }) {
 
   return <SwipeBackToIA navigation={navigation}><SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
     <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => {if (!saving && !reading) void load(true);}} tintColor={themeColor(colors.primary, colors)} />}>
-      <ScreenHeader title="Alertas y límites" subtitle="Ten presentes tus pagos y tu plan del mes." actionIcon="arrow-back" actionLabel="Volver a IA" onAction={() => navigation.navigate('IA')} />
+      <ScreenHeader title="Alertas y límites" subtitle="Ten presentes tus pagos y tu plan del mes." actionIcon="arrow-back" actionLabel="Volver a herramientas" onAction={() => navigation.navigate('Herramientas')} />
       <View accessibilityRole="tablist" accessibilityLabel="Alertas o presupuestos" style={styles.tabs}>{['Alertas', 'Presupuestos'].map((name) => <TouchableOpacity key={name} accessibilityRole="tab" accessibilityState={{ selected: tab === name }} style={themeStyle([styles.tab, tab === name && styles.tabActive], colors)} onPress={() => setTab(name)}><Text style={themeStyle([styles.tabText, tab === name && styles.white], colors)}>{name}{name === 'Alertas' && unread ? ` (${unread})` : ''}</Text></TouchableOpacity>)}</View>
 
       {errors.length ? <View style={styles.warning}>{errors.map((message) => <Text key={message} style={styles.body}>{message}</Text>)}<Action label="Actualizar" icon="refresh-outline" secondary onPress={() => load(true)} disabled={refreshing || saving || reading} /></View> : null}

@@ -264,3 +264,10 @@ HEDA se exporta con `npm run build:web` a **dist**, preparada para Netlify Drop 
 - Correcciones de contraste, estados ARIA y agrupación de pestañas/radios, nombres de interruptores y progreso, relación campo/error y autocomplete web del nombre de usuario. Gráficas con alternativas textuales; Ethereum ahora muestra OHLCV completo plegable.
 - Evidencia: 48 revisiones axe-core 4.10.3 sin infracciones detectadas en estados muestreados; 252 pruebas aprobadas y ninguna omitida; exportación web/Android/iOS. Se probaron teclado, persistencia, atajos y texto 200% a 320/390. Se documentan revisiones manuales pendientes; no se afirma certificación WCAG ni prueba física VoiceOver/TalkBack.
 - Guía ACCESIBILIDAD_HEDA_TT.md con demostración para el 27/10 y plan hasta presentación del 18/11. Dist preparada; sin SQL, Edge ni secretos nuevos.
+
+
+## 26 de octubre de 2026 — IA, chats y Herramientas
+- IA dedicada al asistente; nueva pestaña Herramientas con Educación, Hábitos, QR, Alertas/presupuestos y Ethereum. Se actualizaron regreso de pantallas, navegación ampliada y visita guiada.
+- Hasta dos chats guardados explícitamente por cuenta en este dispositivo (últimas 20 preguntas y respuestas). Abrir, actualizar y borrar; sin sincronización. Se excluyen permisos, propuestas ejecutables y contexto financiero autorizado. La eliminación de cuenta limpia estas copias locales.
+- Corregido Analizar mis finanzas: la petición con digest autorizado ahora usa la ruta de resumen financiero que lo valida, en lugar de la ruta de agente que lo ignoraba. Botón visible al abrir IA; previsualización y autorización conservadas.
+- No requiere SQL ni despliegue Edge adicional; publicar dist actualizado. Prueba de navegador con backend simulado: previsualización, análisis, guardar, recargar, abrir y seguimiento sin permisos reactivados.
