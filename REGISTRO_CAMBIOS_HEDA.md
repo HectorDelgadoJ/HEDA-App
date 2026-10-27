@@ -271,3 +271,5 @@ HEDA se exporta con `npm run build:web` a **dist**, preparada para Netlify Drop 
 - Hasta dos chats guardados explícitamente por cuenta en este dispositivo (últimas 20 preguntas y respuestas). Abrir, actualizar y borrar; sin sincronización. Se excluyen permisos, propuestas ejecutables y contexto financiero autorizado. La eliminación de cuenta limpia estas copias locales.
 - Corregido Analizar mis finanzas: la petición con digest autorizado ahora usa la ruta de resumen financiero que lo valida, en lugar de la ruta de agente que lo ignoraba. Botón visible al abrir IA; previsualización y autorización conservadas.
 - No requiere SQL ni despliegue Edge adicional; publicar dist actualizado. Prueba de navegador con backend simulado: previsualización, análisis, guardar, recargar, abrir y seguimiento sin permisos reactivados.
+
+- Herramientas: iconos diferenciados en azul (Educación), morado (Hábitos), verde (QR), ámbar (Alertas) y turquesa (Ethereum), con fondos para tema claro y oscuro. La flecha de Alertas y presupuestos vuelve a Perfil.
