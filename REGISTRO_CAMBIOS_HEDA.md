@@ -273,3 +273,12 @@ HEDA se exporta con `npm run build:web` a **dist**, preparada para Netlify Drop 
 - No requiere SQL ni despliegue Edge adicional; publicar dist actualizado. Prueba de navegador con backend simulado: previsualización, análisis, guardar, recargar, abrir y seguimiento sin permisos reactivados.
 
 - Herramientas: iconos diferenciados en azul (Educación), morado (Hábitos), verde (QR), ámbar (Alertas) y turquesa (Ethereum), con fondos para tema claro y oscuro. La flecha de Alertas y presupuestos vuelve a Perfil.
+
+- Visita guiada: pasos específicos para elegir qué mostrar en Inicio y configurar accesibilidad, con botones que abren Atajos y bloques o Accesibilidad sin perder el paso del tutorial. Se explica guardar preferencias y cómo repetir la visita desde Perfil. Las visitas ya terminadas no se reinician automáticamente.
+
+
+## 27/10/2026 — Ethereum: noticias y evaluación
+- Nueva sección plegable de noticias RSS con fuentes, fecha y enlaces; tono léxico experimental, separado de la predicción. Sin nuevas claves ni datos de usuario enviados a proveedores RSS.
+- Comparación LSTM ETH/ETH+BTC con tres particiones temporales e early stopping interno. La mejora de validación de siete días no se sostuvo en prueba; se conservan los pesos publicados.
+- Archivo prospectivo de titulares con primera observación, comparación precios/sentimiento preparada con puerta de muestra mínima, y evaluación de pronósticos cerrados por la misma fuente. La recogida es manual; no se afirma mejora predictiva por sentimiento.
+- Preparado ethereum-forecast-dashboard.ts y dist. Publicación pendiente por el usuario: primero Edge ethereum-forecast y luego Netlify, sin SQL. Guía en GUIA_ETHEREUM_HEDA.md.

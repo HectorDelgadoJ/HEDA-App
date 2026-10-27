@@ -14,5 +14,5 @@ test('legacy configured accounts still receive welcome once; saved account state
 test('customization reset and serialization retain completed welcome and tour',()=>{
  const state={...experienceDefaults(),welcomeDone:true,tourDone:true};
  assert.equal(resetExperienceView(state).tourDone,true);assert.equal(normalizeExperience({...state,tourDone:'true'}).tourDone,false);
- assert.deepEqual(tourStops.map(x=>x.route),['Inicio','Movimientos','Reportes','IA','Herramientas','Perfil']);
+ assert.deepEqual(tourStops.map(x=>x.route),['Inicio','Perfil','Perfil','Movimientos','Reportes','IA','Herramientas','Perfil']);
 });

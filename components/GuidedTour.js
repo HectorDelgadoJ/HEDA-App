@@ -8,7 +8,7 @@ import {useThemeStyles} from '../theme/ThemeProvider';
 import {tourStops} from '../utils/welcome';
 import HedaBrand from './HedaBrand';
 export default function GuidedTour(){
- const {tourOpen,tourRun,finishTour,saving,error}=useExperience(),[index,setIndex]=useState(0);
+ const {tourOpen,tourRun,finishTour,openSettings,saving,error}=useExperience(),[index,setIndex]=useState(0);
  const navigation=useNavigation(),{colors}=useThemeStyles(),insets=useSafeAreaInsets();
  useEffect(()=>{setIndex(0);},[tourRun]);
  useEffect(()=>{if(tourOpen)navigation.navigate('App',{screen:tourStops[index].route});},[tourOpen,index,navigation]);
@@ -20,6 +20,7 @@ export default function GuidedTour(){
  <Text style={{color:colors.muted,fontSize:12,marginTop:8}}>Visita {index+1} de {tourStops.length}</Text><Text accessibilityRole="header" accessibilityLiveRegion="polite" style={{fontSize:21,fontWeight:'700',color:colors.ink,marginTop:14}}>{stop.title}</Text>
  <Text style={{fontSize:15,lineHeight:22,color:colors.muted,marginTop:8}}>{stop.text}</Text>
  <Text style={{fontSize:14,lineHeight:21,color:colors.ink,backgroundColor:colors.softBlue,padding:12,borderRadius:12,marginTop:12}}>{stop.action}</Text>
+ {stop.settingsSection&&<TouchableOpacity accessibilityRole="button" accessibilityLabel={stop.settingsLabel} disabled={saving} onPress={()=>openSettings(stop.settingsSection)} style={{...button,marginTop:12,borderWidth:1,borderColor:colors.link,backgroundColor:colors.softBlue,paddingVertical:12}}><Text style={{color:colors.link,fontWeight:'700',textAlign:'center'}}>{stop.settingsLabel}</Text></TouchableOpacity>}
  {error?<Text accessibilityLiveRegion="polite" style={{color:colors.expense||'#B91C1C',marginTop:8}}>{error}</Text>:null}
  <View style={{flexDirection:'row',gap:8,justifyContent:'space-between',marginTop:14}}><TouchableOpacity accessibilityRole="button" disabled={saving} onPress={()=>index?setIndex(index-1):finishTour()} style={button}><Text style={{color:colors.link,fontWeight:'600'}}>{index?'Anterior':'Omitir visita'}</Text></TouchableOpacity><TouchableOpacity accessibilityRole="button" disabled={saving} onPress={()=>index===tourStops.length-1?finishTour():setIndex(index+1)} style={[button,{backgroundColor:colors.primary}]}><Text style={{color:'#FFFFFF',fontWeight:'700'}}>{saving?'Guardando…':index===tourStops.length-1?'Terminar':'Siguiente'}</Text></TouchableOpacity></View>
  </ScrollView></View></View>;

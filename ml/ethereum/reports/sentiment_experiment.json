@@ -1,0 +1,18 @@
+{
+  "method": "Same temporal folds, ETH indicators versus ETH plus observed headline count/tone. First observation time, not publication date, determines availability.",
+  "minimumObservedOrigins": 180,
+  "priceDatasetEnd": "2026-10-24",
+  "archiveItems": 15,
+  "observedOriginsWithPrices": 0,
+  "productionChanged": false,
+  "reports": {
+    "1": {
+      "status": "insufficient_observed_data",
+      "origins": 0
+    },
+    "7": {
+      "status": "insufficient_observed_data",
+      "origins": 0
+    }
+  }
+}

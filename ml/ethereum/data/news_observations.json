@@ -1,0 +1,269 @@
+{
+  "version": 1,
+  "purpose": "Prospective observed headlines, never retroactively available training data.",
+  "captures": [
+    {
+      "observedAt": "2026-10-27T06:48:10.752Z",
+      "sources": [
+        {
+          "source": "Ethereum Foundation",
+          "ok": false
+        },
+        {
+          "source": "CoinDesk",
+          "ok": false
+        },
+        {
+          "source": "Cointelegraph",
+          "ok": true
+        }
+      ],
+      "headlines": 12
+    },
+    {
+      "observedAt": "2026-10-27T06:52:43.970Z",
+      "sources": [
+        {
+          "source": "Ethereum Foundation",
+          "ok": false
+        },
+        {
+          "source": "CoinDesk",
+          "ok": false
+        },
+        {
+          "source": "Cointelegraph",
+          "ok": true
+        }
+      ],
+      "headlines": 12
+    },
+    {
+      "observedAt": "2026-10-27T06:53:33.070Z",
+      "sources": [
+        {
+          "source": "Ethereum Foundation",
+          "ok": true
+        },
+        {
+          "source": "CoinDesk",
+          "ok": true
+        },
+        {
+          "source": "Cointelegraph",
+          "ok": true
+        }
+      ],
+      "headlines": 12
+    }
+  ],
+  "items": [
+    {
+      "title": "AI agents help rescue ETH’s Glamsterdam fork, ‘Steal My Bitcoin’ site: Hodler’s Digest",
+      "url": "https://cointelegraph.com/magazine/ai-agents-help-rescue-eths-glamsterdam-fork-steal-my-bitcoin-site-hodlers-digest",
+      "source": "Cointelegraph",
+      "institutional": false,
+      "publishedAt": "2026-10-25T22:48:40.000Z",
+      "observedAt": "2026-10-27T06:48:10.752Z",
+      "tone": {
+        "label": "sin clasificar",
+        "score": 0
+      },
+      "toneVersion": "c4db608d2a5109bdad37112d15446383ddfb75e831730c2c686bd3d05ae2d808",
+      "toneComputedAt": "2026-10-27T06:52:43.970Z"
+    },
+    {
+      "title": "Ethereum delays Glamsterdam Hoodi testnet launch over security risks",
+      "url": "https://cointelegraph.com/news/ethereum-delays-glamsterdam-testnet-fork-gas-security-risks",
+      "source": "Cointelegraph",
+      "institutional": false,
+      "publishedAt": "2026-10-23T05:09:41.000Z",
+      "observedAt": "2026-10-27T06:48:10.752Z",
+      "tone": {
+        "label": "desfavorable",
+        "score": -1
+      },
+      "toneVersion": "c4db608d2a5109bdad37112d15446383ddfb75e831730c2c686bd3d05ae2d808",
+      "toneComputedAt": "2026-10-27T06:52:43.970Z"
+    },
+    {
+      "title": "Starknet voters back research into life beyond Ethereum",
+      "url": "https://cointelegraph.com/news/starknet-vote-post-quantum-l1-research-ethereum",
+      "source": "Cointelegraph",
+      "institutional": false,
+      "publishedAt": "2026-10-22T09:37:54.000Z",
+      "observedAt": "2026-10-27T06:48:10.752Z",
+      "tone": {
+        "label": "sin clasificar",
+        "score": 0
+      },
+      "toneVersion": "c4db608d2a5109bdad37112d15446383ddfb75e831730c2c686bd3d05ae2d808",
+      "toneComputedAt": "2026-10-27T06:52:43.970Z"
+    },
+    {
+      "title": "Ether ETF outflows continue, pass $1B in October so far",
+      "url": "https://cointelegraph.com/markets/ether-etf-outflows-near-1-1-billion-october",
+      "source": "Cointelegraph",
+      "institutional": false,
+      "publishedAt": "2026-10-21T08:11:50.000Z",
+      "observedAt": "2026-10-27T06:48:10.752Z",
+      "tone": {
+        "label": "desfavorable",
+        "score": -1
+      },
+      "toneVersion": "c4db608d2a5109bdad37112d15446383ddfb75e831730c2c686bd3d05ae2d808",
+      "toneComputedAt": "2026-10-27T06:52:43.970Z"
+    },
+    {
+      "title": "JPMorgan takes JPM Coin to Ethereum for institutional clients",
+      "url": "https://cointelegraph.com/news/jpmorgan-jpm-coin-ethereum-institutional-clients",
+      "source": "Cointelegraph",
+      "institutional": false,
+      "publishedAt": "2026-10-19T08:58:45.000Z",
+      "observedAt": "2026-10-27T06:48:10.752Z",
+      "tone": {
+        "label": "sin clasificar",
+        "score": 0
+      },
+      "toneVersion": "c4db608d2a5109bdad37112d15446383ddfb75e831730c2c686bd3d05ae2d808",
+      "toneComputedAt": "2026-10-27T06:52:43.970Z"
+    },
+    {
+      "title": "Starknet opens vote on potential Ethereum L2 exit over quantum risks",
+      "url": "https://cointelegraph.com/news/starknet-vote-ethereum-l2-exit-post-quantum-l1",
+      "source": "Cointelegraph",
+      "institutional": false,
+      "publishedAt": "2026-10-15T10:22:00.000Z",
+      "observedAt": "2026-10-27T06:48:10.752Z",
+      "tone": {
+        "label": "desfavorable",
+        "score": -1
+      },
+      "toneVersion": "c4db608d2a5109bdad37112d15446383ddfb75e831730c2c686bd3d05ae2d808",
+      "toneComputedAt": "2026-10-27T06:52:43.970Z"
+    },
+    {
+      "title": "ENS seeks DAO approval to activate upgraded Ethereum naming system",
+      "url": "https://cointelegraph.com/news/ens-dao-ensv2-upgrade-eth-domain-registrations",
+      "source": "Cointelegraph",
+      "institutional": false,
+      "publishedAt": "2026-10-13T11:11:27.000Z",
+      "observedAt": "2026-10-27T06:48:10.752Z",
+      "tone": {
+        "label": "favorable",
+        "score": 1
+      },
+      "toneVersion": "c4db608d2a5109bdad37112d15446383ddfb75e831730c2c686bd3d05ae2d808",
+      "toneComputedAt": "2026-10-27T06:52:43.970Z"
+    },
+    {
+      "title": "Bitmine sets 5% Ether supply ‘hard cap’ as accumulation target nears",
+      "url": "https://cointelegraph.com/news/bitmine-ether-5-percent-supply-hard-cap",
+      "source": "Cointelegraph",
+      "institutional": false,
+      "publishedAt": "2026-10-07T08:50:02.000Z",
+      "observedAt": "2026-10-27T06:48:10.752Z",
+      "tone": {
+        "label": "sin clasificar",
+        "score": 0
+      },
+      "toneVersion": "c4db608d2a5109bdad37112d15446383ddfb75e831730c2c686bd3d05ae2d808",
+      "toneComputedAt": "2026-10-27T06:52:43.970Z"
+    },
+    {
+      "title": "Ethereum’s Glamsterdam upgrade launches on Sepolia testnet",
+      "url": "https://cointelegraph.com/news/ethereums-glamsterdam-upgrade-launches-on-sepolia-testnet",
+      "source": "Cointelegraph",
+      "institutional": false,
+      "publishedAt": "2026-10-06T14:00:00.000Z",
+      "observedAt": "2026-10-27T06:48:10.752Z",
+      "tone": {
+        "label": "favorable",
+        "score": 1
+      },
+      "toneVersion": "c4db608d2a5109bdad37112d15446383ddfb75e831730c2c686bd3d05ae2d808",
+      "toneComputedAt": "2026-10-27T06:52:43.970Z"
+    },
+    {
+      "title": "EEZ tests atomic L1-to-L2 transaction in push to unify Ethereum",
+      "url": "https://cointelegraph.com/news/ethereum-eez-atomic-l1-l2-transaction-mainnet",
+      "source": "Cointelegraph",
+      "institutional": false,
+      "publishedAt": "2026-10-06T07:09:33.000Z",
+      "observedAt": "2026-10-27T06:48:10.752Z",
+      "tone": {
+        "label": "sin clasificar",
+        "score": 0
+      },
+      "toneVersion": "c4db608d2a5109bdad37112d15446383ddfb75e831730c2c686bd3d05ae2d808",
+      "toneComputedAt": "2026-10-27T06:52:43.970Z"
+    },
+    {
+      "title": "Ethereum’s zkAPI brings privacy-preserving API payments to mainnet",
+      "url": "https://cointelegraph.com/news/ethereum-zkapi-private-api-payments-mainnet",
+      "source": "Cointelegraph",
+      "institutional": false,
+      "publishedAt": "2026-10-02T03:34:25.000Z",
+      "observedAt": "2026-10-27T06:48:10.752Z",
+      "tone": {
+        "label": "sin clasificar",
+        "score": 0
+      },
+      "toneVersion": "c4db608d2a5109bdad37112d15446383ddfb75e831730c2c686bd3d05ae2d808",
+      "toneComputedAt": "2026-10-27T06:52:43.970Z"
+    },
+    {
+      "title": "Ethereum schedules Glamsterdam upgrade on Sepolia for Oct. 6",
+      "url": "https://cointelegraph.com/news/ethereum-glamsterdam-upgrade-sepolia",
+      "source": "Cointelegraph",
+      "institutional": false,
+      "publishedAt": "2026-09-29T10:46:05.000Z",
+      "observedAt": "2026-10-27T06:48:10.752Z",
+      "tone": {
+        "label": "favorable",
+        "score": 1
+      },
+      "toneVersion": "c4db608d2a5109bdad37112d15446383ddfb75e831730c2c686bd3d05ae2d808",
+      "toneComputedAt": "2026-10-27T06:52:43.970Z"
+    },
+    {
+      "title": "Tom Lee's Bitmine favors share buybacks to ether purchases as crypto declines",
+      "url": "https://www.coindesk.com/business/2026/10/26/tom-lee-s-bitmine-favors-share-buybacks-to-ether-purchases-as-crypto-declines",
+      "source": "CoinDesk",
+      "institutional": false,
+      "publishedAt": "2026-10-26T16:05:12.000Z",
+      "observedAt": "2026-10-27T06:53:33.070Z",
+      "tone": {
+        "label": "desfavorable",
+        "score": -1
+      },
+      "toneVersion": "90ddcfcf3e9be77fefb260cfb837d3fa4ccd68ba04981b13663ffff76f813afc"
+    },
+    {
+      "title": "Glamsterdam on Hoodi Postponed",
+      "url": "https://blog.ethereum.org/en/2026/10/22/glamsterdam-hoodi-delay",
+      "source": "Ethereum Foundation",
+      "institutional": true,
+      "publishedAt": "2026-10-22T00:00:00.000Z",
+      "observedAt": "2026-10-27T06:53:33.070Z",
+      "tone": {
+        "label": "sin clasificar",
+        "score": 0
+      },
+      "toneVersion": "90ddcfcf3e9be77fefb260cfb837d3fa4ccd68ba04981b13663ffff76f813afc"
+    },
+    {
+      "title": "Glamsterdam Hoodi Testnet Announcement",
+      "url": "https://blog.ethereum.org/en/2026/10/16/glamsterdam-hoodi-announcement",
+      "source": "Ethereum Foundation",
+      "institutional": true,
+      "publishedAt": "2026-10-16T00:00:00.000Z",
+      "observedAt": "2026-10-27T06:53:33.070Z",
+      "tone": {
+        "label": "sin clasificar",
+        "score": 0
+      },
+      "toneVersion": "90ddcfcf3e9be77fefb260cfb837d3fa4ccd68ba04981b13663ffff76f813afc"
+    }
+  ]
+}
