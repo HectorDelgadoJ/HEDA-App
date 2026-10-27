@@ -1,0 +1,320 @@
+{
+  "experiment": "ETH versus ETH+BTC stationary indicators",
+  "createdAt": "2026-10-26T23:23:01.535589+00:00",
+  "alignedStart": "2017-12-09",
+  "alignedEnd": "2026-10-24",
+  "samples": 3242,
+  "selection": "Mean validation macro F1 over three expanding folds, purge equal to horizon; original test excluded from selection. Fixed configurations declared before run.",
+  "limitations": [
+    "Original test already inspected: not a new blind holdout.",
+    "No deployed model was changed. BTC is not proof of predictive improvement.",
+    "Live LSTM still expects ETH OHLCV from its original feature schema.",
+    "News and social posts were not scraped or fabricated."
+  ],
+  "reports": {
+    "1": {
+      "runs": {
+        "ETH_LogisticRegression": {
+          "folds": [
+            {
+              "trainEnd": "2019-10-28",
+              "trainTargetEnd": "2019-10-29",
+              "validationStart": "2019-10-30",
+              "validationEnd": "2021-09-16",
+              "macroF1": 0.3518150132520194
+            },
+            {
+              "trainEnd": "2021-09-15",
+              "trainTargetEnd": "2021-09-16",
+              "validationStart": "2021-09-17",
+              "validationEnd": "2023-08-05",
+              "macroF1": 0.3316990823505383
+            },
+            {
+              "trainEnd": "2023-08-04",
+              "trainTargetEnd": "2023-08-05",
+              "validationStart": "2023-08-06",
+              "validationEnd": "2025-06-23",
+              "macroF1": 0.33157827591022876
+            }
+          ],
+          "meanValidationMacroF1": 0.33836412383759545
+        },
+        "ETH_HistGradientBoosting": {
+          "folds": [
+            {
+              "trainEnd": "2019-10-28",
+              "trainTargetEnd": "2019-10-29",
+              "validationStart": "2019-10-30",
+              "validationEnd": "2021-09-16",
+              "macroF1": 0.3452525459021533
+            },
+            {
+              "trainEnd": "2021-09-15",
+              "trainTargetEnd": "2021-09-16",
+              "validationStart": "2021-09-17",
+              "validationEnd": "2023-08-05",
+              "macroF1": 0.3434443644929404
+            },
+            {
+              "trainEnd": "2023-08-04",
+              "trainTargetEnd": "2023-08-05",
+              "validationStart": "2023-08-06",
+              "validationEnd": "2025-06-23",
+              "macroF1": 0.3650621900022968
+            }
+          ],
+          "meanValidationMacroF1": 0.35125303346579684
+        },
+        "ETH_BTC_LogisticRegression": {
+          "folds": [
+            {
+              "trainEnd": "2019-10-28",
+              "trainTargetEnd": "2019-10-29",
+              "validationStart": "2019-10-30",
+              "validationEnd": "2021-09-16",
+              "macroF1": 0.3648277555121662
+            },
+            {
+              "trainEnd": "2021-09-15",
+              "trainTargetEnd": "2021-09-16",
+              "validationStart": "2021-09-17",
+              "validationEnd": "2023-08-05",
+              "macroF1": 0.3366087180230706
+            },
+            {
+              "trainEnd": "2023-08-04",
+              "trainTargetEnd": "2023-08-05",
+              "validationStart": "2023-08-06",
+              "validationEnd": "2025-06-23",
+              "macroF1": 0.34362063049301544
+            }
+          ],
+          "meanValidationMacroF1": 0.3483523680094174
+        },
+        "ETH_BTC_HistGradientBoosting": {
+          "folds": [
+            {
+              "trainEnd": "2019-10-28",
+              "trainTargetEnd": "2019-10-29",
+              "validationStart": "2019-10-30",
+              "validationEnd": "2021-09-16",
+              "macroF1": 0.3862218457701183
+            },
+            {
+              "trainEnd": "2021-09-15",
+              "trainTargetEnd": "2021-09-16",
+              "validationStart": "2021-09-17",
+              "validationEnd": "2023-08-05",
+              "macroF1": 0.36072224730479757
+            },
+            {
+              "trainEnd": "2023-08-04",
+              "trainTargetEnd": "2023-08-05",
+              "validationStart": "2023-08-06",
+              "validationEnd": "2025-06-23",
+              "macroF1": 0.3778111828729127
+            }
+          ],
+          "meanValidationMacroF1": 0.3749184253159428
+        }
+      },
+      "selectedByTemporalValidation": "ETH_BTC_HistGradientBoosting",
+      "exploratoryTest": {
+        "accuracy": 0.4094650205761317,
+        "macroF1": 0.3851086260777891,
+        "perClass": {
+          "bajista": {
+            "precision": 0.4095238095238095,
+            "recall": 0.28104575163398693,
+            "f1": 0.3333333333333333,
+            "support": 153
+          },
+          "estable": {
+            "precision": 0.4307116104868914,
+            "recall": 0.6149732620320856,
+            "f1": 0.5066079295154186,
+            "support": 187
+          },
+          "alcista": {
+            "precision": 0.35964912280701755,
+            "recall": 0.2808219178082192,
+            "f1": 0.3153846153846154,
+            "support": 146
+          }
+        },
+        "confusionMatrix": [
+          [
+            43,
+            75,
+            35
+          ],
+          [
+            34,
+            115,
+            38
+          ],
+          [
+            28,
+            77,
+            41
+          ]
+        ],
+        "samples": 486
+      },
+      "testStart": "2025-06-25"
+    },
+    "7": {
+      "runs": {
+        "ETH_LogisticRegression": {
+          "folds": [
+            {
+              "trainEnd": "2019-10-19",
+              "trainTargetEnd": "2019-10-26",
+              "validationStart": "2019-10-27",
+              "validationEnd": "2021-09-12",
+              "macroF1": 0.3205576212444628
+            },
+            {
+              "trainEnd": "2021-09-05",
+              "trainTargetEnd": "2021-09-12",
+              "validationStart": "2021-09-13",
+              "validationEnd": "2023-07-31",
+              "macroF1": 0.27626718738812933
+            },
+            {
+              "trainEnd": "2023-07-24",
+              "trainTargetEnd": "2023-07-31",
+              "validationStart": "2023-08-01",
+              "validationEnd": "2025-06-17",
+              "macroF1": 0.26681651590052313
+            }
+          ],
+          "meanValidationMacroF1": 0.2878804415110384
+        },
+        "ETH_HistGradientBoosting": {
+          "folds": [
+            {
+              "trainEnd": "2019-10-19",
+              "trainTargetEnd": "2019-10-26",
+              "validationStart": "2019-10-27",
+              "validationEnd": "2021-09-12",
+              "macroF1": 0.3243112385296672
+            },
+            {
+              "trainEnd": "2021-09-05",
+              "trainTargetEnd": "2021-09-12",
+              "validationStart": "2021-09-13",
+              "validationEnd": "2023-07-31",
+              "macroF1": 0.28450461291616524
+            },
+            {
+              "trainEnd": "2023-07-24",
+              "trainTargetEnd": "2023-07-31",
+              "validationStart": "2023-08-01",
+              "validationEnd": "2025-06-17",
+              "macroF1": 0.39847164711295147
+            }
+          ],
+          "meanValidationMacroF1": 0.33576249951959464
+        },
+        "ETH_BTC_LogisticRegression": {
+          "folds": [
+            {
+              "trainEnd": "2019-10-19",
+              "trainTargetEnd": "2019-10-26",
+              "validationStart": "2019-10-27",
+              "validationEnd": "2021-09-12",
+              "macroF1": 0.3384647496610976
+            },
+            {
+              "trainEnd": "2021-09-05",
+              "trainTargetEnd": "2021-09-12",
+              "validationStart": "2021-09-13",
+              "validationEnd": "2023-07-31",
+              "macroF1": 0.30134372074765226
+            },
+            {
+              "trainEnd": "2023-07-24",
+              "trainTargetEnd": "2023-07-31",
+              "validationStart": "2023-08-01",
+              "validationEnd": "2025-06-17",
+              "macroF1": 0.2983787972346325
+            }
+          ],
+          "meanValidationMacroF1": 0.3127290892144608
+        },
+        "ETH_BTC_HistGradientBoosting": {
+          "folds": [
+            {
+              "trainEnd": "2019-10-19",
+              "trainTargetEnd": "2019-10-26",
+              "validationStart": "2019-10-27",
+              "validationEnd": "2021-09-12",
+              "macroF1": 0.3514000466328931
+            },
+            {
+              "trainEnd": "2021-09-05",
+              "trainTargetEnd": "2021-09-12",
+              "validationStart": "2021-09-13",
+              "validationEnd": "2023-07-31",
+              "macroF1": 0.28850586289406693
+            },
+            {
+              "trainEnd": "2023-07-24",
+              "trainTargetEnd": "2023-07-31",
+              "validationStart": "2023-08-01",
+              "validationEnd": "2025-06-17",
+              "macroF1": 0.36905725502479614
+            }
+          ],
+          "meanValidationMacroF1": 0.33632105485058544
+        }
+      },
+      "selectedByTemporalValidation": "ETH_BTC_HistGradientBoosting",
+      "exploratoryTest": {
+        "accuracy": 0.38125,
+        "macroF1": 0.3485277866316736,
+        "perClass": {
+          "bajista": {
+            "precision": 0.42543859649122806,
+            "recall": 0.47317073170731705,
+            "f1": 0.44803695150115475,
+            "support": 205
+          },
+          "estable": {
+            "precision": 0.17592592592592593,
+            "recall": 0.2753623188405797,
+            "f1": 0.21468926553672316,
+            "support": 69
+          },
+          "alcista": {
+            "precision": 0.4652777777777778,
+            "recall": 0.32524271844660196,
+            "f1": 0.38285714285714284,
+            "support": 206
+          }
+        },
+        "confusionMatrix": [
+          [
+            97,
+            51,
+            57
+          ],
+          [
+            30,
+            19,
+            20
+          ],
+          [
+            101,
+            38,
+            67
+          ]
+        ],
+        "samples": 480
+      },
+      "testStart": "2025-06-25"
+    }
+  }
+}

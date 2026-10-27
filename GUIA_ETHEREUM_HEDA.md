@@ -79,3 +79,30 @@ node scripts/build-notifications.mjs
 ```
 
 La fuente alternativa Coinbase usa un mercado y volumen distintos a Yahoo. La advertencia se mantiene visible; no se afirma que la evaluación con Yahoo valide automáticamente esa sustitución. Requiere estudio específico de cambio de distribución si se desea usar como fuente habitual del modelo.
+
+
+## Revisión de mercado y experimento BTC — 26/10/2026
+
+La pantalla separa variaciones históricas de 1/7/30 días de tendencias experimentales. Cuando LSTM y referencia discrepan muestra Señales mixtas; una instantánea antigua no se presenta como tendencia actual. La metodología y métricas quedan plegadas para reducir carga visual.
+
+La consulta del servidor compite entre los dos endpoints de Yahoo y un fallback Coinbase retrasado 750 ms. Solo acepta como actualización velas del último día cerrado; una respuesta atrasada no gana por ser más rápida. La fuente alternativa sigue indicando que el modelo se entrenó con Yahoo. El cliente conserva cinco minutos la respuesta por cuenta; Actualizar consulta el servidor, sujeto a su caché.
+
+Experimento reproducible, separado de los pesos publicados:
+
+```powershell
+.\.venv-ethereum\Scripts\python.exe ml/ethereum/market_context_experiment.py
+```
+
+Compara indicadores estacionarios ETH versus ETH+BTC con regresión logística y HistGradientBoosting, tres ventanas crecientes, purga de objetivos igual al horizonte y escaladores ajustados solo con entrenamiento. No se usa el test para seleccionar. El test original ya había sido visto: los resultados siguen siendo exploratorios. No reemplaza ni modifica la LSTM desplegada.
+
+En validación temporal, HistGradientBoosting ETH+BTC frente a ETH solo: F1 medio de 1 día 0.3749 frente a 0.3513; de 7 días 0.3363 frente a 0.3358. Es una señal de investigación, sin prueba estadística de superioridad. El cambio de siete días es mínimo. Las métricas de test exploratorio del candidato son 0.3851 y 0.3485, respectivamente; no son directamente comparables con un experimento de distinta selección/representación como si fueran un nuevo holdout independiente. Ver reports/market_context_experiment.json y data/btc_manifest.json para fechas y trazabilidad. No se recopilaron publicaciones sociales ni se fabricaron noticias.
+
+Para congelar predicciones nuevas antes de que cierre la fecha objetivo:
+
+```powershell
+node scripts/capture-ethereum.mjs
+```
+
+Guarda fuente, cierre de origen, fecha objetivo, hora de captura, modelo, SHA-256 y resultados todavía pendientes en ml/ethereum/reports/prospective_predictions.json. Rechaza fuentes desactualizadas y no reemplaza predicciones anteriores con la misma clave. El 26/10/2026 se registraron horizontes con objetivo 26/10 y 01/11; todavía no son evidencia de acierto. El objetivo de un día puede registrarse durante ese día, antes del cierre UTC; no representa un horizonte de 24 horas desde el clic. Al evaluar, usar el cierre posterior de la misma fuente y documentar la hora de emisión. La captura es manual; no se configuró una tarea automática.
+
+Para publicar esta revisión: copiar ethereum-forecast-dashboard.ts a la función ethereum-forecast y subir dist a Netlify. No requiere SQL nuevo ni claves adicionales. heda-notify-dashboard.ts también se regeneró con el proveedor compartido y el diagnóstico de generación, pero la pantalla Ethereum no depende de volver a desplegar heda-notify.

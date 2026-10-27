@@ -79,10 +79,15 @@ export function createEthereumService(bundle,fetcher=fetch,clock=()=>new Date())
  return async function getForecast(){
   const now=clock();if(cached&&now.getTime()<expires)return cached;if(pending)return pending;
   pending=(async()=>{let bars,source='Yahoo Finance',mode='provider',warning=null;const failures=[];
-   for(const host of ['query1.finance.yahoo.com','query2.finance.yahoo.com']){try{const candidate=await loadYahooEth(fetcher,now,host);if(Date.parse(now.toISOString().slice(0,10))-Date.parse(candidate.at(-1).date)>86400000)throw new Error('ETH_PROVIDER_STALE');bars=candidate;break;}catch(e){failures.push({provider:host,code:/^ETH_[A-Z_0-9]+$/.test(e.message)?e.message:'ETH_NETWORK_OR_TIMEOUT'});}}
-   if(!bars){try{bars=await loadCoinbaseEth(fetcher,now);source='Coinbase Exchange';warning='Fuente alternativa: Coinbase Exchange. Sus precios y volumen pueden diferir de Yahoo, usado para entrenar el modelo; la evaluación no valida este cambio de fuente.';}catch(e){failures.push({provider:'Coinbase Exchange',code:/^ETH_[A-Z_0-9]+$/.test(e.message)?e.message:'ETH_NETWORK_OR_TIMEOUT'});}}
+   // Race two validated Yahoo endpoints with a delayed Coinbase fallback.
+   // Every candidate must contain the last closed daily candle; a fast stale reply cannot win.
+   let won=false;
+   const candidate=async(provider,load)=>{try{const value=await load();if(Date.parse(now.toISOString().slice(0,10))-Date.parse(value.at(-1).date)>86400000)throw Error('ETH_PROVIDER_STALE');return {bars:value,source:provider.includes('yahoo')?'Yahoo Finance':'Coinbase Exchange'};}catch(e){failures.push({provider,code:/^ETH_[A-Z_0-9]+$/.test(e.message)?e.message:'ETH_NETWORK_OR_TIMEOUT'});throw e;}};
+   const yahoo=['query1.finance.yahoo.com','query2.finance.yahoo.com'].map(host=>candidate(host,()=>loadYahooEth(fetcher,now,host)));
+   const alternate=(async()=>{await new Promise(resolve=>setTimeout(resolve,750));if(won)throw Error('ETH_NOT_NEEDED');return candidate('Coinbase Exchange',()=>loadCoinbaseEth(fetcher,now));})();
+   try{({bars,source}=await Promise.any([...yahoo,alternate]));won=true;if(source==='Coinbase Exchange')warning='Fuente alternativa: Coinbase Exchange. Sus precios y volumen pueden diferir de Yahoo, usado para entrenar el modelo; la evaluación no valida este cambio de fuente.';}catch{}
    if(bars)lastGood={bars,source};else if(lastGood){({bars,source}=lastGood);mode='cached_provider';warning='No se pudo actualizar el mercado. Se conserva la última consulta válida de esta instancia; revisa su fecha.';}else{bars=bundle.referenceBars;mode='training_snapshot';warning='No se pudieron actualizar las fuentes de mercado. Consulta histórica del experimento, no una predicción actual.';}
-   cached={...forecastEthereum(bundle,bars,{now,dataMode:mode,warning}),source,providerStatus:failures};expires=now.getTime()+(mode==='provider'?3600000:60000);return cached;
+   cached={...forecastEthereum(bundle,bars,{now,dataMode:mode,warning}),source,providerStatus:[...failures]};expires=now.getTime()+(mode==='provider'?3600000:60000);return cached;
   })();try{return await pending;}finally{pending=null;}
  };
 }

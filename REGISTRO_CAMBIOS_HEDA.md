@@ -241,3 +241,17 @@ HEDA se exporta con `npm run build:web` a **dist**, preparada para Netlify Drop 
 - Presupuestos sin paneles de notificaciones antes del contenido.
 - Deshabilitar cuenta: confirmación explica bloqueo de consulta/modificación y conservación de datos. No cambia el mecanismo de permisos existente.
 - Verificación: exportación web correcta, 22 pruebas existentes de alertas/proveedor/cliente IA aprobadas; navegación con datos ficticios en 390×844, temas claro/oscuro, detalle de aviso urgente y dos consultas IA solicitadas, cero automáticas y cero errores de página. No se enviaron consultas a una cuenta real ni se publicó en Netlify.
+
+### Activación persistente de avisos y carga de Ethereum
+- El navegador reutiliza su suscripción existente; la activación ya no elimina ni recrea cada vez el endpoint. Comprueba el registro de la cuenta y muestra Activados al regresar.
+- Bloqueo de pulsaciones simultáneas, indicador Guardando y único botón según estado. Un error de guardado conserva la suscripción para reintentar; mensajes distinguen sesión, permisos, tabla faltante, formato rechazado y límite de cinco navegadores.
+- Ethereum conserva en memoria una respuesta de la misma cuenta durante cinco minutos; Actualizar solicita otra consulta. No se comparte caché entre cuentas ni se utiliza sin sesión. Aviso de fuente alternativa separado del aviso de datos atrasados.
+- Verificación: 19 pruebas de suscripción/Ethereum aprobadas y estado activo comprobado en navegador móvil simulado oscuro. No prueba de entrega real del proveedor ni mejora de precisión del modelo. Web exportada a dist. Sin SQL nuevo ni cambios de Edge Functions.
+
+### Ethereum: presentación, datos y evidencia de investigación
+- Fuentes diarias concurrentes con fallback Coinbase diferido; ninguna fuente atrasada se presenta como actualización válida. Se conserva la transparencia sobre cambio de proveedor y datos históricos.
+- Pantalla compacta: cierre diario, variaciones históricas 1/7/30 días, gráfica 30/90 días, tendencias 1/7 días, coincidencias/desacuerdos entre modelos y evaluación plegable. No se presentan salidas antiguas como tendencia actual ni softmax como confianza calibrada.
+- Experimento ETH versus ETH+BTC con indicadores estacionarios, dos modelos predefinidos, tres folds temporales y purga. Sin modificar pesos LSTM publicados. F1 medio de validación HistGradientBoosting: 1d ETH 0.3513 frente ETH+BTC 0.3749; 7d 0.3358 frente 0.3363. Evaluación exploratoria, no evidencia de superioridad futura.
+- Captura prospectiva manual de dos predicciones con fuente Yahoo, cierre 2026-10-25 y objetivos 2026-10-26/2026-11-01, con hora y hash de modelo. Resultados pendientes, no se inventan aciertos.
+- Verificación: 22 pruebas JS focalizadas y 3 Python aprobadas, Deno check de bundles Ethereum/notify, exportación web y revisión móvil claro/oscuro sin errores de página ni desbordamiento. La captura pública de mercado funcionó. No publicación remota ni SQL nuevo.
+- Usuario reportó recepción real de una notificación en su celular; queda verificar por separado si desaparecieron los errores de generación del worker.

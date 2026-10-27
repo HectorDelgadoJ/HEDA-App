@@ -1,0 +1,43 @@
+{
+  "purpose": "Frozen prospective predictions, not a backtest. Unresolved targets have no measured score.",
+  "records": [
+    {
+      "key": "7413b71f2401278b0181c63c85dbcaddec7fe173e28ccdd75fd3358e3206512e|Yahoo Finance|2026-10-25|1",
+      "recordedAt": "2026-10-26T23:24:27.838Z",
+      "modelVersion": "heda-eth-lstm-v2",
+      "modelSha256": "7413b71f2401278b0181c63c85dbcaddec7fe173e28ccdd75fd3358e3206512e",
+      "source": "Yahoo Finance",
+      "originDate": "2026-10-25",
+      "originClose": 2326.920166015625,
+      "targetDate": "2026-10-26",
+      "targetClosesAt": "2026-10-27T00:00:00.000Z",
+      "horizonDays": 1,
+      "threshold": 0.01,
+      "trend": "estable",
+      "comparison": {
+        "name": "LogisticRegression",
+        "trend": "estable"
+      },
+      "outcome": null
+    },
+    {
+      "key": "7413b71f2401278b0181c63c85dbcaddec7fe173e28ccdd75fd3358e3206512e|Yahoo Finance|2026-10-25|7",
+      "recordedAt": "2026-10-26T23:24:27.838Z",
+      "modelVersion": "heda-eth-lstm-v2",
+      "modelSha256": "7413b71f2401278b0181c63c85dbcaddec7fe173e28ccdd75fd3358e3206512e",
+      "source": "Yahoo Finance",
+      "originDate": "2026-10-25",
+      "originClose": 2326.920166015625,
+      "targetDate": "2026-11-01",
+      "targetClosesAt": "2026-11-02T00:00:00.000Z",
+      "horizonDays": 7,
+      "threshold": 0.01,
+      "trend": "estable",
+      "comparison": {
+        "name": "RandomForest",
+        "trend": "estable"
+      },
+      "outcome": null
+    }
+  ]
+}

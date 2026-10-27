@@ -1,0 +1,10 @@
+{
+  "source": "Yahoo Finance",
+  "symbol": "BTC-USD",
+  "retrievedAt": "2026-10-26T23:22:50.250346+00:00",
+  "firstDate": "2017-01-01",
+  "lastDate": "2026-10-24",
+  "rows": 3584,
+  "sha256": "75c4dc4e01ce19c65ec3ac469c8ca475db929da5f2c6dbea40dbdebde7f011fb",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/BTC-USD?period1=1483228800&period2=1792886400&interval=1d"
+}
