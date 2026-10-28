@@ -1,3 +1,4 @@
+import {newPasswordError} from '../utils/passwordPolicy';
 // Own-client flow: recovery sessions never enter the main app's auth store.
 function fieldsError(fields){const error=new Error('Revisa los campos marcados.');error.fields=fields;return error;}
 function cleanEmail(value){const email=String(value||'').trim().toLowerCase();if(email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw fieldsError({email:'Escribe un correo válido.'});return email;}
@@ -8,7 +9,7 @@ function failure(error,fallback){
 }
 export function validateRecoveredPassword(password,confirmation){
  const errors={};
- if(typeof password!=='string'||password.length<8||password.length>128||!password.trim())errors.password='Usa entre 8 y 128 caracteres.';
+ if(newPasswordError(password))errors.password=newPasswordError(password);
  if(password!==confirmation)errors.confirmation='Las contraseñas no coinciden.';
  return errors;
 }

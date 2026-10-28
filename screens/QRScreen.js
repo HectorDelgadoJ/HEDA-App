@@ -1,3 +1,4 @@
+import FirstUseHint from '../components/FirstUseHint';
 import {Text, TouchableOpacity, Modal, TextInput} from '../components/AccessiblePrimitives';
 import {ttRPC} from '../services/tt';
 import QRHistory from '../components/QRHistory';
@@ -27,7 +28,7 @@ export default function QRScreen({navigation}){
  function choose(mode){setMode(mode);setError('');setAdvanced(false);}
  const secondary=(text,onPress)=><TouchableOpacity accessibilityRole="button" onPress={onPress} style={{minHeight:44,justifyContent:'center',paddingVertical:12}}><Text style={{fontWeight:'600',color:colors.link}}>{text}</Text></TouchableOpacity>;
  return <SafeAreaView style={{flex:1,backgroundColor:colors.background}}><ScrollView ref={scroll} onContentSizeChange={()=>{if(scrollToCode.current){scroll.current?.scrollToEnd({animated:true});scrollToCode.current=false;}}} contentContainerStyle={{padding:20,paddingBottom:36,maxWidth:600,width:'100%',alignSelf:'center'}}>
-  <ScreenHeader title="Movimientos por QR" subtitle="Comparte o recibe registros entre personas." onAction={()=>navigation.navigate('Herramientas')} actionIcon="arrow-back" actionLabel="Volver a herramientas"/>
+  <ScreenHeader title="Movimientos por QR" subtitle="Comparte o recibe registros entre personas." onAction={()=>navigation.navigate('Herramientas')} actionIcon="arrow-back" actionLabel="Volver a herramientas"/><FirstUseHint id="qr"/>
   {!mode?<><Text style={{fontSize:23,fontWeight:'700',color:colors.ink,marginBottom:18}}>¿Qué quieres hacer?</Text>{[
    ['share','arrow-up-circle-outline','Compartir movimiento','Crea un QR para que otra persona copie un gasto o ingreso.'],
    ['import','scan-outline','Recibir movimiento','Escanea el QR de alguien y revisa antes de guardarlo.']

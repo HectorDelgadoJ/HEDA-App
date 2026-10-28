@@ -29,10 +29,10 @@ export default function LoginScreen({navigation}){
   }
   return <AuthLayout title="Qué gusto verte" description="Entra para continuar con tus finanzas.">
     <TouchableOpacity accessibilityRole="button" accessibilityLabel="Abrir opciones de accesibilidad" onPress={()=>openSettings('accessibility')} style={{minHeight:44,justifyContent:'center',marginBottom:12}}><Text style={{color:colors.link,fontWeight:'700'}}>Accesibilidad y lectura</Text></TouchableOpacity>
-    <AuthNotice text={failure}/>
+    <AuthNotice text={failure}/><Text style={{color:colors.muted,fontSize:13,marginBottom:12}}>Los campos con * son obligatorios.</Text>
     <GoogleSignInButton disabled={loading||googleBusy} onBusy={value=>{busy.current=value;setGoogleBusy(value);}} onError={setFailure}/>
-    <AuthField ref={emailRef} label="Correo electrónico" placeholder="nombre@correo.com" value={email} onChangeText={changeEmail} keyboardType="email-address" autoComplete="email" textContentType="emailAddress" maxLength={254} returnKeyType="next" onSubmitEditing={focusPassword} error={errors.email} editable={!loading&&!googleBusy}/>
-    <AuthField ref={passwordRef} label="Contraseña" placeholder="Tu contraseña" value={password} onChangeText={changePassword} password autoComplete="current-password" textContentType="password" returnKeyType="go" onSubmitEditing={submit} error={errors.password} editable={!loading&&!googleBusy}/>
+    <AuthField required ref={emailRef} label="Correo electrónico" placeholder="nombre@correo.com" value={email} onChangeText={changeEmail} keyboardType="email-address" autoComplete="email" textContentType="emailAddress" maxLength={254} returnKeyType="next" onSubmitEditing={focusPassword} error={errors.email} editable={!loading&&!googleBusy}/>
+    <AuthField required ref={passwordRef} label="Contraseña" placeholder="Tu contraseña" value={password} onChangeText={changePassword} password autoComplete="current-password" textContentType="password" returnKeyType="go" onSubmitEditing={submit} error={errors.password} editable={!loading&&!googleBusy}/>
     <TouchableOpacity accessibilityRole="button" disabled={loading||googleBusy} onPress={()=>{dismissAuthKeyboard();navigation.navigate('RecoverPassword',{email});}} style={{minHeight:44,alignSelf:'flex-end',justifyContent:'center',paddingHorizontal:4,marginBottom:8}}><Text style={{color:colors.link,fontWeight:'600',fontSize:14}}>¿Olvidaste tu contraseña?</Text></TouchableOpacity>
     <AuthCaptcha captcha={captcha}/>
     <AuthButton label="Iniciar sesión" disabled={googleBusy} loading={loading} onPress={submit}/>

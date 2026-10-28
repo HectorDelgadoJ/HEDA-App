@@ -1,13 +1,17 @@
 export const tourStops=[
- {route:'Inicio',title:'Tu dinero, de un vistazo',text:'Aquí ves tu saldo y lo más importante para hoy. Puedes elegir qué bloques aparecen desde Perfil.',action:'Los atajos «Elegir atajos» y «Accesibilidad y lectura» también están disponibles en Inicio.'},
- {route:'Perfil',title:'Elige qué aparece en tu pantalla',text:'En Perfil → Personalizar HEDA puedes elegir vista simple o completa y tema claro u oscuro. En Atajos y bloques eliges qué mostrar en Inicio.',action:'Ocultar un bloque o atajo no borra tus registros. Puedes volver a mostrarlo cuando quieras. Recuerda guardar tus preferencias.',settingsSection:'shortcuts',settingsLabel:'Elegir qué mostrar'},
- {route:'Perfil',title:'Haz la lectura más cómoda',text:'En Personalizar HEDA → Accesibilidad puedes ampliar el texto hasta 200%, reforzar el contraste, usar negrita o lectura espaciada, reducir el movimiento y ampliar los controles.',action:'Guarda para aplicar los cambios. VoiceOver y TalkBack se activan en los ajustes de tu teléfono.',settingsSection:'accessibility',settingsLabel:'Ajustar accesibilidad'},
- {route:'Movimientos',title:'Registra lo que entra y sale',text:'Elige Gasto o Ingreso, escribe el monto y guarda. Puedes cambiar la fecha y consultar tu historial.',action:'Los pagos que se repiten se programan desde esta sección.'},
- {route:'Reportes',title:'Entiende tus gastos y tus metas',text:'Consulta tus gastos por categoría y crea metas de ahorro. La fecha de una meta es opcional.',action:'Empieza con una meta pequeña y alcanzable.'},
- {route:'IA',title:'Conversa con HEDA',text:'La pestaña IA está dedicada al chat. Puedes guardar hasta dos conversaciones en este dispositivo desde el icono de chats.',action:'Analizar mis finanzas permite revisar el resumen antes de compartirlo. Cada chat requiere su propio permiso.'},
- {route:'Herramientas',title:'Aprende y explora desde aquí',text:'Esta pestaña del menú inferior reúne Educación financiera, Hábitos, QR, Alertas y presupuestos y Ethereum.',action:'También puedes activar o quitar los atajos de Inicio en Personalizar HEDA.'},
- {route:'Perfil',title:'Haz HEDA tuya',text:'En Perfil siempre encontrarás Personalizar HEDA para ajustar tu pantalla y la accesibilidad. Puedes repetir esta visita desde Ver visita guiada.',action:'Tus preferencias se pueden cambiar en cualquier momento; no tienes que crear otra cuenta.'}
+ {route:'Inicio',title:'Empieza con un solo paso',text:'Tu saldo resume lo que registraste. Debajo encontrarás un botón según la prioridad que elegiste.',action:'No tienes que configurar todo hoy. Empieza por una acción y vuelve cuando lo necesites.'},
+ {route:'Movimientos',title:'Anota lo que recibes o gastas',text:'Ingreso es dinero que recibes. Gasto es dinero que usas. Elige uno, escribe la cantidad y guarda.',action:'En Recurrentes puedes recordar renta, salario y otros pagos o ingresos que se repiten.',tryLabel:'Probar: registrar un gasto',params:{openSection:'Nuevo',movementType:'Gasto'}},
+ {route:'Reportes',title:'Ahorra para algo que te importe',text:'Toca Nueva meta, escribe para qué ahorrarás y cuánto necesitas. Puedes dejar la fecha vacía.',action:'Cuando apartes dinero, toca Agregar ahorro en esa meta. Esto registra tu avance; no hace una transferencia.',tryLabel:'Probar: crear una meta',params:{goalAction:'create'}},
+ {route:'Herramientas',title:'Encuentra más opciones cuando las necesites',text:'Aquí están las lecciones, tus hábitos, los códigos QR, los avisos y Ethereum.',action:'Cada opción explica brevemente para qué sirve la primera vez. No necesitas usar todas.',tryLabel:'Explorar herramientas'},
+ {route:'IA',title:'Pregunta con tus propias palabras',text:'Puedes pedir una explicación o ayuda para organizar tu dinero. HEDA pedirá permiso antes de consultar tus registros.',action:'Revisa cualquier propuesta antes de confirmarla. El asistente puede equivocarse.',tryLabel:'Abrir el asistente'},
+ {route:'Perfil',title:'Haz la pantalla más cómoda para ti',text:'En Personalizar HEDA puedes aumentar las letras, mejorar el contraste y elegir qué aparece en Inicio.',action:'Aquí también puedes cambiar tu prioridad, repetir esta visita o volver a mostrar las explicaciones.',settingsSection:'accessibility',settingsLabel:'Ajustar tamaño y lectura'}
 ];
+export function tourStopsForPriority(priority){
+ const text=priority==='saving'?'Elegiste ahorrar: el botón de tu prioridad abre una meta o te permite agregar ahorro.':priority==='payments'?'Elegiste recordar pagos: tu prioridad abre los recurrentes o te ayuda a crear el primero.':'Elegiste controlar gastos: tu prioridad te ayuda a registrar un gasto o revisar tus presupuestos.';
+ const stops=tourStops.map(stop=>({...stop}));stops[0].text=text;
+ if(priority==='saving')[stops[1],stops[2]]=[stops[2],stops[1]];
+ return stops;
+}
 export function welcomeStage(preferences,{ready=true,deferred=false}={}){
  if(!ready||deferred)return 'idle';
  if(!preferences.welcomeDone)return 'personalize';

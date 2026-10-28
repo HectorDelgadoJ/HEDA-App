@@ -1,18 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+const policy='data:text/javascript;base64,'+Buffer.from(readFileSync(new URL('../utils/passwordPolicy.js',import.meta.url),'utf8')).toString('base64');
 const url=s=>'data:text/javascript;base64,'+Buffer.from(s).toString('base64');
 const birth=url(readFileSync(new URL('../utils/birthDate.js',import.meta.url),'utf8'));
 const experience=url(readFileSync(new URL('../utils/experience.js',import.meta.url),'utf8'));
-const auth=url(readFileSync(new URL('../utils/auth.js',import.meta.url),'utf8').replace("'./experience'",JSON.stringify(experience)).replace("'./birthDate'",JSON.stringify(birth)));
+const auth=url(readFileSync(new URL('../utils/auth.js',import.meta.url),'utf8').replace("'./passwordPolicy'",JSON.stringify(policy)).replace("'./experience'",JSON.stringify(experience)).replace("'./birthDate'",JSON.stringify(birth)));
 const {validateLogin,validateRegistration,signupPreferences,authErrorMessage}=await import(auth);
 const {loginAccount,registerAccount:registerRaw,checkUsername}=await import(url(readFileSync(new URL('../services/authActions.js',import.meta.url),'utf8').replace("'../utils/auth'",JSON.stringify(auth))));
 const registerAccount=(client,...args)=>registerRaw({rpc:async()=>({data:true}),...client},...args);
-const form={fullName:' Vicente ',username:'@vicente',birthDate:'15/06/2000',email:' Vic@Example.com ',password:'A long phrase 2026',confirmPassword:'A long phrase 2026'};
+const form={fullName:' Vicente ',username:'@vicente',birthDate:'15/06/2000',email:' Vic@Example.com ',password:'A long phrase 2026!',confirmPassword:'A long phrase 2026!'};
 test('registration requires age and handle, normalizes email and preserves password spaces',async()=>{
  let sent;const client={auth:{signUp:async body=>{sent=body;return {data:{user:{id:'A'},session:{user:{id:'A'}}}};}}};
- const result=await registerAccount(client,{...form,password:' phrase with spaces ',confirmPassword:' phrase with spaces '});
- assert.equal(result.needsConfirmation,false);assert.equal(sent.email,'vic@example.com');assert.equal(sent.password,' phrase with spaces ');assert.equal(sent.options.data.full_name,'Vicente');assert.equal(sent.options.data.username,'vicente');assert.equal(sent.options.data.birth_date,'2000-06-15');
+ const result=await registerAccount(client,{...form,password:' Phrase with spaces 72! ',confirmPassword:' Phrase with spaces 72! '});
+ assert.equal(result.needsConfirmation,false);assert.equal(sent.email,'vic@example.com');assert.equal(sent.password,' Phrase with spaces 72! ');assert.equal(sent.options.data.full_name,'Vicente');assert.equal(sent.options.data.username,'vicente');assert.equal(sent.options.data.birth_date,'2000-06-15');
 });
 test('signup stores initial preferences but leaves first-login setup pending',async()=>{
  let sent;await registerAccount({auth:{signUp:async body=>{sent=body;return {data:{user:{id:'A'},session:{user:{id:'A'}}}};}}},form,{mode:'complete',priority:'saving'});

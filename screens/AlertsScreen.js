@@ -1,3 +1,4 @@
+import FirstUseHint from '../components/FirstUseHint';
 import {Text, TouchableOpacity, Modal, TextInput} from '../components/AccessiblePrimitives';
 import NotificationHistory from '../components/NotificationHistory';
 import {storeAlertHistory} from '../services/notificationInbox';
@@ -168,6 +169,7 @@ export default function AlertsScreen({ navigation, route }) {
       <ScreenHeader title="Alertas y límites" subtitle="Ten presentes tus pagos y tu plan del mes." actionIcon="arrow-back" actionLabel="Volver a Perfil" onAction={() => navigation.navigate('Perfil')} />
       <View accessibilityRole="tablist" accessibilityLabel="Alertas o presupuestos" style={styles.tabs}>{['Alertas', 'Presupuestos'].map((name) => <TouchableOpacity key={name} accessibilityRole="tab" accessibilityState={{ selected: tab === name }} style={themeStyle([styles.tab, tab === name && styles.tabActive], colors)} onPress={() => setTab(name)}><Text style={themeStyle([styles.tabText, tab === name && styles.white], colors)}>{name}{name === 'Alertas' && unread ? ` (${unread})` : ''}</Text></TouchableOpacity>)}</View>
 
+      <FirstUseHint id={tab==='Presupuestos'?'budget':'alerts'}/>
       {errors.length ? <View style={styles.warning}>{errors.map((message) => <Text key={message} style={styles.body}>{message}</Text>)}<Action label="Actualizar" icon="refresh-outline" secondary onPress={() => load(true)} disabled={refreshing || saving || reading} /></View> : null}
       {loading ? <View style={styles.loading}><ActivityIndicator color={themeColor(colors.primary, colors)} /><Text style={styles.body}>Revisando tus registros…</Text></View> : tab === 'Presupuestos' ? <>
         <View style={styles.card}><Text style={styles.title}>Tu plan de gasto</Text><InfoButton title={"Cómo se renueva el presupuesto"} text={"Define cuánto quieres gastar por categoría. El límite mensual se renueva cada mes. También puedes definir una vigencia con fecha de inicio y fin; ese límite no se renueva automáticamente."} /><Action label="Nuevo presupuesto" icon="add-circle-outline" onPress={() => openBudget()} disabled={!data.budgets || saving} /></View>

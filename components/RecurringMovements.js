@@ -1,3 +1,4 @@
+import FirstUseHint from './FirstUseHint';
 import {Switch} from './AccessiblePrimitives';
 import {Text, TextInput, TouchableOpacity, Modal} from './AccessiblePrimitives';
 import {Alert} from '../services/alerts';
@@ -9,7 +10,7 @@ import PaymentSource from './PaymentSource';
 import { accountRows } from '../services/finance';
 import CardPayments from './CardPayments';
 import BalanceForecast from './BalanceForecast';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {View, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Keyboard} from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -23,7 +24,7 @@ import { MovementType, CategoryPicker, MovementDate, movementColors } from './Mo
 const blankForm = () => ({ name: '', type: 'Gasto', amount: '', category: 'Hogar', description: '', frequency: 'monthly', intervalCount: '1', custom: false, cardId: null, date: localDate() });
 const displayDate = (value) => new Date(`${value}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
 
-export default function RecurringMovements({ onConfirmed, mode = 'simple', cards = [] }) {
+export default function RecurringMovements({ onConfirmed, mode = 'simple', cards = [], startNew=false, onNewOpened }) {
   const { colors, styles } = useThemeStyles(makeStyles);
   const { preferences, savePreferences } = useExperience();
   const [cardsSaving, setCardsSaving] = useState(false);
@@ -76,6 +77,7 @@ export default function RecurringMovements({ onConfirmed, mode = 'simple', cards
   }
   useFocusEffect(useCallback(() => {loadRules();}, []));
 
+  useEffect(()=>{if(startNew&&!loading&&!loadError){openForm();onNewOpened?.();}},[startNew,loading,loadError]);
   function openForm(rule) {
     setErrors({});
     setEditingId(rule?.id || null);
@@ -157,14 +159,14 @@ export default function RecurringMovements({ onConfirmed, mode = 'simple', cards
   nextOccurrence(previewPayload.next_date, previewPayload.frequency, previewPayload.anchor_day, previewPayload.anchor_month, previewPayload.interval_count) :
   null;
   return <View>
-    <View style={styles.menuHeading}><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.menuTitle}>Tus pagos e ingresos</Text><Text style={styles.menuSubtitle}>Organiza lo que se repite</Text></View><InfoButton title="Cómo funcionan los programados" text="Programa renta, suscripciones o salario. Confirma cada pago o cobro para registrarlo; no se realizan cargos ni cobros." /></View>
+    <FirstUseHint id="recurring"/><View style={styles.menuHeading}><View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.menuTitle}>Pagos e ingresos recurrentes</Text><Text style={styles.menuSubtitle}>Pagos o ingresos que se repiten, como renta o salario</Text></View><InfoButton title="Cómo funcionan los programados" text="Programa renta, suscripciones o salario. Confirma cada pago o cobro para registrarlo; no se realizan cargos ni cobros." /></View>
     {notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text> : null}
     {loading ? <ActivityIndicator style={themeStyle({ marginVertical: 20 }, colors)} color={themeColor(colors.primary, colors)} /> : loadError ? <View style={styles.card}>
       <Text style={styles.description}>{loadError}</Text>
       <TouchableOpacity accessibilityRole="button" style={styles.smallAction} onPress={loadRules}><Text style={styles.link}>Intentar de nuevo</Text></TouchableOpacity>
     </View> : <>
       <TouchableOpacity accessibilityRole="button" disabled={!!busy} style={styles.createButton} onPress={() => openForm()}>
-        <Ionicons accessible={false} name="add-circle-outline" size={22} color={themeColor("#FFFFFF", colors)} /><Text style={styles.buttonText}>Programar pago o ingreso</Text>
+        <Ionicons accessible={false} name="add-circle-outline" size={22} color={themeColor("#FFFFFF", colors)} /><Text style={styles.buttonText}>Crear pago o ingreso recurrente</Text>
       </TouchableOpacity>
       {rules.length ? <View style={styles.listHeading}><Text style={styles.listTitle}>Mis programaciones</Text><Text style={styles.countBadge}>{rules.length}</Text></View> : null}
       {!rules.length && <View style={styles.card}><Text style={styles.title}>Tu rutina, organizada</Text><Text style={styles.description}>Añade un pago o ingreso y elige cuándo se repite.</Text></View>}
@@ -204,7 +206,7 @@ export default function RecurringMovements({ onConfirmed, mode = 'simple', cards
       <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={themeStyle({ flex: 1, backgroundColor: colors.background }, colors)}>
         <KeyboardAvoidingView style={themeStyle({ flex: 1 }, colors)} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{editingId ? 'Editar programación' : 'Nueva programación'}</Text>
+            <Text style={styles.modalTitle}>{editingId ? 'Editar recurrente' : 'Nuevo recurrente'}</Text>
             <TouchableOpacity accessibilityLabel="Cerrar formulario" accessibilityRole="button" disabled={!!busy}
               style={styles.closeButton} hitSlop={8} onPress={() => {Keyboard.dismiss();setVisible(false);}}>
               <Ionicons accessible={false} name="close" size={22} color={themeColor(colors.ink, colors)} /><Text style={styles.closeText}>Cerrar</Text>
@@ -260,7 +262,7 @@ export default function RecurringMovements({ onConfirmed, mode = 'simple', cards
             <TextInput selectionColor={colors.link} cursorColor={colors.link} style={styles.input} accessibilityLabel="Nota del recurrente" value={form.description} placeholder="Detalles del pago o cobro" placeholderTextColor={colors.placeholder} editable={!busy} onChangeText={(value) => change('description', value)} keyboardAppearance={colors.dark ? "dark" : "light"} />
             {errors.service && <Text accessibilityLiveRegion="polite" style={styles.error}>{errors.service}</Text>}
           </ScrollView>
-          <View style={styles.footer}>{Object.values(errors).some(Boolean) && <Text accessibilityLiveRegion="polite" style={styles.error}>Revisa los campos señalados antes de guardar.</Text>}<TouchableOpacity disabled={!!busy} accessibilityRole="button" style={themeStyle([styles.createButton, { marginBottom: 0 }], colors)} onPress={saveRule}>{busy === 'form' ? <ActivityIndicator color={themeColor("#FFFFFF", colors)} /> : <Text style={styles.buttonText}>Guardar programación</Text>}</TouchableOpacity></View>
+          <View style={styles.footer}>{Object.values(errors).some(Boolean) && <Text accessibilityLiveRegion="polite" style={styles.error}>Revisa los campos señalados antes de guardar.</Text>}<TouchableOpacity disabled={!!busy} accessibilityRole="button" style={themeStyle([styles.createButton, { marginBottom: 0 }], colors)} onPress={saveRule}>{busy === 'form' ? <ActivityIndicator color={themeColor("#FFFFFF", colors)} /> : <Text style={styles.buttonText}>Guardar recurrente</Text>}</TouchableOpacity></View>
         </KeyboardAvoidingView>
       </SafeAreaView>
       </SafeAreaProvider>

@@ -1,3 +1,4 @@
+import {FirstUseHelpProvider} from './FirstUseHint';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Modal, TouchableOpacity, Text} from './AccessiblePrimitives';
 import GoogleProfileGate from './GoogleProfileGate';
@@ -56,16 +57,16 @@ export default function ExperienceProvider({ user, children }) {
   const stage=welcomeStage(preferences,{ready,deferred});
   const onboarding=!!userId&&stage==='personalize';
   const tourOpen=!!userId&&profileReady&&ready&&!onboarding&&!settingsOpen&&(manualTour||stage==='tour');
-  async function finishTour(){if(await savePreferences({...preferences,tourDone:true})){setManualTour(false);}}
+  async function finishTour(){const saved=await savePreferences({...preferences,tourDone:true});if(saved)setManualTour(false);return saved;}
   function openTour(){setError('');setTourRun(value=>value+1);setManualTour(true);}
   return <ThemeProvider theme={previewTheme || preferences.theme} accessibility={preferences.accessibility}><Context.Provider value={{ preferences, tourOpen,tourRun,finishTour,openTour,saving,error, simple: preferences.mode === 'simple', openSettings: (section='view') => {setSettingsSection(section);setError(''); setPreviewTheme(null); setSettingsOpen(true); }, savePreferences }}>
-    <WebInstallProvider><GoogleProfileGate key={userId||'guest'} user={user} onReady={setProfileReady}>{children}</GoogleProfileGate><AppDialogs/>
+    <FirstUseHelpProvider ownerId={userId} enabled={preferences.guidance.firstUse} paused={!ready||onboarding||tourOpen||settingsOpen}><WebInstallProvider><GoogleProfileGate key={userId||'guest'} user={user} onReady={setProfileReady}>{children}</GoogleProfileGate><AppDialogs/>
     <Modal visible={settingsOpen || !!userId && profileReady && (!ready || onboarding)} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { if (!saving) { setPreviewTheme(null); if(onboarding){void savePreferences({...preferences,tourDone:true});}else{setSettingsOpen(false);} } }}>
       <SafeAreaProvider><SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
         {!ready ? <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={colors.primary} /></View> : <ExperienceForm key={settingsOpen ? 'settings' : 'onboarding'} initial={preferences} onboarding={!settingsOpen} initialSection={settingsSection} saving={saving} error={error} onSave={savePreferences} onPreviewTheme={setPreviewTheme} onClose={() => { setPreviewTheme(null); setSettingsOpen(false); }} />}
         {error && onboarding ? <View style={{ paddingHorizontal: 22, paddingBottom: 12 }}><Defer onPress={() => { setPreviewTheme(null); setDeferred(true); setError(''); }} /></View> : null}
       </SafeAreaView></SafeAreaProvider>
-    </Modal></WebInstallProvider>
+    </Modal></WebInstallProvider></FirstUseHelpProvider>
   </Context.Provider></ThemeProvider>;
 }
 function Defer({ onPress }) { const { colors } = useThemeStyles(); return <TouchableOpacity accessibilityRole="button" style={{ padding: 14 }} onPress={onPress}><Text style={{ color: colors.primary, textAlign: 'center' }}>Continuar sin guardar por ahora</Text></TouchableOpacity>; }

@@ -1,3 +1,5 @@
+import FirstUseHint from '../components/FirstUseHint';
+import KeyboardDismissArea from '../components/KeyboardDismissArea';
 import {Text, TouchableOpacity, TextInput, Modal} from '../components/AccessiblePrimitives';
 import {Alert} from '../services/alerts';
 import { notifyFinanceChange } from '../services/financeEvents';
@@ -12,9 +14,9 @@ import { isSpending } from '../utils/finance';
 import { transactionRows } from '../services/finance';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
-import {View, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, Keyboard, KeyboardAvoidingView, TouchableWithoutFeedback, Platform, InputAccessoryView} from 'react-native';
+import {View, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, Keyboard, KeyboardAvoidingView, Platform, InputAccessoryView} from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -23,7 +25,7 @@ import { supabase } from '../services/supabase';
 
 const AMOUNT_ACCESSORY_ID = 'amountKeyboardAccessory';
 
-export default function GoalsScreen() {
+export default function GoalsScreen({route,navigation}) {
   const { colors, styles } = useThemeStyles(makeStyles);
   const [transactions, setTransactions] = useState([]);
   const [goals, setGoals] = useState([]);
@@ -50,6 +52,17 @@ export default function GoalsScreen() {
 
   const [contributionAmount, setContributionAmount] = useState('');
 
+  useEffect(()=>{
+    const action=route?.params?.goalAction;
+    if(!action||loading||loadError)return;
+    navigation.setParams({goalAction:undefined,goalId:undefined});
+    if(action==='create'){setGoalName('');setGoalTarget('');setGoalDate('');setChooseGoalDate(false);setGoalModalVisible(true);}
+    else if(action==='contribute'){
+      const goal=goals.find(item=>item.id===route.params.goalId);
+      if(goal){setSelectedGoalId(goal.id);setContributionAmount('');setContributionModalVisible(true);}
+      else Alert.alert('Meta no disponible','Actualiza tus metas y elige a cuál quieres aportar.');
+    }
+  },[route?.params?.goalAction,route?.params?.goalId,loading,loadError,goals,navigation]);
   // =====================================================
   // CARGAR DATOS
   // =====================================================
@@ -521,7 +534,7 @@ export default function GoalsScreen() {
 
         {/* HEADER */}
 
-        <ScreenHeader title="Reportes" subtitle="Entiende cómo se mueve tu dinero" icon="bar-chart-outline" />
+        <ScreenHeader title="Reportes" subtitle="Entiende cómo se mueve tu dinero" icon="bar-chart-outline" /><FirstUseHint id="reports"/>
 
         {loadError && <View style={styles.notice}><Text style={styles.cardText}>No pudimos actualizar todos los datos. Desliza hacia abajo para reintentar.</Text></View>}
         <View style={styles.periodNav}>
@@ -955,9 +968,7 @@ export default function GoalsScreen() {
           'height'
           }>
 
-          <TouchableWithoutFeedback
-            onPress={Keyboard.dismiss}
-            accessible={false}>
+          <KeyboardDismissArea>
 
             <View style={styles.modalOverlay}>
               <View style={styles.modalCard}>
@@ -988,6 +999,7 @@ export default function GoalsScreen() {
                   keyboardShouldPersistTaps="handled"
                   refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} tintColor={themeColor(colors.primary, colors)} />}>
 
+                  <FirstUseHint id="goal"/>
                   <Text
                     style={styles.inputLabel}>
 
@@ -1001,6 +1013,7 @@ export default function GoalsScreen() {
                     placeholderTextColor={colors.placeholder}
                     style={styles.input}
                     returnKeyType="next" keyboardAppearance={colors.dark ? "dark" : "light"} />
+
 
 
                   <Text
@@ -1021,6 +1034,7 @@ export default function GoalsScreen() {
                     undefined
                     }
                     style={styles.input} keyboardAppearance={colors.dark ? "dark" : "light"} />
+
 
 
                   <Text
@@ -1061,7 +1075,7 @@ export default function GoalsScreen() {
                 </ScrollView>
               </View>
             </View>
-          </TouchableWithoutFeedback>
+          </KeyboardDismissArea>
         </KeyboardAvoidingView>
       </Modal>
 
@@ -1087,9 +1101,7 @@ export default function GoalsScreen() {
           'height'
           }>
 
-          <TouchableWithoutFeedback
-            onPress={Keyboard.dismiss}
-            accessible={false}>
+          <KeyboardDismissArea>
 
             <View style={styles.modalOverlay}>
               <View style={styles.modalCard}>
@@ -1115,6 +1127,7 @@ export default function GoalsScreen() {
                   </TouchableOpacity>
                 </View>
 
+                <ScrollView keyboardShouldPersistTaps="handled" style={{flexShrink:1}} contentContainerStyle={{paddingBottom:12}}><FirstUseHint id="savings"/>
                 {mainGoal &&
                 <Text
                   style={
@@ -1172,9 +1185,10 @@ export default function GoalsScreen() {
                     </Text>
                   }
                 </TouchableOpacity>
+                </ScrollView>
               </View>
             </View>
-          </TouchableWithoutFeedback>
+          </KeyboardDismissArea>
         </KeyboardAvoidingView>
       </Modal>
 

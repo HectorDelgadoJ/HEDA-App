@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+const policy='data:text/javascript;base64,'+Buffer.from(readFileSync(new URL('../utils/passwordPolicy.js',import.meta.url),'utf8')).toString('base64');
 const birth='data:text/javascript;base64,'+Buffer.from(readFileSync(new URL('../utils/birthDate.js',import.meta.url),'utf8')).toString('base64');
-const moduleFrom = path => import('data:text/javascript;base64,' + Buffer.from(readFileSync(new URL(path, import.meta.url), 'utf8').replace("'./birthDate'",JSON.stringify(birth))).toString('base64'));
+const moduleFrom = path => import('data:text/javascript;base64,' + Buffer.from(readFileSync(new URL(path, import.meta.url), 'utf8').replace("'./passwordPolicy'",JSON.stringify(policy)).replace("'./birthDate'",JSON.stringify(birth))).toString('base64'));
 const { validateProfile, validatePassword, profileInitials } = await moduleFrom('../utils/profile.js');
 const { saveOwnProfile, changeOwnPassword } = await moduleFrom('../services/profileActions.js');
 
@@ -20,7 +21,7 @@ test('password checks require current password, matching confirmation and a diff
   assert.ok(validatePassword('', '123', '456').current);
   assert.ok(validatePassword('samepassword', 'samepassword', 'samepassword').next);
   assert.ok(validatePassword('oldpassword', 'newpassword', 'different').confirmation);
-  assert.deepEqual(validatePassword('oldpassword', 'newpassword', 'newpassword'), {});
+  assert.deepEqual(validatePassword('oldpassword', 'Brisa!72Piedras', 'Brisa!72Piedras'), {});
 });
 test('profile update uses authenticated owner and an explicit allowlist of columns', async () => {
   const calls = [], saved = { full_name: 'Vicente', username: 'vic', occupation: null,birth_date:'2000-06-15' };

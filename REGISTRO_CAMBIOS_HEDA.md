@@ -282,3 +282,29 @@ HEDA se exporta con `npm run build:web` a **dist**, preparada para Netlify Drop 
 - Comparación LSTM ETH/ETH+BTC con tres particiones temporales e early stopping interno. La mejora de validación de siete días no se sostuvo en prueba; se conservan los pesos publicados.
 - Archivo prospectivo de titulares con primera observación, comparación precios/sentimiento preparada con puerta de muestra mínima, y evaluación de pronósticos cerrados por la misma fuente. La recogida es manual; no se afirma mejora predictiva por sentimiento.
 - Preparado ethereum-forecast-dashboard.ts y dist. Publicación pendiente por el usuario: primero Edge ethereum-forecast y luego Netlify, sin SQL. Guía en GUIA_ETHEREUM_HEDA.md.
+
+## 27 octubre 2026 — Campos de formularios que perdían el foco en web
+
+- Reproducido con clic y escritura de teclado: el contenedor TouchableWithoutFeedback llamaba a Keyboard.dismiss al tocar un input, por lo que el campo perdía el foco y parecía bloqueado. El rellenado directo de pruebas no reproducía el problema.
+- Corregidos nueva meta, agregar ahorro y editar movimiento con KeyboardDismissArea: en web conserva el foco; en iOS/Android mantiene el cierre de teclado existente.
+- Prueba reproducible scripts/check-manual-forms.cjs con Supabase interceptado: escritura real, creación de meta, aporte de ahorro, edición y recurrentes. La prueba no modifica cuentas reales ni acredita permisos remotos.
+- Suite de 263 pruebas correcta y exportación web preparada en dist. Publicar dist en Netlify; no requiere SQL ni actualizar Edge Functions.
+
+## 27 octubre 2026 — Requisitos e indicador de contraseña
+
+- Política compartida para registro, recuperación y cambio en Perfil: 12–128 caracteres, mayúscula, minúscula, número y símbolo. No modifica la validación de acceso de cuentas existentes.
+- Indicador local orientativo, lista de requisitos y aviso de patrones obvios; permite pegar y no modifica los espacios.
+- Campos obligatorios marcados con asterisco y estado accesible en acceso y registro.
+- 266 pruebas correctas; comprobada escritura real y cambios del indicador en web móvil, sin llamadas de registro mientras se escribe, sin incidencias detectadas en las reglas de accesibilidad seleccionadas.
+- dist actualizado. Para exigir la política en el servidor, seguir SEGURIDAD_CONTRASENAS_HEDA.md; Supabase no fue modificado automáticamente.
+
+## 27 octubre 2026 — Recorridos sencillos y ayudas por función
+
+- Prioridad de Inicio con acción contextual para gastos, recurrentes o metas. Los accesos de ahorro y recurrentes abren el formulario correcto una sola vez; no escriben datos sin confirmar.
+- Visita de seis pasos, orden adaptado al ahorro, opción de salir y botones para probar tareas. Lectura grande con controles apilados.
+- Ayudas de primera vez por cuenta/dispositivo, descartables, repetibles desde Perfil y desactivables en Atajos y bloques. Preferencias sincronizadas; marcas de ayuda locales, incluidas en la limpieza de cuenta.
+- Nombres consistentes Recurrentes / Crear pago o ingreso recurrente / Guardar recurrente. Última acción de registro Finalizar registro.
+- Menos accesos duplicados en la vista simple nueva; preferencias anteriores explícitas conservadas y herramientas accesibles desde su pestaña.
+- Formulario de aportación desplazable para mantener Registrar ahorro accesible con texto al 200%; etiquetado el indicador de actualización del saldo.
+- 271 pruebas correctas; comprobados los recorridos en web móvil clara/oscura, guardado/restablecimiento de ayudas, acceso desde el tutorial a una meta editable y ausencia de escrituras financieras al navegar. Metas, ahorro, edición y recurrentes comprobados escribiendo con teclado real, también al 200%.
+- Exportaciones web/Android/iOS correctas. No acredita pruebas físicas con lectores de pantalla ni evaluación de usabilidad con población mayor. dist preparado; guía GUIA_USABILIDAD_HEDA.md. No requiere SQL ni actualización de Edge Functions.

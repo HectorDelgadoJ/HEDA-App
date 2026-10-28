@@ -1,3 +1,4 @@
+import FirstUseHint from '../components/FirstUseHint';
 import {Text, TouchableOpacity} from '../components/AccessiblePrimitives';
 import {useFocusEffect} from '@react-navigation/native';
 import {educationPlan} from '../utils/educationPlan';
@@ -199,7 +200,7 @@ export default function FinancialEducationScreen({ navigation }) {
   if(!loading&&!catalog.length)return <SafeAreaView style={{flex:1,backgroundColor:colors.background,padding:20}}><ScreenHeader title="Educación" subtitle="No hay lecciones disponibles por ahora." actionIcon="arrow-back" actionLabel="Volver a herramientas" onAction={()=>navigation.navigate('Herramientas')}/><TouchableOpacity accessibilityRole="button" onPress={()=>reload.current()} style={{padding:16,backgroundColor:colors.softBlue,borderRadius:14}}><Text style={{color:colors.link}}>Actualizar catálogo</Text></TouchableOpacity></SafeAreaView>;
   return <SwipeBackToIA navigation={navigation}><SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
     <ScrollView ref={scroll} style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <ScreenHeader title="Educación" subtitle="Entiende tu dinero, un tema a la vez." actionIcon="arrow-back" actionLabel="Volver a herramientas" onAction={() => navigation.navigate('Herramientas')} />
+      <ScreenHeader title="Educación" subtitle="Entiende tu dinero, un tema a la vez." actionIcon="arrow-back" actionLabel="Volver a herramientas" onAction={() => navigation.navigate('Herramientas')} /><FirstUseHint id="education"/>
       <View style={styles.progressCard}>
         <View style={styles.progressHeader}>
           <View style={themeStyle({ flex: 1 }, colors)}><Text style={styles.cardTitle}>{progress === 100 ? '¡Completaste tu ruta!' : 'Tu ruta de aprendizaje'}</Text><Text style={styles.cardText}>{loading ? 'Cargando tu progreso…' : `${learnedIds.length} de ${catalog.length} lecciones completadas`}</Text></View>

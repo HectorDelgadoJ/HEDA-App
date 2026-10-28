@@ -1,3 +1,5 @@
+import {useFirstUseHelp} from '../components/FirstUseHint';
+import PasswordStrength from '../components/PasswordStrength';
 import {Text, TouchableOpacity, Modal, TextInput} from '../components/AccessiblePrimitives';
 import AdminEntry from '../components/AdminEntry';
 import BirthDateField from '../components/BirthDateField';
@@ -48,6 +50,7 @@ const information = {
 };
 
 export default function ProfileScreen({ navigation }) {
+  const firstUseHelp=useFirstUseHelp();
   const { colors, styles } = useThemeStyles(makeStyles);
   const captcha=useAuthCaptcha();
   const install=useWebInstall();
@@ -152,7 +155,7 @@ export default function ProfileScreen({ navigation }) {
       </View>
       <Text style={styles.section}>Tu HEDA</Text><View style={styles.group}>
         {install.supported?<Option icon="phone-portrait-outline" title="Agregar HEDA a inicio" text="Guía para usarla como app" onPress={install.openGuide}/>:null}
-        <Option icon="compass-outline" title="Ver visita guiada" text="Recorre las secciones de HEDA otra vez" onPress={openTour} />
+        <Option icon="information-circle-outline" title="Volver a mostrar explicaciones" text="Repite las ayudas breves de cada función en este dispositivo" onPress={async()=>{const saved=await firstUseHelp?.reset();if(!saved){Alert.alert('No se guardó el cambio','Inténtalo de nuevo. No pudimos actualizar las ayudas de este dispositivo.');return;}Alert.alert('Ayudas reiniciadas',preferences.guidance.firstUse?'Volverás a verlas al usar cada función.':'Activa las explicaciones en Personalizar HEDA → Atajos y bloques.');}}/><Option icon="compass-outline" title="Ver visita guiada" text="Recorre las secciones de HEDA otra vez" onPress={openTour} />
         <Option icon="analytics-outline" title="Mis hábitos" text="Patrones de tus registros" onPress={() => navigation.navigate('Habitos')} />
         <Option icon="school-outline" title="Educación financiera" text="Lecciones y tu avance" last onPress={() => navigation.navigate('EducacionFinanciera')} />
       </View>
@@ -179,9 +182,9 @@ export default function ProfileScreen({ navigation }) {
           </> : panel === 'password' ? <>
             <Field label="Contraseña actual" value={passwords.current} onChangeText={(value) => setPasswords((previous) => ({ ...previous, current: value }))} error={fields.current} maxLength={128} editable={!saving} secureTextEntry={!visiblePassword} autoCapitalize="none" autoCorrect={false} autoComplete="current-password" />
             <Field label="Nueva contraseña" value={passwords.next} onChangeText={(value) => setPasswords((previous) => ({ ...previous, next: value }))} error={fields.next} maxLength={128} editable={!saving} secureTextEntry={!visiblePassword} autoCapitalize="none" autoCorrect={false} autoComplete="new-password" />
-            <Field label="Confirmar nueva contraseña" value={passwords.confirmation} onChangeText={(value) => setPasswords((previous) => ({ ...previous, confirmation: value }))} error={fields.confirmation} maxLength={128} editable={!saving} secureTextEntry={!visiblePassword} autoCapitalize="none" autoCorrect={false} autoComplete="new-password" />
+            <PasswordStrength value={passwords.next}/><Field label="Confirmar nueva contraseña" value={passwords.confirmation} onChangeText={(value) => setPasswords((previous) => ({ ...previous, confirmation: value }))} error={fields.confirmation} maxLength={128} editable={!saving} secureTextEntry={!visiblePassword} autoCapitalize="none" autoCorrect={false} autoComplete="new-password" />
             <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: visiblePassword }} style={styles.retry} disabled={saving} onPress={() => {dismissAuthKeyboard();setVisiblePassword(!visiblePassword);}}><Ionicons accessible={false} name={visiblePassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={themeColor(colors.primary, colors)} /><Text style={styles.link}>{visiblePassword ? 'Ocultar contraseñas' : 'Mostrar contraseñas'}</Text></TouchableOpacity>
-            <InfoButton title="Requisitos de contraseña" text="Utiliza entre 8 y 128 caracteres. Supabase puede aplicar requisitos adicionales. Las contraseñas se envían al servicio de autenticación; no se guardan en tu perfil ni se comparten con IA." />
+            <InfoButton title="Requisitos de contraseña" text="Utiliza de 12 a 128 caracteres, con mayúscula, minúscula, número y símbolo. El indicador es orientativo; no garantiza que una contraseña sea imposible de adivinar. Las contraseñas se envían al servicio de autenticación; no se guardan en tu perfil ni se comparten con IA." />
           </> : details?.sections.map(([title, text]) => <View key={title} style={styles.infoSection}><Text style={styles.rowTitle}>{title}</Text><Text style={themeStyle([styles.body, { marginTop: 9 }], colors)}>{text}</Text></View>)}
           {panel==='password'?<AuthCaptcha captcha={captcha}/>:null}
             {formError ? <Text accessibilityLiveRegion="polite" style={styles.formError}>{formError}</Text> : null}

@@ -1,3 +1,5 @@
+import FirstUseHint from '../components/FirstUseHint';
+import KeyboardDismissArea from '../components/KeyboardDismissArea';
 import {Text, TouchableOpacity, TextInput, Modal} from '../components/AccessiblePrimitives';
 import {Alert} from '../services/alerts';
 import { notifyFinanceChange } from '../services/financeEvents';
@@ -18,7 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-import {View, StyleSheet, ScrollView, ActivityIndicator, Keyboard, KeyboardAvoidingView, TouchableWithoutFeedback, Platform, InputAccessoryView} from 'react-native';
+import {View, StyleSheet, ScrollView, ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, InputAccessoryView} from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -659,10 +661,11 @@ export default function ExpensesScreen({ route, navigation }) {
             accessibilityState={{ selected: section === name, disabled: saving }} disabled={saving}
             onPress={() => {Keyboard.dismiss();setSection(name);scrollRef.current?.scrollTo({ y: 0, animated: false });}}
             style={themeStyle([styles.sectionTab, section === name && styles.sectionTabActive], colors)}>
-            <Text style={themeStyle([styles.sectionTabText, section === name && { color: '#FFFFFF' }], colors)}>{{ Nuevo: 'Registrar', Historial: 'Historial', Recurrentes: simple ? 'Pagos' : 'Programados' }[name]}</Text>
+            <Text style={themeStyle([styles.sectionTabText, section === name && { color: '#FFFFFF' }], colors)}>{{ Nuevo: 'Registrar', Historial: 'Historial', Recurrentes: 'Recurrentes' }[name]}</Text>
           </TouchableOpacity>)}
         </View>
-        {section === 'Recurrentes' ? <RecurringMovements onConfirmed={loadTransactions} mode={mode} cards={cards} /> : section === 'Nuevo' ? <>
+        {section === 'Recurrentes' ? <RecurringMovements startNew={route?.params?.newRecurring===true} onNewOpened={()=>navigation.setParams({newRecurring:undefined})} onConfirmed={loadTransactions} mode={mode} cards={cards} /> : section === 'Nuevo' ? <>
+        <FirstUseHint id="movement"/>
         {/* TIPO */}
 
         <MovementType value={type} onChange={changeType} disabled={saving || modeBusy || loading} />
@@ -882,9 +885,7 @@ export default function ExpensesScreen({ route, navigation }) {
           'height'
           }>
 
-          <TouchableWithoutFeedback
-            onPress={Keyboard.dismiss}
-            accessible={false}>
+          <KeyboardDismissArea>
 
             <View style={styles.modalOverlay}>
               <View style={styles.modalCard}>
@@ -928,7 +929,8 @@ export default function ExpensesScreen({ route, navigation }) {
                   }
                   keyboardShouldPersistTaps="handled">
 
-                  {/* TIPO */}
+                  <FirstUseHint id="editMovement"/>
+        {/* TIPO */}
 
                   <Text style={styles.editLabel}>
                     Tipo
@@ -1077,7 +1079,7 @@ export default function ExpensesScreen({ route, navigation }) {
                 </ScrollView>
               </View>
             </View>
-          </TouchableWithoutFeedback>
+          </KeyboardDismissArea>
         </KeyboardAvoidingView>
       </Modal>
 

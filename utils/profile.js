@@ -1,3 +1,4 @@
+import {newPasswordError} from './passwordPolicy';
 import {validateBirthDate} from './birthDate';
 export function validateProfile(values) {
   const full_name = String(values.full_name || '').trim();
@@ -14,7 +15,7 @@ export function validateProfile(values) {
 export function validatePassword(current, next, confirmation) {
   const errors = {};
   if (!current) errors.current = 'Escribe tu contraseña actual.';
-  if (next.length < 8 || next.length > 128) errors.next = 'Usa entre 8 y 128 caracteres.';
+  if (newPasswordError(next)) errors.next = newPasswordError(next);
   if (current && current === next) errors.next = 'Elige una contraseña diferente a la actual.';
   if (next !== confirmation) errors.confirmation = 'Las contraseñas nuevas no coinciden.';
   return errors;

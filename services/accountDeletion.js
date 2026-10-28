@@ -1,4 +1,4 @@
-export const accountDeviceKeys=id=>[`heda:chats:v1:${id}`,`heda:education:v1:${id}`,`heda:alerts:read:v1:${id}`,`heda:movement-categories:${id}`,`heda:phone-reminders:v1:${id}`,`heda:noticed:v1:${id}`];
+export const accountDeviceKeys=id=>[`heda:first-use:v1:${id}`,`heda:chats:v1:${id}`,`heda:education:v1:${id}`,`heda:alerts:read:v1:${id}`,`heda:movement-categories:${id}`,`heda:phone-reminders:v1:${id}`,`heda:noticed:v1:${id}`];
 export async function invokeAccountDeletion(client,ownerId,body,{timeoutMs=45000}={}){
  const {data:{session},error}=await client.auth.getSession();
  if(error||!session||session.user.id!==ownerId)throw new Error('Tu sesión cambió. Vuelve a abrir Perfil.');

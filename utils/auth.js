@@ -1,3 +1,4 @@
+import {newPasswordError} from './passwordPolicy';
 import { validateBirthDate } from './birthDate';
 import { experienceDefaults } from './experience';
 export function validateLogin(email, password) {
@@ -13,7 +14,7 @@ export function validateRegistration(values) {
   if(dateError)errors.birthDate=dateError;
   if(!fullName || fullName.length>100)errors.fullName='Escribe tu nombre, de hasta 100 caracteres.';
   if(!/^[a-z0-9._]{3,30}$/.test(username))errors.username='Usa de 3 a 30 letras, números, puntos o guiones bajos.';
-  if(typeof values.password!=='string' || values.password.length<8 || values.password.length>128 || !values.password.trim())errors.password='Usa entre 8 y 128 caracteres.';
+  if(newPasswordError(values.password))errors.password=newPasswordError(values.password);
   if(values.password!==values.confirmPassword)errors.confirmPassword='Las contraseñas no coinciden.';
   return {errors,email,fullName,username,age,birthDate};
 }
