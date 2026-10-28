@@ -308,3 +308,13 @@ HEDA se exporta con `npm run build:web` a **dist**, preparada para Netlify Drop 
 - Formulario de aportación desplazable para mantener Registrar ahorro accesible con texto al 200%; etiquetado el indicador de actualización del saldo.
 - 271 pruebas correctas; comprobados los recorridos en web móvil clara/oscura, guardado/restablecimiento de ayudas, acceso desde el tutorial a una meta editable y ausencia de escrituras financieras al navegar. Metas, ahorro, edición y recurrentes comprobados escribiendo con teclado real, también al 200%.
 - Exportaciones web/Android/iOS correctas. No acredita pruebas físicas con lectores de pantalla ni evaluación de usabilidad con población mayor. dist preparado; guía GUIA_USABILIDAD_HEDA.md. No requiere SQL ni actualización de Edge Functions.
+
+## 27 octubre 2026 — Confirmación de recurrentes y plan de metas
+
+- Corregido el contrato de heda_confirm_recurring: solo p_id y p_date. La tarjeta se obtiene del recurrente en el servidor. Antes se enviaba cardId y PostgREST no encontraba esa firma. Bloqueo inmediato de pulsaciones repetidas y éxito solo con comprobante de la función.
+- Barra animada de ahorro con porcentaje accesible, actualización desde la fila guardada y respeto a reducción de movimiento. Metas terminadas permanecen visibles al 100%.
+- Guardado de aportaciones en centavos, verificación de cuenta y comparación del avance previo para no sobrescribir otra aportación. Ante una respuesta incierta se pide revisar el acumulado antes de repetir.
+- Plan orientativo: cuánto falta, cantidad semanal necesaria para la fecha y promedio desde la creación. Solo estima ritmo con al menos siete días y ahorro positivo; distingue ausencia de fecha, fecha vencida y meta alcanzada. No presume disponer del historial de aportaciones ni promete resultados.
+- Opciones para registrar una aportación sugerida o ajustar/quitar fecha; sin pagos ni transferencias automáticos, sin consultas a IA para los cálculos.
+- Tutorial identificado expresamente como Tutorial de HEDA en cada paso, con explicación inicial de qué es y cómo salir o repetirlo desde Perfil.
+- 282 pruebas correctas y prueba web con contratos estrictos: pago, ingreso y cargo; progreso 25→50→100; fecha actualizable y meta completa conservada tras recargar. Comprobado también en oscuro y texto al 200%. No requiere SQL ni actualizar Edge Functions; publicar dist.

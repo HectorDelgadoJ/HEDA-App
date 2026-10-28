@@ -1,3 +1,4 @@
+import {confirmRecurring} from '../services/recurringActions';
 import FirstUseHint from './FirstUseHint';
 import {Switch} from './AccessiblePrimitives';
 import {Text, TextInput, TouchableOpacity, Modal} from './AccessiblePrimitives';
@@ -49,6 +50,7 @@ export default function RecurringMovements({ onConfirmed, mode = 'simple', cards
   const [form, setForm] = useState(blankForm);
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(null);
+  const confirmationLock=useRef(false);
   const [notice, setNotice] = useState('');
   const [userId, setUserId] = useState(null);
 
@@ -120,18 +122,18 @@ export default function RecurringMovements({ onConfirmed, mode = 'simple', cards
     {setBusy(null);}
   }
   async function confirm(rule) {
-    if (busy) return;
+    if (busy||confirmationLock.current) return;
+    confirmationLock.current=true;
     setBusy(rule.id);
     setNotice('');
     try {
-      const { error } = await supabase.rpc('heda_confirm_recurring', { p_id: rule.id, p_date: rule.next_date, cardId: rule.card_id || null });
-      if (error) throw new Error('No pudimos confirmar el movimiento. Actualiza la lista e intenta de nuevo.');
+      await confirmRecurring(supabase,userId,rule);
       const following = nextOccurrence(rule.next_date, rule.frequency, rule.anchor_day, rule.anchor_month, rule.interval_count || 1);
       setNotice(`${rule.card_id ? 'Cargo registrado en la tarjeta' : rule.type === 'income' ? 'Ingreso registrado' : 'Gasto registrado'}. Próxima fecha: ${displayDate(following)}. El aviso aparecerá dentro de HEDA.`);
       notifyFinanceChange();await loadRules();
-      await onConfirmed();
+      await onConfirmed?.();
     } catch (error) {setNotice(error.message);notifyFinanceChange();await loadRules();} finally
-    {setBusy(null);}
+    {confirmationLock.current=false;setBusy(null);}
   }
   async function pause(rule) {
     if (busy) return;

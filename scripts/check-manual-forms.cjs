@@ -9,6 +9,7 @@ const { chromium } = require(process.env.HEDA_PLAYWRIGHT_MODULE || 'playwright')
  const errors = [], writes = [];
  page.on('pageerror', e => errors.push(e.message));
  const id = '11111111-1111-4111-8111-111111111111', entity = '22222222-2222-4222-8222-222222222222';
+ let goalRows=[{id:entity,user_id:id,name:'Laptop',target_amount:10000,current_amount:0,status:'active',created_at:'2026-10-01T00:00:00Z'}];
  const user = { id, email: 'test@example.invalid', aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'email' }, user_metadata: { heda_experience: { version: 1, configured: true, welcomeDone: true, tourDone: true, mode: 'complete', theme: process.env.HEDA_QA_DARK ? 'dark' : 'light', accessibility: process.env.HEDA_QA_LARGE ? {textScale: 2, reduceMotion: true} : {} } } };
  const token = ['eyJhbGciOiJIUzI1NiJ9', Buffer.from(JSON.stringify({ sub: id, exp: Math.floor(Date.now()/1000)+3600 })).toString('base64url'), 'test'].join('.');
  await page.addInitScript(({user,token}) => localStorage.setItem('sb-ixzqwihpdvwnmawztret-auth-token', JSON.stringify({access_token:token,refresh_token:'test-only',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user})), {user,token});
@@ -20,7 +21,12 @@ const { chromium } = require(process.env.HEDA_PLAYWRIGHT_MODULE || 'playwright')
   else if (path.endsWith('/profiles')) value = {id,full_name:'Prueba',username:'prueba',birth_date:'2000-01-01',movement_mode:'simple'};
   else if (path.endsWith('/heda_account_active')) value = true;
   else if (path.endsWith('/heda_is_admin')) value = false;
-  else if (path.endsWith('/goals')) value = [{id:entity,user_id:id,name:'Laptop',target_amount:10000,current_amount:0,status:'active',created_at:'2026-10-01T00:00:00Z'}];
+  else if (path.endsWith('/goals')) {
+   const idFilter=new URL(req.url()).searchParams.get('id')?.replace('eq.','');
+   if(req.method()==='POST')goalRows.push({...body,id:'33333333-3333-4333-8333-333333333333',created_at:new Date().toISOString()});
+   if(req.method()==='PATCH')goalRows=goalRows.map(g=>g.id===idFilter?{...g,...body}:g);
+   value=req.headers().accept?.includes('vnd.pgrst.object')?goalRows.find(g=>g.id===idFilter):goalRows;
+  }
   else if (path.endsWith('/transactions')) value = [{id:entity,user_id:id,type:'expense',amount:100,category:'Comida',description:'Movimiento prueba',transaction_date:'2026-10-26',created_at:'2026-10-26T12:00:00Z'}];
   else if (path.endsWith('/heda-notify')) value = {ok:true,configured:false};
   else if (path.endsWith('/heda_alert_preferences')) value = {ethereum:false};
@@ -37,7 +43,7 @@ await page.getByText('Crear meta',{exact:true}).click();
 await page.getByText('Meta creada',{exact:true}).waitFor();await page.getByRole('button',{name:'Entendido',exact:true}).click();
 console.log('CREATE GOAL OK');
 
-await page.getByText('Agregar ahorro',{exact:true}).click();
+await page.getByText('Agregar ahorro',{exact:true}).first().click();
 await typeInto(page.getByPlaceholder('500',{exact:true}),'125');
 await page.getByText('Registrar ahorro',{exact:true}).click();
 await page.getByRole('button',{name:'Entendido',exact:true}).click();

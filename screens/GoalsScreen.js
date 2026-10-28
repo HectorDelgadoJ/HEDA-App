@@ -1,3 +1,7 @@
+import GoalProgress from '../components/GoalProgress';
+import GoalGuidance from '../components/GoalGuidance';
+import {goalPlan} from '../utils/goalPlan';
+import {addGoalContribution,setGoalDeadline,GOAL_COLUMNS} from '../services/goalActions';
 import FirstUseHint from '../components/FirstUseHint';
 import KeyboardDismissArea from '../components/KeyboardDismissArea';
 import {Text, TouchableOpacity, TextInput, Modal} from '../components/AccessiblePrimitives';
@@ -14,7 +18,7 @@ import { isSpending } from '../utils/finance';
 import { transactionRows } from '../services/finance';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {View, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, Keyboard, KeyboardAvoidingView, Platform, InputAccessoryView} from 'react-native';
 
@@ -33,6 +37,8 @@ export default function GoalsScreen({route,navigation}) {
   const [loading, setLoading] = useState(true);
   const [savingGoal, setSavingGoal] = useState(false);
   const [savingContribution, setSavingContribution] = useState(false);
+  const loadedOwner=useRef(null),contributionLock=useRef(false),deadlineLock=useRef(false);
+  const [dateGoalId,setDateGoalId]=useState(null),[deadline,setDeadline]=useState(''),[savingDate,setSavingDate]=useState(false),[dateError,setDateError]=useState('');
 
   const [filter, setFilter] = useState('monthly');
   const [periodOffset, setPeriodOffset] = useState(0);
@@ -84,21 +90,22 @@ export default function GoalsScreen({route,navigation}) {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        setLoadError(true);
+        loadedOwner.current=null;setLoadError(true);
 
         return;
       }
 
+      loadedOwner.current=user.id;
       const [transactionsResult, goalsResult] = await Promise.all([
       transactionRows(user.id),
 
       supabase.
       from('goals').
       select(
-        'id, name, target_amount, current_amount, target_date, status, created_at'
+        GOAL_COLUMNS
       ).
       eq('user_id', user.id).
-      eq('status', 'active').
+      in('status', ['active','completed']).
       order('created_at', {
         ascending: true
       })]
@@ -114,7 +121,7 @@ export default function GoalsScreen({route,navigation}) {
       if (goalsResult.error) {
 
       } else {
-        setGoals(goalsResult.data || []);
+        setGoals((goalsResult.data || []).sort((a,b)=>(a.status==='completed')-(b.status==='completed')));
       }
     } catch (error) {
       setLoadError(true);
@@ -299,97 +306,26 @@ export default function GoalsScreen({route,navigation}) {
   // =====================================================
 
   async function addContribution() {
-    Keyboard.dismiss();
-
-    const mainGoal = goals.find((goal) => goal.id === selectedGoalId);
-
-    if (!mainGoal) {
-      Alert.alert(
-        'Sin meta',
-        'No existe una meta activa.'
-      );
-      return;
-    }
-
-    const numericAmount = Number(
-      contributionAmount.
-      trim().
-      replace(',', '.')
-    );
-
-    if (
-    !Number.isFinite(numericAmount) ||
-    numericAmount <= 0)
-    {
-      Alert.alert(
-        'Monto inválido',
-        'Ingresa una cantidad mayor a cero.'
-      );
-      return;
-    }
-
-    const newAmount =
-    Number(mainGoal.current_amount) +
-    numericAmount;
-
-    const completed =
-    newAmount >=
-    Number(mainGoal.target_amount);
-
-    try {
-      setSavingContribution(true);
-
-      const { error } = await supabase.
-      from('goals').
-      update({
-        current_amount: newAmount,
-        status: completed ?
-        'completed' :
-        'active',
-        updated_at: new Date().toISOString()
-      }).
-      eq('id', mainGoal.id);
-
-      if (error) {
-
-
-        Alert.alert(
-          'Error',
-          'No se pudo registrar el ahorro.'
-        );
-
-        return;
-      }
-
-      setContributionAmount('');
-
-      Keyboard.dismiss();
-      setContributionModalVisible(false);
-
-      notifyFinanceChange();await loadData();
-
-      if (completed) {
-        Alert.alert(
-          '¡Meta alcanzada!',
-          `Completaste tu meta "${mainGoal.name}".`
-        );
-      } else {
-        Alert.alert(
-          'Ahorro registrado',
-          'Tu progreso fue actualizado correctamente.'
-        );
-      }
-    } catch (error) {
-
-
-      Alert.alert(
-        'Error',
-        'Ocurrió un problema al registrar el ahorro.'
-      );
-    } finally {
-      setSavingContribution(false);
-    }
+    if(contributionLock.current)return;
+    const goal=goals.find(item=>item.id===selectedGoalId);
+    if(!goal||goal.status!=='active'){Alert.alert('Meta no disponible','Actualiza tus metas y elige una meta activa.');return;}
+    contributionLock.current=true;setSavingContribution(true);Keyboard.dismiss();
+    try{
+      const updated=await addGoalContribution(supabase,loadedOwner.current,goal,contributionAmount);
+      setGoals(items=>items.map(item=>item.id===updated.id?updated:item));
+      setContributionAmount('');setContributionModalVisible(false);notifyFinanceChange();await loadData();
+      Alert.alert(updated.status==='completed'?'¡Meta alcanzada!':'Ahorro registrado',updated.status==='completed'?`Completaste tu meta "${updated.name}". Puedes seguir viendo su avance al 100%.`:'Tu barra de avance y tu plan se actualizaron.');
+    }catch(error){Alert.alert('Revisa la aportación',error.message);await loadData();}
+    finally{contributionLock.current=false;setSavingContribution(false);}
   }
+  function openDeadline(goal){setDateGoalId(goal.id);setDeadline(goal.target_date||localDate());setDateError('');}
+  async function saveDeadline(){
+    if(deadlineLock.current)return;const goal=goals.find(item=>item.id===dateGoalId);if(!goal)return;
+    deadlineLock.current=true;setSavingDate(true);setDateError('');
+    try{const updated=await setGoalDeadline(supabase,loadedOwner.current,goal,deadline,localDate());setGoals(items=>items.map(item=>item.id===updated.id?updated:item));setDateGoalId(null);notifyFinanceChange();await loadData();}
+    catch(error){setDateError(error.message);}finally{deadlineLock.current=false;setSavingDate(false);}
+  }
+  const dateGoal=goals.find(item=>item.id===dateGoalId);
 
   // =====================================================
   // FILTRAR TRANSACCIONES
@@ -626,7 +562,8 @@ export default function GoalsScreen({route,navigation}) {
         </View>
 
         {goals.length > 0 ? goals.map((mainGoal) => {
-          const goalPercentage = Number(mainGoal.target_amount) > 0 ? Math.min(100, Number(mainGoal.current_amount) / Number(mainGoal.target_amount) * 100) : 0;
+          const plan=goalPlan(mainGoal,localDate());
+          const goalPercentage=plan.percent;
           return (
             <View key={mainGoal.id} style={styles.goalCard}>
             <View style={styles.goalHeader}>
@@ -659,20 +596,7 @@ export default function GoalsScreen({route,navigation}) {
               </Text>
             </View>
 
-            <View
-                style={
-                styles.progressBackground
-                }>
-
-              <View
-                  style={themeStyle([
-                  styles.progressFill,
-                  {
-                    width: `${goalPercentage}%`
-                  }], colors)
-                  } />
-
-            </View>
+            <GoalProgress name={mainGoal.name} percent={goalPercentage}/>
 
             <View style={styles.goalFooter}>
               <Text style={styles.goalText}>
@@ -698,7 +622,8 @@ export default function GoalsScreen({route,navigation}) {
               </Text>
               }
 
-            <TouchableOpacity
+            <GoalGuidance goal={mainGoal} today={localDate()} onContribute={amount=>{setSelectedGoalId(mainGoal.id);setContributionAmount(String(amount));setContributionModalVisible(true);}} onChangeDate={()=>openDeadline(mainGoal)}/>
+            {mainGoal.status==='active'&&plan.remaining>0&&            <TouchableOpacity
                 style={
                 styles.contributionButton
                 }
@@ -717,7 +642,7 @@ export default function GoalsScreen({route,navigation}) {
 
                 Agregar ahorro
               </Text>
-            </TouchableOpacity>
+            </TouchableOpacity>}
             <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Eliminar meta ${mainGoal.name}`} disabled={!!deletingGoalId} onPress={() => confirmDeleteGoal(mainGoal)} style={themeStyle([styles.deleteGoalButton, deletingGoalId && { opacity: 0.5 }], colors)}>
               {deletingGoalId === mainGoal.id ? <ActivityIndicator color={themeColor("#B42332", colors)} /> : <><Ionicons accessible={false} name="trash-outline" size={17} color={themeColor("#B42332", colors)} /><Text style={styles.deleteGoalText}>Eliminar meta</Text></>}
             </TouchableOpacity>
@@ -1190,6 +1115,19 @@ export default function GoalsScreen({route,navigation}) {
             </View>
           </KeyboardDismissArea>
         </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal visible={!!dateGoalId} transparent animationType="slide" onRequestClose={()=>{if(!savingDate)setDateGoalId(null);}}>
+        <View style={styles.modalKeyboardContainer}><View style={styles.modalOverlay}><View style={styles.modalCard}>
+          <View style={styles.modalHeader}><Text accessibilityRole="header" style={styles.modalTitle}>Fecha de mi meta</Text><TouchableOpacity accessibilityRole="button" accessibilityLabel="Cerrar fecha de meta" disabled={savingDate} onPress={()=>setDateGoalId(null)}><Text style={{color:colors.link,fontWeight:'700'}}>Cerrar</Text></TouchableOpacity></View>
+          <ScrollView keyboardShouldPersistTaps="handled" style={{flexShrink:1}} contentContainerStyle={{paddingBottom:16}}>
+            <Text style={styles.cardText}>{dateGoal?.name}</Text><Text style={styles.chartHint}>Elige una fecha realista. El plan de ahorro se recalculará al guardar.</Text>
+            {deadline?<MovementDate title="Nueva fecha objetivo" value={deadline} initiallyOpen onChange={value=>{setDeadline(value);setDateError('');}} disabled={savingDate}/>:<TouchableOpacity accessibilityRole="button" onPress={()=>setDeadline(localDate())} disabled={savingDate} style={styles.optionalDateButton}><Text style={styles.sectionLink}>Sin fecha límite · Elegir fecha</Text></TouchableOpacity>}
+            <TouchableOpacity accessibilityRole="button" disabled={savingDate} style={styles.optionalDateButton} onPress={()=>{setDeadline('');setDateError('');}}><Text style={styles.sectionLink}>Dejar la meta sin fecha límite</Text></TouchableOpacity>
+            {!!dateError&&<Text accessibilityRole="alert" style={{color:colors.expense,lineHeight:22}}>{dateError}</Text>}
+            <TouchableOpacity accessibilityRole="button" disabled={savingDate} onPress={saveDeadline} style={styles.saveButton}>{savingDate?<ActivityIndicator accessibilityLabel="Guardando fecha" color={colors.onPrimary}/>:<Text style={styles.saveButtonText}>Guardar fecha</Text>}</TouchableOpacity>
+          </ScrollView>
+        </View></View></View>
       </Modal>
 
       {/* ================================================= */}
